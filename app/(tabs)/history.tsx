@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
-  TextInput,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +18,6 @@ import { Transaction, AutoPay, PaymentMethod } from '../../constants/types';
 export default function HistoryScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -33,7 +32,7 @@ export default function HistoryScreen() {
 
   useEffect(() => {
     filterTransactions();
-  }, [transactions, searchQuery, selectedFilter]);
+  }, [transactions, selectedFilter]);
 
   const loadData = async () => {
     try {
@@ -66,14 +65,6 @@ export default function HistoryScreen() {
     // Filter by status
     if (selectedFilter !== 'all') {
       filtered = filtered.filter(t => t.status === selectedFilter);
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(t => 
-        t.merchant_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
     }
 
     setFilteredTransactions(filtered);
@@ -142,6 +133,7 @@ export default function HistoryScreen() {
   };
 
   const getTransactionIcon = (merchantName: string) => {
+    if (!merchantName || typeof merchantName !== 'string') return '🏪'; // Handle undefined/null/non-string merchantName
     const name = merchantName.toLowerCase();
     if (name.includes('starbucks')) return '☕';
     if (name.includes('amazon')) return '📦';
@@ -179,139 +171,112 @@ export default function HistoryScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Transaction History</Text>
-        <TouchableOpacity 
-          style={styles.searchButton}
-          onPress={() => {/* Could implement modal search */}}
-        >
-          <Ionicons name="search" size={24} color="#6B46C1" />
-        </TouchableOpacity>
       </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#6B7280" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search transactions..."
-            placeholderTextColor="#9CA3AF"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#6B7280" />
-            </TouchableOpacity>
-          )}
-        </View>
+      {/* Filter Buttons */}
+      <View style={styles.filterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.filterButtons}>
+            {filterButtons.map((filter) => (
+              <TouchableOpacity
+                key={filter.key}
+                style={[
+                  styles.filterButton,
+                  selectedFilter === filter.key && styles.filterButtonActive
+                ]}
+                onPress={() => setSelectedFilter(filter.key as any)}
+              >
+                <Text style={[
+                  styles.filterButtonText,
+                  selectedFilter === filter.key && styles.filterButtonTextActive
+                ]}>
+                  {filter.label}
+                </Text>
+                {filter.count > 0 && (
+                  <View style={[
+                    styles.filterCount,
+                    selectedFilter === filter.key && styles.filterCountActive
+                  ]}>
+                    <Text style={[
+                      styles.filterCountText,
+                      selectedFilter === filter.key && styles.filterCountTextActive
+                    ]}>
+                      {filter.count}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
       </View>
 
-      {/* Filter Tabs */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterContainer}
-        contentContainerStyle={styles.filterContent}
-      >
-        {filterButtons.map((filter) => (
-          <TouchableOpacity
-            key={filter.key}
-            style={[
-              styles.filterTab,
-              selectedFilter === filter.key && styles.activeFilterTab
-            ]}
-            onPress={() => setSelectedFilter(filter.key as any)}
-          >
-            <Text style={[
-              styles.filterTabText,
-              selectedFilter === filter.key && styles.activeFilterTabText
-            ]}>
-              {filter.label}
-            </Text>
-            <Text style={[
-              styles.filterTabCount,
-              selectedFilter === filter.key && styles.activeFilterTabCount
-            ]}>
-              {filter.count}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Transaction List */}
+      {/* Transactions List */}
       <ScrollView 
         style={styles.scrollView}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        showsVerticalScrollIndicator={false}
       >
         {filteredTransactions.length > 0 ? (
-          <View style={styles.transactionList}>
-            {filteredTransactions.map((transaction, index) => (
-              <View key={transaction.id} style={styles.transactionCard}>
-                <View style={styles.transactionHeader}>
-                  <View style={styles.transactionLeft}>
-                    <View style={styles.transactionIcon}>
-                      <Text style={styles.transactionEmoji}>
-                        {getTransactionIcon(transaction.merchant_name)}
-                      </Text>
-                    </View>
-                    <View style={styles.transactionInfo}>
-                      <Text style={styles.transactionMerchant}>
-                        {transaction.merchant_name}
-                      </Text>
-                      <Text style={styles.transactionDescription}>
-                        {transaction.description || 'Payment'}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.transactionRight}>
-                    <Text style={[
-                      styles.transactionAmount,
-                      { color: transaction.status === 'completed' ? '#1F2937' : getStatusColor(transaction.status) }
-                    ]}>
-                      {transaction.status === 'completed' ? '-' : ''}
-                      {formatAmount(transaction.amount)}
+          <View style={styles.transactionsList}>
+            {filteredTransactions.map((transaction) => (
+              <View key={transaction.id} style={styles.transactionItem}>
+                <View style={styles.transactionLeft}>
+                  <View style={styles.transactionIcon}>
+                    <Text style={styles.transactionEmoji}>
+                      {getTransactionIcon(transaction.merchant_name)}
                     </Text>
+                  </View>
+                  <View style={styles.transactionInfo}>
+                    <Text style={styles.transactionMerchant}>
+                      {transaction.merchant_name}
+                    </Text>
+                    <Text style={styles.transactionDate}>
+                      {formatDate(transaction.created_at)} at {formatTime(transaction.created_at)}
+                    </Text>
+                    {transaction.description && (
+                      <Text style={styles.transactionDescription}>
+                        {transaction.description}
+                      </Text>
+                    )}
                   </View>
                 </View>
-
-                <View style={styles.transactionFooter}>
-                  <View style={styles.transactionMeta}>
-                    <Text style={styles.transactionDate}>
-                      {formatDate(transaction.created_at)} • {formatTime(transaction.created_at)}
-                    </Text>
-                    <View style={[
-                      styles.statusBadge,
-                      { backgroundColor: `${getStatusColor(transaction.status)}20` }
+                
+                <View style={styles.transactionRight}>
+                  <Text style={[
+                    styles.transactionAmount,
+                    { color: getStatusColor(transaction.status) }
+                  ]}>
+                    {transaction.status === 'completed' ? '-' : ''}
+                    {formatAmount(transaction.amount)}
+                  </Text>
+                  
+                  <View style={[
+                    styles.statusBadge,
+                    { backgroundColor: `${getStatusColor(transaction.status)}20` }
+                  ]}>
+                    <Text style={[
+                      styles.statusText,
+                      { color: getStatusColor(transaction.status) }
                     ]}>
-                      <Text style={[
-                        styles.statusText,
-                        { color: getStatusColor(transaction.status) }
-                      ]}>
-                        {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
-                      </Text>
-                    </View>
+                      {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                    </Text>
                   </View>
-
-                  {/* AutoPay Controls */}
-                  {transaction.status === 'completed' && (
-                    <View style={styles.autoPaySection}>
-                      {isAutoPayEnabled(transaction.merchant_name) ? (
-                        <View style={styles.autoPayEnabled}>
-                          <Ionicons name="checkmark-circle" size={16} color="#059669" />
-                          <Text style={styles.autoPayEnabledText}>AutoPay Enabled</Text>
-                        </View>
-                      ) : (
-                        <TouchableOpacity
-                          style={styles.enableAutoPayButton}
-                          onPress={() => handleEnableAutoPay(transaction)}
-                        >
-                          <Ionicons name="flash" size={16} color="#6B46C1" />
-                          <Text style={styles.enableAutoPayText}>Enable AutoPay</Text>
-                        </TouchableOpacity>
-                      )}
+                  
+                  {transaction.status === 'completed' && !isAutoPayEnabled(transaction.merchant_name) && (
+                    <TouchableOpacity
+                      style={styles.autoPayButton}
+                      onPress={() => handleEnableAutoPay(transaction)}
+                    >
+                      <Text style={styles.autoPayButtonText}>Enable AutoPay</Text>
+                    </TouchableOpacity>
+                  )}
+                  
+                  {isAutoPayEnabled(transaction.merchant_name) && (
+                    <View style={styles.autoPayIndicator}>
+                      <Ionicons name="flash" size={12} color="#10B981" />
+                      <Text style={styles.autoPayText}>AutoPay On</Text>
                     </View>
                   )}
                 </View>
@@ -320,18 +285,12 @@ export default function HistoryScreen() {
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <Ionicons 
-              name={searchQuery ? "search" : "receipt-outline"} 
-              size={64} 
-              color="#9CA3AF" 
-            />
-            <Text style={styles.emptyTitle}>
-              {searchQuery ? 'No Results Found' : 'No Transactions Yet'}
-            </Text>
-            <Text style={styles.emptySubtitle}>
-              {searchQuery 
-                ? `No transactions found for "${searchQuery}"`
-                : 'Your transaction history will appear here'
+            <Ionicons name="receipt-outline" size={64} color="#9CA3AF" />
+            <Text style={styles.emptyStateTitle}>No Transactions</Text>
+            <Text style={styles.emptyStateSubtitle}>
+              {selectedFilter === 'all' 
+                ? 'Your transaction history will appear here'
+                : `No ${selectedFilter} transactions found`
               }
             </Text>
           </View>
@@ -345,153 +304,99 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+    paddingTop: Platform.OS === 'android' ? 25 : 0,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingVertical: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#1F2937',
   },
-  searchButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  searchContainer: {
-    paddingHorizontal: 24,
-    marginBottom: 16,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  searchIcon: {
-    marginRight: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#1F2937',
-  },
   filterContainer: {
-    maxHeight: 60,
+    paddingHorizontal: 24,
     marginBottom: 16,
   },
-  filterContent: {
-    paddingHorizontal: 24,
-    gap: 12,
+  filterButtons: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  filterTab: {
+  filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
-    gap: 8,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    gap: 4,
   },
-  activeFilterTab: {
+  filterButtonActive: {
     backgroundColor: '#6B46C1',
     borderColor: '#6B46C1',
   },
-  filterTabText: {
-    fontSize: 14,
+  filterButtonText: {
+    fontSize: 13,
     fontWeight: '500',
     color: '#6B7280',
   },
-  activeFilterTabText: {
+  filterButtonTextActive: {
     color: '#FFFFFF',
   },
-  filterTabCount: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#9CA3AF',
+  filterCount: {
     backgroundColor: '#F3F4F6',
+    borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
-    textAlign: 'center',
+    minWidth: 18,
+    alignItems: 'center',
   },
-  activeFilterTabCount: {
-    color: '#6B46C1',
-    backgroundColor: '#FFFFFF',
+  filterCountActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  filterCountText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  filterCountTextActive: {
+    color: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
+    paddingBottom: Platform.OS === 'ios' ? 95 : 70,
   },
-  transactionList: {
-    paddingHorizontal: 24,
-    gap: 12,
-    paddingBottom: 32,
-  },
-  transactionCard: {
+  transactionsList: {
     backgroundColor: '#FFFFFF',
+    marginHorizontal: 24,
     borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    overflow: 'hidden',
   },
-  transactionHeader: {
+  transactionItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   transactionLeft: {
     flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
+    alignItems: 'center',
   },
   transactionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   transactionEmoji: {
-    fontSize: 20,
+    fontSize: 18,
   },
   transactionInfo: {
     flex: 1,
@@ -502,85 +407,69 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 2,
   },
-  transactionDescription: {
+  transactionDate: {
     fontSize: 14,
     color: '#6B7280',
   },
+  transactionDescription: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
   transactionRight: {
     alignItems: 'flex-end',
+    gap: 4,
   },
   transactionAmount: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  transactionFooter: {
-    gap: 12,
-  },
-  transactionMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  transactionDate: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 2,
     borderRadius: 12,
   },
   statusText: {
     fontSize: 12,
     fontWeight: '500',
   },
-  autoPaySection: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+  autoPayButton: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 4,
   },
-  autoPayEnabled: {
+  autoPayButtonText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  autoPayIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+    marginTop: 4,
   },
-  autoPayEnabledText: {
-    fontSize: 14,
-    color: '#059669',
+  autoPayText: {
+    fontSize: 10,
     fontWeight: '500',
-  },
-  enableAutoPayButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F8F7FF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  enableAutoPayText: {
-    fontSize: 14,
-    color: '#6B46C1',
-    fontWeight: '500',
+    color: '#10B981',
   },
   emptyState: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 80,
     paddingHorizontal: 48,
-    paddingVertical: 64,
   },
-  emptyTitle: {
+  emptyStateTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#1F2937',
     marginTop: 16,
     marginBottom: 8,
   },
-  emptySubtitle: {
+  emptyStateSubtitle: {
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',

@@ -7,6 +7,8 @@ import { useEffect } from 'react';
 import { useColorScheme, Platform } from 'react-native';
 import { AuthContext, useAuthProvider } from '../hooks/useAuth';
 import Toast from 'react-native-toast-message';
+import { StripeProvider } from '@stripe/stripe-react-native';
+import { STRIPE_CONFIG } from '../constants/Stripe';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -32,21 +34,30 @@ export default function RootLayout() {
     if (!loaded || authProps.isLoading) return;
 
     const inAuthGroup = segments[0] === 'auth';
+    const isAuthenticatedScreen = !inAuthGroup; // Any screen outside 'auth' requires authentication
     
-    console.log('Root layout - Auth state:', {
-      isAuthenticated: authProps.isAuthenticated,
-      inAuthGroup,
-      segments
-    });
+    // Only log in development
+    if (__DEV__) {
+      console.log('Root layout - Auth state:', {
+        isAuthenticated: authProps.isAuthenticated,
+        inAuthGroup,
+        segments
+      });
+    }
 
-    if (authProps.isAuthenticated && inAuthGroup) {
-      // User is authenticated but in auth group, redirect to main app
-      console.log('Authenticated user in auth group, redirecting to tabs...');
-      router.replace('/(tabs)');
-    } else if (!authProps.isAuthenticated && !inAuthGroup) {
-      // User is not authenticated but not in auth group, redirect to login
-      console.log('Unauthenticated user outside auth group, redirecting to login...');
-      router.replace('/auth/login');
+    try {
+      if (!authProps.isAuthenticated && isAuthenticatedScreen) {
+        // User is not authenticated but trying to access protected screens, redirect to login
+        if (__DEV__) console.log('Unauthenticated user accessing protected screen, redirecting to login...');
+        router.replace('/auth/login');
+      } else if (authProps.isAuthenticated && inAuthGroup) {
+        // User is authenticated but in auth group, redirect to main app
+        if (__DEV__) console.log('Authenticated user in auth group, redirecting to tabs...');
+        router.replace('/(tabs)');
+      }
+      // Allow authenticated users to access any screen outside auth group (tabs, add-card, etc.)
+    } catch (error) {
+      console.error('Navigation error:', error);
     }
   }, [authProps.isAuthenticated, authProps.isLoading, loaded, segments]);
 
@@ -55,16 +66,22 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthContext.Provider value={authProps}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="auth" />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-        <StatusBar style="dark" backgroundColor="#FFFFFF" translucent={false} />
-        <Toast />
-      </ThemeProvider>
-    </AuthContext.Provider>
+    <StripeProvider
+      publishableKey={STRIPE_CONFIG.PUBLISHABLE_KEY}
+      merchantIdentifier={STRIPE_CONFIG.MERCHANT_DISPLAY_NAME}
+    >
+      <AuthContext.Provider value={authProps}>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="auth" />
+            <Stack.Screen name="add-card" />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+          <StatusBar style="auto" translucent={true} />
+          <Toast />
+        </ThemeProvider>
+      </AuthContext.Provider>
+    </StripeProvider>
   );
 }

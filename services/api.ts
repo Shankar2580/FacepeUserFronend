@@ -156,9 +156,32 @@ class ApiService {
     return response.data;
   }
 
-  async addPaymentMethod(paymentMethodId: string): Promise<PaymentMethod> {
+  async addPaymentMethod(paymentMethodData: {
+    stripe_payment_method_id: string;
+    last4: string;
+    brand: string;
+    exp_month: number;
+    exp_year: number;
+    is_default?: boolean;
+  }): Promise<PaymentMethod> {
     const response = await this.api.post<PaymentMethod>(API_ENDPOINTS.ADD_PAYMENT_METHOD, {
-      stripe_payment_method_id: paymentMethodId,
+      stripe_payment_method_id: paymentMethodData.stripe_payment_method_id,
+      last4: paymentMethodData.last4,
+      brand: paymentMethodData.brand,
+      exp_month: paymentMethodData.exp_month,
+      exp_year: paymentMethodData.exp_year,
+      is_default: paymentMethodData.is_default || false,
+    });
+    return response.data;
+  }
+
+  async addPaymentMethodSecure(data: {
+    stripe_payment_method_id: string;
+    is_default?: boolean;
+  }): Promise<PaymentMethod> {
+    const response = await this.api.post<PaymentMethod>('/users/me/payment-methods/secure', {
+      stripe_payment_method_id: data.stripe_payment_method_id,
+      is_default: data.is_default || false,
     });
     return response.data;
   }
@@ -214,18 +237,19 @@ class ApiService {
   }
 
   async addAutoPay(data: {
-    merchant_id: string;
-    limit_amount: number;
+    merchant_name: string;
+    payment_method_id: string;
+    max_amount?: number;
   }): Promise<AutoPay> {
     const response = await this.api.post<AutoPay>(API_ENDPOINTS.ADD_AUTO_PAY, data);
     return response.data;
   }
 
-  async updateAutoPay(data: {
-    merchant_id: string;
-    limit_amount: number;
+  async updateAutoPay(autoPayId: string, data: {
+    is_enabled?: boolean;
+    max_amount?: number;
   }): Promise<AutoPay> {
-    const response = await this.api.post<AutoPay>(API_ENDPOINTS.UPDATE_AUTO_PAY, data);
+    const response = await this.api.put<AutoPay>(`${API_ENDPOINTS.UPDATE_AUTO_PAY}/${autoPayId}`, data);
     return response.data;
   }
 

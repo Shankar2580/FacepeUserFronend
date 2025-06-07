@@ -4,251 +4,169 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
-  ScrollView,
   TouchableOpacity,
-  TextInput,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { CardField, useStripe } from '@stripe/stripe-react-native';
 import { apiService } from '../services/api';
 
 export default function AddCardScreen() {
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [cvv, setCvv] = useState('');
-  const [cardholderName, setCardholderName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  
+  const [loading, setLoading] = useState(false);
+  const [cardComplete, setCardComplete] = useState(false);
+  const { createPaymentMethod } = useStripe();
   const router = useRouter();
 
-  const formatCardNumber = (text: string) => {
-    // Remove all non-digits
-    const digits = text.replace(/\D/g, '');
-    // Add spaces every 4 digits
-    const formatted = digits.replace(/(\d{4})(?=\d)/g, '$1 ');
-    return formatted.slice(0, 19); // Max 16 digits + 3 spaces
-  };
-
-  const formatExpiryDate = (text: string) => {
-    // Remove all non-digits
-    const digits = text.replace(/\D/g, '');
-    // Add slash after 2 digits
-    if (digits.length >= 2) {
-      return `${digits.slice(0, 2)}/${digits.slice(2, 4)}`;
-    }
-    return digits;
-  };
-
-  const getCardBrand = (number: string) => {
-    const digits = number.replace(/\D/g, '');
-    if (digits.startsWith('4')) return 'visa';
-    if (digits.startsWith('5') || digits.startsWith('2')) return 'mastercard';
-    if (digits.startsWith('3')) return 'amex';
-    return 'unknown';
-  };
-
-  const getCardIcon = (brand: string) => {
-    switch (brand) {
-      case 'visa': return '💳';
-      case 'mastercard': return '💳';
-      case 'amex': return '💳';
-      default: return '💳';
-    }
-  };
-
-  const validateCard = () => {
-    const digits = cardNumber.replace(/\D/g, '');
-    
-    if (digits.length < 13 || digits.length > 19) {
-      Alert.alert('Invalid Card', 'Please enter a valid card number');
-      return false;
-    }
-    
-    if (!expiryDate || expiryDate.length !== 5) {
-      Alert.alert('Invalid Expiry', 'Please enter a valid expiry date (MM/YY)');
-      return false;
-    }
-    
-    if (!cvv || cvv.length < 3) {
-      Alert.alert('Invalid CVV', 'Please enter a valid CVV');
-      return false;
-    }
-    
-    if (!cardholderName.trim()) {
-      Alert.alert('Invalid Name', 'Please enter the cardholder name');
-      return false;
-    }
-    
-    return true;
-  };
-
   const handleAddCard = async () => {
-    if (!validateCard()) return;
-    
-    setIsLoading(true);
-    
+    if (!cardComplete) {
+      Alert.alert('Error', 'Please enter complete card details');
+      return;
+    }
+
+    setLoading(true);
     try {
-      // In a real implementation, you would use Stripe SDK here
-      // For now, we'll simulate the process
-      
-      // Simulate Stripe payment method creation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // For demo purposes, we'll create a mock Stripe payment method ID
-      const mockStripePaymentMethodId = `pm_${Math.random().toString(36).substr(2, 24)}`;
-      
-      // Add payment method to backend
-      await apiService.addPaymentMethod(mockStripePaymentMethodId);
-      
+      // Step 1: Create PaymentMethod with Stripe.js (tokenize card data)
+      // Raw card information never touches our server - Stripe handles it securely
+      const { paymentMethod, error } = await createPaymentMethod({
+        paymentMethodType: 'Card',
+      });
+
+      if (error) {
+        console.error('Stripe error:', error);
+        throw new Error(error.message || 'Failed to process card details');
+      }
+
+      if (!paymentMethod?.id) {
+        throw new Error('Failed to create payment method');
+      }
+
+      console.log('PaymentMethod created:', paymentMethod.id);
+
+      // Step 2: Send only the PaymentMethod ID to backend (secure)
+      // Backend will fetch card details from Stripe directly
+      await apiService.addPaymentMethodSecure({
+        stripe_payment_method_id: paymentMethod.id,
+        is_default: true, // Usually make the new card default
+      });
+
+      Alert.alert('Success', 'Payment method added successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.back(),
+        },
+      ]);
+
+    } catch (error) {
+      console.error('Error adding payment method:', error);
       Alert.alert(
-        'Card Added Successfully!',
-        'Your payment method has been added to your account.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back(),
-          },
-        ]
-      );
-      
-    } catch (error: any) {
-      console.error('Failed to add card:', error);
-      Alert.alert(
-        'Failed to Add Card',
-        error.response?.data?.message || 'Please try again later.'
+        'Error',
+        error instanceof Error ? error.message : 'Failed to add payment method'
       );
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
-
-  const cardBrand = getCardBrand(cardNumber);
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton} 
+          style={styles.backButton}
           onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.title}>Add New Card</Text>
+        <Text style={styles.headerTitle}>Add Payment Method</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Card Preview */}
+      <View style={styles.content}>
+        <View style={styles.titleSection}>
+          <Text style={styles.title}>Add Your Card</Text>
+          <Text style={styles.subtitle}>Enter your card details securely</Text>
+        </View>
+        
         <View style={styles.cardPreview}>
-          <View style={[styles.creditCard, { backgroundColor: cardBrand === 'visa' ? '#1A1F71' : cardBrand === 'mastercard' ? '#EB001B' : '#006FCF' }]}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardIcon}>{getCardIcon(cardBrand)}</Text>
-              <Text style={styles.cardBrandText}>{cardBrand.toUpperCase()}</Text>
-            </View>
-            
-            <Text style={styles.cardNumber}>
-              {cardNumber || '•••• •••• •••• ••••'}
-            </Text>
-            
-            <View style={styles.cardFooter}>
-              <View>
-                <Text style={styles.cardLabel}>CARDHOLDER</Text>
-                <Text style={styles.cardText}>
-                  {cardholderName || 'YOUR NAME'}
-                </Text>
-              </View>
-              <View>
-                <Text style={styles.cardLabel}>EXPIRES</Text>
-                <Text style={styles.cardText}>
-                  {expiryDate || 'MM/YY'}
-                </Text>
-              </View>
+          <View style={styles.previewCard}>
+            <View style={styles.previewChip} />
+            <Text style={styles.previewNumber}>•••• •••• •••• ••••</Text>
+            <View style={styles.previewFooter}>
+              <Text style={styles.previewLabel}>••/••</Text>
+              <Text style={styles.previewBrand}>CARD</Text>
             </View>
           </View>
         </View>
 
-        {/* Form */}
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Card Number</Text>
-            <TextInput
-              style={styles.input}
-              value={cardNumber}
-              onChangeText={(text) => setCardNumber(formatCardNumber(text))}
-              placeholder="1234 5678 9012 3456"
-              keyboardType="numeric"
-              maxLength={19}
+        <View style={styles.formSection}>
+          <Text style={styles.fieldLabel}>Card Information</Text>
+          <View style={styles.cardFieldContainer}>
+            <CardField
+              postalCodeEnabled={false}
+              placeholders={{
+                number: '4242 4242 4242 4242',
+              }}
+              cardStyle={styles.cardField}
+              style={styles.cardFieldWrapper}
+              onCardChange={(cardDetails) => {
+                setCardComplete(cardDetails.complete);
+              }}
             />
           </View>
+        </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, styles.flex1]}>
-              <Text style={styles.inputLabel}>Expiry Date</Text>
-              <TextInput
-                style={styles.input}
-                value={expiryDate}
-                onChangeText={(text) => setExpiryDate(formatExpiryDate(text))}
-                placeholder="MM/YY"
-                keyboardType="numeric"
-                maxLength={5}
-              />
+        <View style={styles.securityInfo}>
+          <View style={styles.securityItem}>
+            <View style={styles.securityIcon}>
+              <Ionicons name="shield-checkmark" size={20} color="#10B981" />
             </View>
-
-            <View style={[styles.inputGroup, styles.flex1, styles.marginLeft]}>
-              <Text style={styles.inputLabel}>CVV</Text>
-              <TextInput
-                style={styles.input}
-                value={cvv}
-                onChangeText={setCvv}
-                placeholder="123"
-                keyboardType="numeric"
-                maxLength={4}
-                secureTextEntry
-              />
+            <View style={styles.securityTextContainer}>
+              <Text style={styles.securityTitle}>Bank-level Security</Text>
+              <Text style={styles.securityText}>
+                Your card details are encrypted and processed securely by Stripe
+              </Text>
             </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Cardholder Name</Text>
-            <TextInput
-              style={styles.input}
-              value={cardholderName}
-              onChangeText={setCardholderName}
-              placeholder="John Doe"
-              autoCapitalize="words"
-            />
-          </View>
-
-          {/* Security Notice */}
-          <View style={styles.securityNotice}>
-            <Ionicons name="shield-checkmark" size={20} color="#059669" />
-            <Text style={styles.securityText}>
-              Your card information is encrypted and secure
-            </Text>
           </View>
         </View>
 
-        {/* Add Card Button */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.addButton, isLoading && styles.addButtonDisabled]}
-            onPress={handleAddCard}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="add" size={20} color="#FFFFFF" />
-                <Text style={styles.addButtonText}>Add Card</Text>
-              </>
-            )}
-          </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.addButton,
+            (!cardComplete || loading) && styles.addButtonDisabled,
+          ]}
+          onPress={handleAddCard}
+          disabled={!cardComplete || loading}
+        >
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color="white" size="small" />
+              <Text style={styles.loadingText}>Adding Card...</Text>
+            </View>
+          ) : (
+            <View style={styles.buttonContent}>
+              <Ionicons name="card" size={20} color="white" />
+              <Text style={styles.addButtonText}>Add Payment Method</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Test Cards Info */}
+        <View style={styles.testInfo}>
+          <Text style={styles.testTitle}>Test Cards for Development</Text>
+          <View style={styles.testCardRow}>
+            <Text style={styles.testCard}>4242 4242 4242 4242</Text>
+            <Text style={styles.testStatus}>✅ Success</Text>
+          </View>
+          <View style={styles.testCardRow}>
+            <Text style={styles.testCard}>4000 0000 0000 0002</Text>
+            <Text style={styles.testStatusError}>❌ Declined</Text>
+          </View>
+          <Text style={styles.testSubtext}>Use any future expiry date and any 3-digit CVC</Text>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -256,171 +174,257 @@ export default function AddCardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 16,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingBottom: 20,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 3,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
     color: '#1F2937',
   },
   placeholder: {
-    width: 44,
+    width: 40,
   },
-  scrollView: {
+  content: {
     flex: 1,
+    padding: 24,
+  },
+  titleSection: {
+    marginBottom: 32,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#64748B',
+    textAlign: 'center',
   },
   cardPreview: {
-    paddingHorizontal: 24,
     marginBottom: 32,
+    alignItems: 'center',
   },
-  creditCard: {
-    borderRadius: 20,
-    padding: 24,
-    aspectRatio: 1.6,
-    justifyContent: 'space-between',
-    shadowColor: '#000',
+  previewCard: {
+    backgroundColor: '#6366F1',
+    borderRadius: 16,
+    padding: 20,
+    width: '85%',
+    aspectRatio: 1.586, // Standard credit card ratio
+    shadowColor: '#6366F1',
     shadowOffset: {
       width: 0,
       height: 8,
     },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 16,
-    elevation: 8,
+    elevation: 10,
   },
-  cardHeader: {
+  previewChip: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    width: 40,
+    height: 28,
+    borderRadius: 6,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  previewNumber: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    fontWeight: '500',
+    letterSpacing: 2,
+    marginBottom: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  previewFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  cardIcon: {
-    fontSize: 32,
-  },
-  cardBrandText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  cardNumber: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600',
-    letterSpacing: 2,
-    marginTop: 20,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  cardLabel: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 10,
+  previewLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
-    marginBottom: 4,
   },
-  cardText: {
+  previewBrand: {
+    fontSize: 12,
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 1,
   },
-  form: {
-    paddingHorizontal: 24,
+  formSection: {
+    marginBottom: 32,
   },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+  fieldLabel: {
     fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  cardFieldContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 4,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardFieldWrapper: {
+    width: '100%',
+    height: 56,
+  },
+  cardField: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  securityInfo: {
+    backgroundColor: '#F0FDF4',
+    padding: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    color: '#1F2937',
+    borderColor: '#BBF7D0',
+    marginBottom: 32,
   },
-  row: {
+  securityItem: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
   },
-  flex1: {
+  securityIcon: {
+    backgroundColor: '#10B981',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  securityTextContainer: {
     flex: 1,
   },
-  marginLeft: {
-    marginLeft: 12,
-  },
-  securityNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 8,
-    gap: 8,
+  securityTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#065F46',
+    marginBottom: 4,
   },
   securityText: {
     fontSize: 14,
-    color: '#059669',
-    fontWeight: '500',
-    flex: 1,
-  },
-  buttonContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 32,
+    color: '#047857',
+    lineHeight: 20,
   },
   addButton: {
-    backgroundColor: '#6B46C1',
+    backgroundColor: '#6366F1',
+    paddingVertical: 18,
     borderRadius: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#6B46C1',
+    marginBottom: 32,
+    shadowColor: '#6366F1',
     shadowOffset: {
       width: 0,
       height: 4,
     },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowRadius: 12,
+    elevation: 6,
   },
   addButtonDisabled: {
-    opacity: 0.6,
+    backgroundColor: '#CBD5E1',
+    shadowOpacity: 0,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '600',
   },
   addButtonText: {
-    color: '#FFFFFF',
+    color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  testInfo: {
+    backgroundColor: '#F8FAFC',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  testTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 12,
+  },
+  testCardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  testCard: {
+    fontSize: 13,
+    color: '#64748B',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  testStatus: {
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  testStatusError: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontWeight: '600',
+  },
+  testSubtext: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 8,
+    lineHeight: 16,
   },
 }); 

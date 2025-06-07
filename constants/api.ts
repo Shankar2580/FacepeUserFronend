@@ -2,7 +2,7 @@
 // Use your computer's IP address when testing on physical device
 const API_BASE_URL =
 //  __DEV__ ?
-      'http://192.168.112.2:8000'  // Use localhost for local development
+      'http://192.168.148.2:8000'  // Use localhost for local development
   // : 'https://your-production-api.com'; // Replace with your production URL
 
 export { API_BASE_URL };

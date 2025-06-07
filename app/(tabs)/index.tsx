@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,7 +59,19 @@ export default function HomeScreen() {
   };
 
   const formatCardNumber = (lastFour: string) => {
+    if (!lastFour || typeof lastFour !== 'string') return '•••• •••• •••• ••••';
     return `•••• •••• •••• ${lastFour}`;
+  };
+
+  const getCardBrandIcon = (brand: string) => {
+    if (!brand || typeof brand !== 'string') return 'CARD'; // Handle undefined/null/non-string brand
+    switch (brand.toLowerCase()) {
+      case 'visa': return 'VISA';
+      case 'mastercard': return 'Mastercard';
+      case 'amex': return 'AMEX';
+      case 'discover': return 'DISCOVER';
+      default: return 'CARD';
+    }
   };
 
   const formatAmount = (amount: number) => {
@@ -74,6 +87,7 @@ export default function HomeScreen() {
   };
 
   const getTransactionIcon = (merchantName: string) => {
+    if (!merchantName || typeof merchantName !== 'string') return '🏪';
     const name = merchantName.toLowerCase();
     if (name.includes('starbucks')) return '☕';
     if (name.includes('amazon')) return '📦';
@@ -96,7 +110,10 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>Hello, {user?.first_name}</Text>
             <Text style={styles.subtitle}>Welcome back!</Text>
           </View>
-          <TouchableOpacity style={styles.avatarContainer}>
+          <TouchableOpacity 
+            style={styles.avatarContainer}
+            onPress={() => router.push('/(tabs)/profile')}
+          >
             <Text style={styles.avatarText}>
               {user?.first_name?.[0]}{user?.last_name?.[0]}
             </Text>
@@ -134,7 +151,7 @@ export default function HomeScreen() {
             >
               <View style={styles.cardHeader}>
                 <Text style={styles.cardBrand}>
-                  {defaultCard.card_brand.toUpperCase()}
+                  {getCardBrandIcon(defaultCard.card_brand)}
                 </Text>
                 <View style={styles.cardChip} />
               </View>
@@ -151,8 +168,10 @@ export default function HomeScreen() {
                 <View>
                   <Text style={styles.cardLabel}>Expires</Text>
                   <Text style={styles.cardValue}>
-                    {String(defaultCard.card_exp_month).padStart(2, '0')}/
-                    {String(defaultCard.card_exp_year).slice(-2)}
+                    {defaultCard.card_exp_month && defaultCard.card_exp_year
+                      ? `${String(defaultCard.card_exp_month).padStart(2, '0')}/${String(defaultCard.card_exp_year).slice(-2)}`
+                      : '••/••'
+                    }
                   </Text>
                 </View>
               </View>
@@ -186,7 +205,7 @@ export default function HomeScreen() {
                 <TouchableOpacity 
                   key={transaction.id}
                   style={styles.transactionItem}
-                  onPress={() => router.push(`/transaction/${transaction.id}`)}
+                  onPress={() => router.push('/(tabs)/history')}
                 >
                   <View style={styles.transactionLeft}>
                     <View style={styles.transactionIcon}>
@@ -251,9 +270,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+    paddingTop: Platform.OS === 'android' ? 25 : 0,
   },
   scrollView: {
     flex: 1,
+    paddingBottom: Platform.OS === 'ios' ? 95 : 70,
   },
   header: {
     flexDirection: 'row',
