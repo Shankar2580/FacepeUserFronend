@@ -29,22 +29,60 @@ export const useAuthProvider = () => {
   const isAuthenticated = !!user;
 
   useEffect(() => {
+    console.log('useAuth: Provider initialized, checking auth status...');
     checkAuthStatus();
   }, []);
 
   const checkAuthStatus = async () => {
+    const startTime = Date.now();
+    console.log('🔍 checkAuthStatus: Starting auth check...');
+    
     try {
+      setIsLoading(true);
       const storedUser = await apiService.getStoredUser();
+      
       if (storedUser) {
-        // Verify token is still valid
-        const profile = await apiService.getProfile();
-        setUser(profile);
+        console.log('✅ checkAuthStatus: Found stored user:', `${storedUser.first_name} ${storedUser.last_name}`);
+        
+        // First set the stored user data immediately
+        setUser(storedUser);
+        console.log(`⚡ checkAuthStatus: User set immediately (${Date.now() - startTime}ms)`);
+        
+        // Then try to verify token and refresh data in background
+        try {
+          const profile = await apiService.getProfile();
+          console.log(`🌐 checkAuthStatus: Profile fetched from API (${Date.now() - startTime}ms)`);
+          
+          // Merge API data with stored data, preserving important local state
+          const mergedUser = {
+            ...profile,
+            has_face_registered: storedUser.has_face_registered ?? profile.has_face_registered
+          };
+          
+          // Only update if there are actual changes
+          const hasChanges = JSON.stringify(storedUser) !== JSON.stringify(mergedUser);
+          if (hasChanges) {
+            await apiService.updateStoredUser(mergedUser);
+            setUser(mergedUser);
+            console.log(`🔄 checkAuthStatus: User data updated with API changes (${Date.now() - startTime}ms)`);
+          } else {
+            console.log(`✓ checkAuthStatus: No changes needed (${Date.now() - startTime}ms)`);
+          }
+          
+        } catch (apiError) {
+          console.log(`❌ checkAuthStatus: API verification failed (${Date.now() - startTime}ms):`, apiError);
+          // Keep using stored user if API fails - this is fine for offline usage
+        }
+      } else {
+        console.log('❌ checkAuthStatus: No stored user found');
+        setUser(null);
       }
     } catch (error) {
-      console.log('Auth check failed:', error);
+      console.error(`💥 checkAuthStatus: Failed (${Date.now() - startTime}ms):`, error);
       setUser(null);
     } finally {
       setIsLoading(false);
+      console.log(`🏁 checkAuthStatus: Completed (${Date.now() - startTime}ms)`);
     }
   };
 
@@ -84,10 +122,49 @@ export const useAuthProvider = () => {
 
   const refreshUser = async () => {
     try {
-      const profile = await apiService.getProfile();
-      setUser(profile);
+      console.log('Starting user refresh...');
+      
+      // Get current stored user data (which may have face registration status)
+      const storedUser = await apiService.getStoredUser();
+      
+      if (!storedUser) {
+        console.log('No stored user found during refresh');
+        setUser(null);
+        return;
+      }
+      
+      // Try to get updated profile from API and merge with stored data
+      try {
+        const profile = await apiService.getProfile();
+        console.log('Profile refresh from API successful');
+        
+        // Merge API data with stored data, preserving important local state
+        const mergedUser = {
+          ...profile,
+          // Preserve face registration status from local storage if it exists
+          has_face_registered: storedUser.has_face_registered ?? profile.has_face_registered
+        };
+        
+        // Update stored data with merged info
+        await apiService.updateStoredUser(mergedUser);
+        setUser(mergedUser);
+        
+        console.log('User refreshed successfully:', {
+          name: `${mergedUser.first_name} ${mergedUser.last_name}`,
+          email: mergedUser.email,
+          face_registered: mergedUser.has_face_registered,
+          is_active: mergedUser.is_active
+        });
+        
+      } catch (apiError) {
+        console.log('API refresh failed, keeping stored user data:', apiError);
+        // If API fails but we have stored user, use stored user
+        setUser(storedUser);
+        console.log('Using stored user data during refresh failure');
+      }
     } catch (error) {
-      console.log('Failed to refresh user:', error);
+      console.error('Failed to refresh user:', error);
+      // Don't clear user on refresh failure - keep existing state
     }
   };
 

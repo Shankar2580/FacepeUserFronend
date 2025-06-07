@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL, API_ENDPOINTS } from '../constants/api';
+import { API_BASE_URL, FACE_API_BASE_URL, API_ENDPOINTS } from '../constants/api';
 import {
   ApiResponse,
   AuthResponse,
@@ -51,18 +51,25 @@ class ApiService {
         return response;
       },
       async (error) => {
+        const isNetworkError = error.code === 'NETWORK_ERROR' || !error.response;
+        
         console.error('API Response Error:', {
           url: error.config?.url,
           status: error.response?.status,
           message: error.message,
-          data: error.response?.data
+          data: error.response?.data,
+          isNetworkError
         });
         
         if (error.response?.status === 401) {
           // Token expired, logout user
           console.log('Token expired, logging out user');
           await this.logout();
+        } else if (isNetworkError) {
+          // Network error - don't logout, just log and continue
+          console.log('Network error detected, keeping user logged in');
         }
+        
         return Promise.reject(error);
       }
     );
@@ -106,6 +113,48 @@ class ApiService {
     return userData ? JSON.parse(userData) : null;
   }
 
+  async updateStoredUser(user: User): Promise<void> {
+    try {
+      await SecureStore.setItemAsync('user_data', JSON.stringify(user));
+      console.log('Stored user data updated successfully');
+    } catch (error) {
+      console.error('Failed to update stored user data:', error);
+    }
+  }
+
+  async updateUserFaceStatus(hasFaceRegistered: boolean): Promise<void> {
+    try {
+      // Update local storage for immediate UI feedback
+      const userData = await SecureStore.getItemAsync('user_data');
+      if (userData) {
+        const user = JSON.parse(userData);
+        const oldStatus = user.has_face_registered;
+        user.has_face_registered = hasFaceRegistered;
+        await SecureStore.setItemAsync('user_data', JSON.stringify(user));
+        
+        console.log('Local face registration status updated:', {
+          old: oldStatus,
+          new: hasFaceRegistered,
+          user: `${user.first_name} ${user.last_name}`
+        });
+      }
+
+      // Update the main backend database
+      try {
+        await this.api.put('/users/me/face-status', {
+          has_face_registered: hasFaceRegistered
+        });
+        console.log('Updated main backend face registration status:', hasFaceRegistered);
+      } catch (backendError) {
+        console.error('Failed to update main backend face status:', backendError);
+        throw backendError;
+      }
+    } catch (error) {
+      console.error('Failed to update user face status:', error);
+      throw error;
+    }
+  }
+
   // Verification
   async sendVerification(data: VerificationRequest): Promise<ApiResponse<any>> {
     const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.SEND_VERIFICATION, {
@@ -133,12 +182,7 @@ class ApiService {
     return response.data;
   }
 
-  async uploadFace(imageData: string): Promise<ApiResponse<any>> {
-    const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.UPLOAD_FACE, {
-      face_image: imageData,
-    });
-    return response.data;
-  }
+
 
   async getFaceStatus(): Promise<ApiResponse<any>> {
     const response = await this.api.get<ApiResponse<any>>(API_ENDPOINTS.GET_FACE_STATUS);
@@ -148,6 +192,76 @@ class ApiService {
   async deleteFaceEnrollment(): Promise<ApiResponse<any>> {
     const response = await this.api.delete<ApiResponse<any>>(API_ENDPOINTS.DELETE_FACE_ENROLLMENT);
     return response.data;
+  }
+
+  async registerFace(userId: string, name: string, imageUri: string): Promise<any> {
+    console.log('API Service - Starting face registration...');
+    console.log('Face API URL:', `${FACE_API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`);
+    
+    try {
+      // Create FormData for React Native
+      const formData = new FormData();
+      
+      // Add text fields
+      formData.append('user_id', userId);
+      formData.append('name', name);
+      
+      // Add file - React Native specific format
+      const uriParts = imageUri.split('.');
+      const fileType = uriParts[uriParts.length - 1];
+      
+      formData.append('file', {
+        uri: imageUri,
+        name: `photo.${fileType}`,
+        type: `image/${fileType}`,
+      } as any);
+
+      // Get authorization header
+      const authHeader = await this.getAuthHeader();
+      
+      console.log('API Service - Request details:', {
+        url: `${FACE_API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`,
+        user_id: userId,
+        name: name,
+        imageUri: imageUri,
+        hasAuth: !!authHeader
+      });
+
+      // Make request without setting Content-Type (let React Native handle it)
+      const response = await fetch(`${FACE_API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`, {
+        method: 'POST',
+        headers: {
+          ...(authHeader ? { 'Authorization': authHeader } : {}),
+          // Don't set Content-Type - let fetch handle multipart boundary
+        },
+        body: formData,
+      });
+
+      console.log('API Service - Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Service - Error response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      const responseData = await response.json();
+      console.log('API Service - Face registration successful:', responseData);
+      return responseData;
+      
+    } catch (error: any) {
+      console.error('API Service - Face registration failed:', {
+        message: error.message,
+        stack: error.stack,
+        url: `${FACE_API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`,
+      });
+      throw error;
+    }
+  }
+
+  private async getAuthHeader(): Promise<string | null> {
+    const token = await SecureStore.getItemAsync('access_token');
+    return token ? `Bearer ${token}` : null;
   }
 
   // Payment Methods

@@ -86,4 +86,17 @@ export interface RegisterRequest {
 export interface LoginRequest {
   username: string; // phone number or email
   password: string;
+}
+
+export interface FaceRegistrationRequest {
+  user_id: string;
+  name: string;
+  file: File | Blob;
+}
+
+export interface FaceRegistrationResponse {
+  message: string;
+  user_id: string;
+  name: string;
+  embedding_id: string;
 } 

@@ -32,35 +32,44 @@ export default function RootLayout() {
 
   // Handle authentication routing
   useEffect(() => {
-    if (!loaded || authProps.isLoading) return;
+    if (!loaded) return;
 
     const inAuthGroup = segments[0] === 'auth';
-    const isAuthenticatedScreen = !inAuthGroup; // Any screen outside 'auth' requires authentication
+    const isAuthenticatedScreen = !inAuthGroup;
     
-    // Only log in development
-    if (__DEV__) {
-      console.log('Root layout - Auth state:', {
-        isAuthenticated: authProps.isAuthenticated,
-        inAuthGroup,
-        segments
-      });
+    console.log('Root layout - Navigation check:', {
+      loaded,
+      isLoading: authProps.isLoading,
+      isAuthenticated: authProps.isAuthenticated,
+      hasUser: !!authProps.user,
+      inAuthGroup,
+      segments: segments.join('/'),
+      currentRoute: segments.length > 0 ? segments[segments.length - 1] : 'root'
+    });
+
+    // Wait for auth to finish loading before making navigation decisions
+    if (authProps.isLoading) {
+      console.log('Auth still loading, waiting...');
+      return;
     }
 
     try {
       if (!authProps.isAuthenticated && isAuthenticatedScreen) {
-        // User is not authenticated but trying to access protected screens, redirect to login
-        if (__DEV__) console.log('Unauthenticated user accessing protected screen, redirecting to login...');
+        // User is not authenticated but trying to access protected screens
+        console.log('Redirecting unauthenticated user to login');
         router.replace('/auth/login');
       } else if (authProps.isAuthenticated && inAuthGroup) {
-        // User is authenticated but in auth group, redirect to main app
-        if (__DEV__) console.log('Authenticated user in auth group, redirecting to tabs...');
+        // User is authenticated but in auth group
+        console.log('Redirecting authenticated user to main app');
         router.replace('/(tabs)');
+      } else if (authProps.isAuthenticated && isAuthenticatedScreen) {
+        // User is authenticated and accessing protected screens - this is fine
+        console.log('Authenticated user accessing protected screen - OK');
       }
-      // Allow authenticated users to access any screen outside auth group (tabs, add-card, etc.)
     } catch (error) {
       console.error('Navigation error:', error);
     }
-  }, [authProps.isAuthenticated, authProps.isLoading, loaded, segments]);
+  }, [authProps.isAuthenticated, authProps.isLoading, authProps.user, loaded, segments, router]);
 
   if (!loaded) {
     return null;

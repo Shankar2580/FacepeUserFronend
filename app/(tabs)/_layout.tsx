@@ -12,28 +12,10 @@ import { useAuth } from '../../hooks/useAuth';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const { user, isLoading, isAuthenticated } = useAuth();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    console.log('Tab layout - Auth state:', { user: !!user, isLoading, isAuthenticated });
-    
-    if (!isLoading && !isAuthenticated) {
-      console.log('User not authenticated, redirecting to auth...');
-      router.replace('/auth/login');
-    }
-  }, [isLoading, isAuthenticated, router]);
-
-  // Show loading or nothing while checking auth
-  if (isLoading) {
-    return null;
-  }
-
-  // Don't render tabs if not authenticated
-  if (!isAuthenticated) {
-    return null;
-  }
+  // Remove conflicting auth checks - let root layout handle authentication
+  // The root layout already handles authentication routing
 
   return (
     <Tabs

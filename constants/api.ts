@@ -2,10 +2,13 @@
 // Use your computer's IP address when testing on physical device
 const API_BASE_URL =
 //  __DEV__ ?
-      'http://192.168.148.2:8000'  // Use localhost for local development
+      'http://192.168.148.2:8000'  // Main API on port 8000
   // : 'https://your-production-api.com'; // Replace with your production URL
 
-export { API_BASE_URL };
+// Face registration API runs on port 8001
+const FACE_API_BASE_URL = 'http://192.168.148.2:8001';
+
+export { API_BASE_URL, FACE_API_BASE_URL };
 
 export const API_ENDPOINTS = {
   // Authentication
@@ -20,9 +23,12 @@ export const API_ENDPOINTS = {
   // Users
   GET_PROFILE: '/users/me',
   UPDATE_PROFILE: '/users/me',
-  UPLOAD_FACE: '/users/me/face-enrollment', // This endpoint needs to be implemented in backend
   GET_FACE_STATUS: '/users/me/face-status',
+  UPDATE_FACE_STATUS: '/users/me/face-status',
   DELETE_FACE_ENROLLMENT: '/users/me/face-enrollment',
+  
+  // Face Registration
+  REGISTER_FACE: '/register',
   
   // Payment Methods
   GET_PAYMENT_METHODS: '/users/me/payment-methods',

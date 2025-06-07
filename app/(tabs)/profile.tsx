@@ -22,39 +22,65 @@ export default function ProfileScreen() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [isAccountActive, setIsAccountActive] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   
   const { user, logout, refreshUser } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    loadData();
-  }, []);
+    console.log('Profile: User state changed:', {
+      hasUser: !!user,
+      userName: user ? `${user.first_name} ${user.last_name}` : 'None',
+      userEmail: user?.email,
+      hasFaceRegistered: user?.has_face_registered,
+      isActive: user?.is_active
+    });
+    
+    if (user) {
+      loadData();
+    }
+  }, [user]);
 
   useEffect(() => {
     if (user) {
-      setIsAccountActive(user.is_active);
+      setIsAccountActive(user.is_active ?? true);
     }
   }, [user]);
 
   const loadData = async () => {
     try {
+      console.log('Profile: Loading data...');
       const [autoPayData, paymentMethodsData] = await Promise.all([
         apiService.getAutoPay(),
         apiService.getPaymentMethods()
       ]);
       
-      setAutoPay(autoPayData);
-      setPaymentMethods(paymentMethodsData);
+      setAutoPay(autoPayData || []);
+      setPaymentMethods(paymentMethodsData || []);
+      console.log('Profile: Data loaded successfully', {
+        autopay: autoPayData?.length || 0,
+        paymentMethods: paymentMethodsData?.length || 0
+      });
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error('Failed to load profile data:', error);
+      // Don't clear existing data on error - keep what we have
+    } finally {
+      setInitialLoad(false);
     }
   };
 
   const onRefresh = async () => {
+    console.log('Profile: Starting refresh...');
     setRefreshing(true);
-    await Promise.all([loadData(), refreshUser()]);
-    setRefreshing(false);
+    try {
+      await Promise.all([loadData(), refreshUser()]);
+      console.log('Profile: Refresh completed successfully');
+    } catch (error) {
+      console.error('Profile: Refresh failed:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleToggleAccountStatus = async () => {
@@ -209,6 +235,24 @@ export default function ProfileScreen() {
     },
   ];
 
+  // Show loading state during initial load
+  if (initialLoad && !user) {
+    return (
+      <View style={[styles.container, styles.loadingContainer, { paddingTop: insets.top }]}>
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </View>
+    );
+  }
+
+  // Don't render if no user data
+  if (!user) {
+    return (
+      <View style={[styles.container, styles.loadingContainer, { paddingTop: insets.top }]}>
+        <Text style={styles.loadingText}>No user data available</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
@@ -216,12 +260,19 @@ export default function ProfileScreen() {
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
             <Text style={styles.avatarText}>
-              {user?.first_name?.[0]}{user?.last_name?.[0]}
+              {user.first_name?.[0] || 'U'}{user.last_name?.[0] || 'S'}
             </Text>
           </View>
           <View style={styles.userDetails}>
-            <Text style={styles.userName}>{user?.first_name} {user?.last_name}</Text>
-            <Text style={styles.userEmail}>{user?.email || user?.phone_number}</Text>
+            <Text style={styles.userName}>
+              {user.first_name && user.last_name 
+                ? `${user.first_name} ${user.last_name}` 
+                : 'User'
+              }
+            </Text>
+            <Text style={styles.userEmail}>
+              {user.email || user.phone_number || 'No contact info'}
+            </Text>
           </View>
         </View>
       </View>
@@ -472,5 +523,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#EF4444',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 }); 
