@@ -1,6 +1,7 @@
 import { Tabs, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
@@ -13,6 +14,7 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     console.log('Tab layout - Auth state:', { user: !!user, isLoading, isAuthenticated });
@@ -45,11 +47,12 @@ export default function TabLayout() {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E5E7EB',
-          height: Platform.OS === 'ios' ? 95 : 70,
-          paddingBottom: Platform.OS === 'ios' ? 25 : 10,
-          paddingTop: 5,
+          // height: 70 + insets.bottom,
+          // paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
+          // paddingTop: 5,
           position: 'absolute',
           bottom: 0,
+          paddingHorizontal: 8,
         },
         tabBarLabelStyle: {
           fontSize: 12,

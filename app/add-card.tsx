@@ -3,13 +3,13 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CardField, useStripe } from '@stripe/stripe-react-native';
 import { apiService } from '../services/api';
@@ -19,6 +19,7 @@ export default function AddCardScreen() {
   const [cardComplete, setCardComplete] = useState(false);
   const { createPaymentMethod } = useStripe();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const handleAddCard = async () => {
     if (!cardComplete) {
@@ -71,7 +72,7 @@ export default function AddCardScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -109,7 +110,11 @@ export default function AddCardScreen() {
               placeholders={{
                 number: '4242 4242 4242 4242',
               }}
-              cardStyle={styles.cardField}
+              cardStyle={{
+                textColor: '#1F2937',
+                placeholderColor: '#9CA3AF',
+                fontSize: 16,
+              }}
               style={styles.cardFieldWrapper}
               onCardChange={(cardDetails) => {
                 setCardComplete(cardDetails.complete);
@@ -167,7 +172,7 @@ export default function AddCardScreen() {
           <Text style={styles.testSubtext}>Use any future expiry date and any 3-digit CVC</Text>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -307,12 +312,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 56,
   },
-  cardField: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    fontSize: 16,
-    fontWeight: '500',
-  },
+
   securityInfo: {
     backgroundColor: '#F0FDF4',
     padding: 20,

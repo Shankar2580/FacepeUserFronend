@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Alert,
@@ -11,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { apiService } from '../../services/api';
@@ -24,6 +24,7 @@ export default function HomeScreen() {
   
   const { user, refreshUser } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     loadData();
@@ -97,7 +98,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView 
         style={styles.scrollView}
         refreshControl={
@@ -262,7 +263,7 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -270,11 +271,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-    paddingTop: Platform.OS === 'android' ? 25 : 0,
   },
   scrollView: {
     flex: 1,
-    paddingBottom: Platform.OS === 'ios' ? 95 : 70,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 80,
   },
   header: {
     flexDirection: 'row',

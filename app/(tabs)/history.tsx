@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Alert,
@@ -11,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../../services/api';
 import { Transaction, AutoPay, PaymentMethod } from '../../constants/types';
@@ -25,6 +25,7 @@ export default function HistoryScreen() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     loadData();
@@ -167,7 +168,7 @@ export default function HistoryScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Transaction History</Text>
@@ -296,7 +297,7 @@ export default function HistoryScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -304,7 +305,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-    paddingTop: Platform.OS === 'android' ? 25 : 0,
   },
   header: {
     paddingHorizontal: 24,

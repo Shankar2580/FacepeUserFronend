@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useColorScheme, Platform } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthContext, useAuthProvider } from '../hooks/useAuth';
 import Toast from 'react-native-toast-message';
 import { StripeProvider } from '@stripe/stripe-react-native';
@@ -66,22 +67,24 @@ export default function RootLayout() {
   }
 
   return (
-    <StripeProvider
-      publishableKey={STRIPE_CONFIG.PUBLISHABLE_KEY}
-      merchantIdentifier={STRIPE_CONFIG.MERCHANT_DISPLAY_NAME}
-    >
-      <AuthContext.Provider value={authProps}>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="auth" />
-            <Stack.Screen name="add-card" />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="auto" translucent={true} />
-          <Toast />
-        </ThemeProvider>
-      </AuthContext.Provider>
-    </StripeProvider>
+    <SafeAreaProvider>
+      <StripeProvider
+        publishableKey={STRIPE_CONFIG.PUBLISHABLE_KEY}
+        merchantIdentifier={STRIPE_CONFIG.MERCHANT_DISPLAY_NAME}
+      >
+        <AuthContext.Provider value={authProps}>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="auth" />
+              <Stack.Screen name="add-card" />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+            <StatusBar style="auto" translucent={false} backgroundColor="#FFFFFF" />
+            <Toast />
+          </ThemeProvider>
+        </AuthContext.Provider>
+      </StripeProvider>
+    </SafeAreaProvider>
   );
 }
