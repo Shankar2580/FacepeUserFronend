@@ -96,6 +96,7 @@ export default function HistoryScreen() {
           onPress: async () => {
             try {
               await apiService.addAutoPay({
+                merchant_id: transaction.merchant_id,
                 merchant_name: transaction.merchant_name,
                 payment_method_id: defaultCard.id,
                 max_amount: Math.ceil(transaction.amount * 1.5) // Set max amount 50% higher than current transaction
@@ -222,7 +223,12 @@ export default function HistoryScreen() {
         {filteredTransactions.length > 0 ? (
           <View style={styles.transactionsList}>
             {filteredTransactions.map((transaction) => (
-              <View key={transaction.id} style={styles.transactionItem}>
+              <TouchableOpacity 
+                key={transaction.id} 
+                style={styles.transactionItem}
+                onPress={() => router.push(`/transaction-detail?transactionId=${transaction.id}`)}
+                activeOpacity={0.7}
+              >
                 <View style={styles.transactionLeft}>
                   <View style={styles.transactionIcon}>
                     <Text style={styles.transactionEmoji}>
@@ -241,6 +247,7 @@ export default function HistoryScreen() {
                         {transaction.description}
                       </Text>
                     )}
+                    <Text style={styles.viewDetailsText}>Tap for details</Text>
                   </View>
                 </View>
                 
@@ -281,7 +288,7 @@ export default function HistoryScreen() {
                     </View>
                   )}
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : (
@@ -415,6 +422,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
     marginTop: 2,
+  },
+  viewDetailsText: {
+    fontSize: 11,
+    color: '#6B46C1',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   transactionRight: {
     alignItems: 'flex-end',

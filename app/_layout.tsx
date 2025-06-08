@@ -87,6 +87,7 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="auth" />
               <Stack.Screen name="add-card" />
+              <Stack.Screen name="transaction-detail" />
               <Stack.Screen name="+not-found" />
             </Stack>
             <StatusBar style="auto" translucent={false} backgroundColor="#FFFFFF" />

@@ -38,13 +38,15 @@ export const API_ENDPOINTS = {
   SET_DEFAULT_PAYMENT_METHOD: '/users/me/payment-methods',
   
   // Auto Pay
-  GET_AUTO_PAY: '/users/me/auto-pay',
-  ADD_AUTO_PAY: '/users/me/auto-pay',
-  UPDATE_AUTO_PAY: '/users/me/auto-pay',
-  DELETE_AUTO_PAY: '/users/me/auto-pay',
+  GET_AUTO_PAY: '/users/me/autopay',
+  ADD_AUTO_PAY: '/users/me/autopay',
+  UPDATE_AUTO_PAY: '/users/me/autopay',
+  DELETE_AUTO_PAY: '/users/me/autopay',
+  
+  // Transactions
+  GET_TRANSACTIONS: '/users/me/transactions',
   
   // Payments
-  GET_TRANSACTIONS: '/users/me/payments',
   CREATE_PAYMENT: '/users/me/payments',
   APPROVE_PAYMENT: '/users/me/payments', // /{request_id}/approve
   DECLINE_PAYMENT: '/users/me/payments', // /{request_id}/decline

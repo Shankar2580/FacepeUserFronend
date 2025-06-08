@@ -7,12 +7,14 @@ import {
   User,
   PaymentMethod,
   Transaction,
+  TransactionDetail,
   AutoPay,
   PaymentRequest,
   VerificationRequest,
   VerificationVerifyRequest,
   RegisterRequest,
   LoginRequest,
+  CreateAutoPayRequest,
 } from '../constants/types';
 
 class ApiService {
@@ -344,6 +346,11 @@ class ApiService {
     return response.data;
   }
 
+  async getTransactionDetail(transactionId: string): Promise<TransactionDetail> {
+    const response = await this.api.get<TransactionDetail>(`${API_ENDPOINTS.GET_TRANSACTIONS}/${transactionId}`);
+    return response.data;
+  }
+
   async createPayment(data: any): Promise<ApiResponse<any>> {
     const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.CREATE_PAYMENT, data);
     return response.data;
@@ -371,12 +378,15 @@ class ApiService {
     return response.data;
   }
 
-  async addAutoPay(data: {
-    merchant_name: string;
-    payment_method_id: string;
-    max_amount?: number;
-  }): Promise<AutoPay> {
-    const response = await this.api.post<AutoPay>(API_ENDPOINTS.ADD_AUTO_PAY, data);
+  async addAutoPay(data: CreateAutoPayRequest): Promise<AutoPay> {
+    const autoPayData = {
+      merchant_id: data.merchant_id,
+      merchant_name: data.merchant_name,
+      payment_method_id: data.payment_method_id,
+      max_amount: data.max_amount,
+      is_enabled: true
+    };
+    const response = await this.api.post<AutoPay>(API_ENDPOINTS.ADD_AUTO_PAY, autoPayData);
     return response.data;
   }
 

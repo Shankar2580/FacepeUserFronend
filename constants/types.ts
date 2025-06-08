@@ -27,6 +27,7 @@ export interface PaymentMethod {
 export interface Transaction {
   id: string;
   user_id: string;
+  merchant_id: string;
   merchant_name: string;
   amount: number;
   currency: string;
@@ -38,9 +39,44 @@ export interface Transaction {
   updated_at: string;
 }
 
+export interface TransactionDetail {
+  id: string;
+  user_id: string;
+  merchant_id: string;
+  merchant_name: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  payment_method_id: string;
+  stripe_payment_intent_id?: string;
+  description?: string;
+  is_auto_paid: boolean;
+  created_at: string;
+  updated_at: string;
+  payment_method?: {
+    card_brand: string;
+    card_last_four: string;
+    card_exp_month: number;
+    card_exp_year: number;
+  };
+  fees?: {
+    stripe_fee: number;
+    platform_fee: number;
+    total_fees: number;
+  };
+}
+
+export interface CreateAutoPayRequest {
+  merchant_id: string;
+  merchant_name: string;
+  payment_method_id: string;
+  max_amount: number;
+}
+
 export interface AutoPay {
   id: string;
   user_id: string;
+  merchant_id: string;
   merchant_name: string;
   is_enabled: boolean;
   max_amount?: number;
