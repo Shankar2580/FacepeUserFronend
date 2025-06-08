@@ -14,11 +14,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { apiService } from '../../services/api';
-import { PaymentMethod, Transaction } from '../../constants/types';
+import { PaymentMethod, Transaction, PaymentRequest } from '../../constants/types';
 
 export default function HomeScreen() {
   const [defaultCard, setDefaultCard] = useState<PaymentMethod | null>(null);
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -32,18 +32,22 @@ export default function HomeScreen() {
 
   const loadData = async () => {
     try {
-      const [paymentMethods, transactions] = await Promise.all([
-        apiService.getPaymentMethods(),
-        apiService.getTransactions()
-      ]);
-      
+      // Always load payment methods first
+      const paymentMethods = await apiService.getPaymentMethods();
       const defaultPaymentMethod = paymentMethods.find(pm => pm.is_default);
       setDefaultCard(defaultPaymentMethod || null);
       
-      // Get only recent 3 transactions
-      setRecentTransactions(transactions.slice(0, 3));
+      // Try to load payment requests (optional - API might not exist yet)
+      try {
+        const requests = await apiService.getPaymentRequests();
+        setPaymentRequests(requests.filter(request => request.status === 'pending'));
+      } catch (requestError) {
+        console.log('Payment requests API not available yet, showing empty state');
+        setPaymentRequests([]);
+      }
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error('Failed to load payment methods:', error);
+      Alert.alert('Error', 'Failed to load your payment methods');
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +91,7 @@ export default function HomeScreen() {
     });
   };
 
-  const getTransactionIcon = (merchantName: string) => {
+  const getMerchantIcon = (merchantName: string) => {
     if (!merchantName || typeof merchantName !== 'string') return '🏪';
     const name = merchantName.toLowerCase();
     if (name.includes('starbucks')) return '☕';
@@ -95,6 +99,44 @@ export default function HomeScreen() {
     if (name.includes('uber')) return '🚗';
     if (name.includes('netflix')) return '🎬';
     return '🏪';
+  };
+
+  const handleApprovePayment = async (requestId: string) => {
+    try {
+      await apiService.approvePayment(requestId);
+      Alert.alert('Success', 'Payment request approved!');
+      loadData(); // Refresh the data
+    } catch (error) {
+      console.error('Failed to approve payment:', error);
+      Alert.alert('Error', 'Failed to approve payment request');
+    }
+  };
+
+  const handleDeclinePayment = async (requestId: string) => {
+    try {
+      await apiService.declinePayment(requestId);
+      Alert.alert('Success', 'Payment request declined');
+      loadData(); // Refresh the data
+    } catch (error) {
+      console.error('Failed to decline payment:', error);
+      Alert.alert('Error', 'Failed to decline payment request');
+    }
+  };
+
+  const getTimeRemaining = (expiresAt: string) => {
+    const now = new Date();
+    const expires = new Date(expiresAt);
+    const diff = expires.getTime() - now.getTime();
+    
+    if (diff <= 0) return 'Expired';
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m left`;
+    }
+    return `${minutes}m left`;
   };
 
   return (
@@ -148,7 +190,7 @@ export default function HomeScreen() {
           {defaultCard ? (
             <TouchableOpacity 
               style={styles.creditCard}
-              onPress={() => router.push('/cards')}
+              onPress={() => router.push('/(tabs)/cards')}
             >
               <View style={styles.cardHeader}>
                 <Text style={styles.cardBrand}>
@@ -180,7 +222,7 @@ export default function HomeScreen() {
           ) : (
             <TouchableOpacity 
               style={styles.addCardPrompt}
-              onPress={() => router.push('/cards')}
+              onPress={() => router.push('/(tabs)/cards')}
             >
               <Ionicons name="add-circle-outline" size={48} color="#6B46C1" />
               <Text style={styles.addCardText}>Add Your First Card</Text>
@@ -191,73 +233,65 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Recent Transactions */}
+        {/* Payment Requests */}
         <View style={styles.transactionSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
+            <Text style={styles.sectionTitle}>Payment Requests</Text>
             <TouchableOpacity onPress={() => router.push('/history')}>
-              <Text style={styles.viewAllText}>View All</Text>
+              <Text style={styles.viewAllText}>View History</Text>
             </TouchableOpacity>
           </View>
           
-          {recentTransactions.length > 0 ? (
+          {paymentRequests.length > 0 ? (
             <View style={styles.transactionList}>
-              {recentTransactions.map((transaction) => (
-                <TouchableOpacity 
-                  key={transaction.id}
-                  style={styles.transactionItem}
-                  onPress={() => router.push('/(tabs)/history')}
-                >
+              {paymentRequests.map((request) => (
+                <View key={request.id} style={styles.paymentRequestItem}>
                   <View style={styles.transactionLeft}>
                     <View style={styles.transactionIcon}>
                       <Text style={styles.transactionEmoji}>
-                        {getTransactionIcon(transaction.merchant_name)}
+                        {getMerchantIcon(request.merchant_name)}
                       </Text>
                     </View>
                     <View style={styles.transactionInfo}>
                       <Text style={styles.transactionMerchant}>
-                        {transaction.merchant_name}
+                        {request.merchant_name}
                       </Text>
-                      <Text style={styles.transactionDate}>
-                        {formatDate(transaction.created_at)}
+                      <Text style={styles.requestDescription}>
+                        {request.description || 'Payment request'}
+                      </Text>
+                      <Text style={styles.expiryTime}>
+                        {getTimeRemaining(request.expires_at)}
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.transactionRight}>
-                    <Text style={[
-                      styles.transactionAmount,
-                      transaction.status === 'completed' 
-                        ? styles.amountCompleted 
-                        : styles.amountPending
-                    ]}>
-                      {transaction.status === 'completed' ? '-' : ''}
-                      {formatAmount(transaction.amount)}
+                  <View style={styles.requestRight}>
+                    <Text style={styles.requestAmount}>
+                      {formatAmount(request.amount)}
                     </Text>
-                    <View style={[
-                      styles.statusBadge,
-                      transaction.status === 'completed' 
-                        ? styles.statusCompleted 
-                        : styles.statusPending
-                    ]}>
-                      <Text style={[
-                        styles.statusText,
-                        transaction.status === 'completed' 
-                          ? styles.statusTextCompleted 
-                          : styles.statusTextPending
-                      ]}>
-                        {transaction.status}
-                      </Text>
+                    <View style={styles.requestActions}>
+                      <TouchableOpacity 
+                        style={styles.declineButton}
+                        onPress={() => handleDeclinePayment(request.id)}
+                      >
+                        <Text style={styles.declineButtonText}>Decline</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.approveButton}
+                        onPress={() => handleApprovePayment(request.id)}
+                      >
+                        <Text style={styles.approveButtonText}>Approve</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
-                </TouchableOpacity>
+                </View>
               ))}
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="receipt-outline" size={48} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>No transactions yet</Text>
+              <Ionicons name="card-outline" size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateText}>No payment requests</Text>
               <Text style={styles.emptyStateSubtext}>
-                Your payment history will appear here
+                Payment requests from merchants will appear here
               </Text>
             </View>
           )}
@@ -534,5 +568,61 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 8,
     textAlign: 'center',
+  },
+  paymentRequestItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  requestDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  expiryTime: {
+    fontSize: 12,
+    color: '#F59E0B',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  requestRight: {
+    alignItems: 'flex-end',
+  },
+  requestAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  requestActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  declineButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DC2626',
+    backgroundColor: '#FFFFFF',
+  },
+  declineButtonText: {
+    color: '#DC2626',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  approveButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
+  },
+  approveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

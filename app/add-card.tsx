@@ -17,7 +17,7 @@ import { apiService } from '../services/api';
 export default function AddCardScreen() {
   const [loading, setLoading] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
-  const { createPaymentMethod } = useStripe();
+  const { confirmSetupIntent } = useStripe();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -29,29 +29,31 @@ export default function AddCardScreen() {
 
     setLoading(true);
     try {
-      // Step 1: Create PaymentMethod with Stripe.js (tokenize card data)
-      // Raw card information never touches our server - Stripe handles it securely
-      const { paymentMethod, error } = await createPaymentMethod({
+      // Step 1: Create Setup Intent on backend (with customer association)
+      console.log('Creating Setup Intent...');
+      const { client_secret, setup_intent_id } = await apiService.createSetupIntent();
+      console.log('Setup Intent created:', setup_intent_id);
+
+      // Step 2: Confirm Setup Intent with Stripe (securely collects card data)
+      const { error } = await confirmSetupIntent(client_secret, {
         paymentMethodType: 'Card',
       });
 
       if (error) {
-        console.error('Stripe error:', error);
+        console.error('Stripe Setup Intent error:', error);
         throw new Error(error.message || 'Failed to process card details');
       }
 
-      if (!paymentMethod?.id) {
-        throw new Error('Failed to create payment method');
+      console.log('Setup Intent confirmed successfully');
+
+      // Step 3: Backend confirms Setup Intent and saves payment method
+      const result = await apiService.confirmSetupIntent(setup_intent_id);
+      
+      if (!result.success) {
+        throw new Error('Failed to save payment method');
       }
 
-      console.log('PaymentMethod created:', paymentMethod.id);
-
-      // Step 2: Send only the PaymentMethod ID to backend (secure)
-      // Backend will fetch card details from Stripe directly
-      await apiService.addPaymentMethodSecure({
-        stripe_payment_method_id: paymentMethod.id,
-        is_default: true, // Usually make the new card default
-      });
+      console.log('Payment method saved:', result.payment_method.id);
 
       Alert.alert('Success', 'Payment method added successfully!', [
         {

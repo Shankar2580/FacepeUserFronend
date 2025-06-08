@@ -8,6 +8,7 @@ import {
   PaymentMethod,
   Transaction,
   AutoPay,
+  PaymentRequest,
   VerificationRequest,
   VerificationVerifyRequest,
   RegisterRequest,
@@ -289,6 +290,20 @@ class ApiService {
     return response.data;
   }
 
+  async createSetupIntent(): Promise<{ client_secret: string; setup_intent_id: string }> {
+    console.log('API Service - Creating Setup Intent...');
+    const response = await this.api.post<{ client_secret: string; setup_intent_id: string }>('/users/me/payment-methods/setup-intent');
+    console.log('API Service - Setup Intent created successfully:', response.data.setup_intent_id);
+    return response.data;
+  }
+
+  async confirmSetupIntent(setupIntentId: string): Promise<{ success: boolean; payment_method: PaymentMethod }> {
+    console.log('API Service - Confirming Setup Intent:', setupIntentId);
+    const response = await this.api.post<{ success: boolean; payment_method: PaymentMethod }>(`/users/me/payment-methods/confirm-setup-intent/${setupIntentId}`);
+    console.log('API Service - Setup Intent confirmed successfully');
+    return response.data;
+  }
+
   async addPaymentMethodSecure(data: {
     stripe_payment_method_id: string;
     is_default?: boolean;
@@ -341,6 +356,12 @@ class ApiService {
 
   async declinePayment(requestId: string): Promise<ApiResponse<any>> {
     const response = await this.api.post<ApiResponse<any>>(`${API_ENDPOINTS.DECLINE_PAYMENT}/${requestId}/decline`);
+    return response.data;
+  }
+
+  // Payment Requests
+  async getPaymentRequests(): Promise<PaymentRequest[]> {
+    const response = await this.api.get<PaymentRequest[]>(API_ENDPOINTS.GET_PAYMENT_REQUESTS);
     return response.data;
   }
 

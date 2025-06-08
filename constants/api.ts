@@ -48,4 +48,7 @@ export const API_ENDPOINTS = {
   CREATE_PAYMENT: '/users/me/payments',
   APPROVE_PAYMENT: '/users/me/payments', // /{request_id}/approve
   DECLINE_PAYMENT: '/users/me/payments', // /{request_id}/decline
+  
+  // Payment Requests
+  GET_PAYMENT_REQUESTS: '/users/me/payment-requests',
 }; 

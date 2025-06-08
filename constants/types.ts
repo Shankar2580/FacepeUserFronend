@@ -49,6 +49,20 @@ export interface AutoPay {
   updated_at: string;
 }
 
+export interface PaymentRequest {
+  id: string;
+  user_id: string;
+  merchant_name: string;
+  merchant_id: string;
+  amount: number;
+  currency: string;
+  description?: string;
+  status: 'pending' | 'approved' | 'declined' | 'expired';
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ApiResponse<T> {
   data?: T;
   message: string;
