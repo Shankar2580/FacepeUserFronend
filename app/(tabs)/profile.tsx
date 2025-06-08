@@ -8,7 +8,6 @@ import {
   Alert,
   RefreshControl,
   Switch,
-  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -108,40 +107,6 @@ export default function ProfileScreen() {
     );
   };
 
-  const handleToggleAutoPay = async (autoPayItem: AutoPay) => {
-    try {
-      await apiService.updateAutoPay(autoPayItem.id, {
-        is_enabled: !autoPayItem.is_enabled
-      });
-      await loadData();
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to update AutoPay');
-    }
-  };
-
-  const handleDeleteAutoPay = async (autoPayItem: AutoPay) => {
-    Alert.alert(
-      'Remove AutoPay',
-      `Remove automatic payments for ${autoPayItem.merchant_name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await apiService.deleteAutoPay(autoPayItem.id);
-              await loadData();
-              Alert.alert('Success', 'AutoPay removed successfully');
-            } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.message || 'Failed to remove AutoPay');
-            }
-          },
-        },
-      ]
-    );
-  };
-
   const handleFaceRegistration = () => {
     router.push('/face-registration');
   };
@@ -162,17 +127,6 @@ export default function ProfileScreen() {
         },
       ]
     );
-  };
-
-  const getCardDisplayName = (paymentMethodId: string) => {
-    const card = paymentMethods.find(pm => pm.id === paymentMethodId);
-    if (!card) return 'Unknown Card';
-    return `${card.card_brand.toUpperCase()} •••• ${card.card_last_four}`;
-  };
-
-  const formatAmount = (amount?: number) => {
-    if (!amount) return 'No limit';
-    return `$${amount.toFixed(2)} max`;
   };
 
   const profileSections = [
@@ -215,6 +169,14 @@ export default function ProfileScreen() {
           subtitle: `${paymentMethods.length} card${paymentMethods.length !== 1 ? 's' : ''} added`,
           action: 'navigate',
           onPress: () => router.push('/(tabs)/cards'),
+          chevron: true,
+        },
+        {
+          icon: 'flash',
+          title: 'AutoPay Settings',
+          subtitle: `${autoPay.length} merchant${autoPay.length !== 1 ? 's' : ''} configured`,
+          action: 'navigate',
+          onPress: () => router.push('/autopay-settings'),
           chevron: true,
         },
         {
@@ -279,6 +241,7 @@ export default function ProfileScreen() {
 
       <ScrollView 
         style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -320,48 +283,6 @@ export default function ProfileScreen() {
             </View>
           </View>
         ))}
-
-        {/* AutoPay Section */}
-        {autoPay.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>AutoPay Settings</Text>
-            <View style={styles.sectionItems}>
-              {autoPay.map((autoPayItem, index) => (
-                <View key={autoPayItem.id} style={[
-                  styles.sectionItem,
-                  index === autoPay.length - 1 && styles.lastSectionItem
-                ]}>
-                  <View style={styles.itemLeft}>
-                    <View style={styles.itemIcon}>
-                      <Ionicons name="flash" size={20} color="#10B981" />
-                    </View>
-                    <View style={styles.itemContent}>
-                      <Text style={styles.itemTitle}>{autoPayItem.merchant_name}</Text>
-                      <Text style={styles.itemSubtitle}>
-                        {getCardDisplayName(autoPayItem.payment_method_id)} • {formatAmount(autoPayItem.max_amount)}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.itemRight}>
-                    <Switch
-                      value={autoPayItem.is_enabled}
-                      onValueChange={() => handleToggleAutoPay(autoPayItem)}
-                      trackColor={{ false: '#E5E7EB', true: '#10B981' }}
-                      thumbColor={autoPayItem.is_enabled ? '#FFFFFF' : '#F3F4F6'}
-                      style={styles.autoPaySwitch}
-                    />
-                    <TouchableOpacity 
-                      style={styles.deleteAutoPayButton}
-                      onPress={() => handleDeleteAutoPay(autoPayItem)}
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
 
         {/* Logout Section */}
         <View style={styles.section}>
@@ -422,7 +343,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingBottom: Platform.OS === 'ios' ? 95 : 70,
   },
   section: {
     marginTop: 24,
@@ -505,12 +425,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
-  },
-  autoPaySwitch: {
-    transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }],
-  },
-  deleteAutoPayButton: {
-    padding: 4,
   },
   logoutButton: {
     flexDirection: 'row',

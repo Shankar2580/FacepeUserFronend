@@ -12,12 +12,14 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiService } from '../services/api';
 import { TransactionDetail, PaymentMethod, CreateAutoPayRequest, AutoPay } from '../constants/types';
 
 export default function TransactionDetailScreen() {
   const { transactionId } = useLocalSearchParams<{ transactionId: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   
   const [transaction, setTransaction] = useState<TransactionDetail | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -71,7 +73,15 @@ export default function TransactionDetailScreen() {
 
   const isAutoPayAlreadyEnabled = () => {
     if (!transaction) return false;
-    return existingAutoPay.some(ap => ap.merchant_name === transaction.merchant_name && ap.is_enabled);
+    
+    // First check if this specific transaction was auto-paid
+    if (transaction.is_auto_paid) return true;
+    
+    // Then check if AutoPay is configured for this merchant
+    return existingAutoPay.some(ap => 
+      (ap.merchant_name === transaction.merchant_name || ap.merchant_id === transaction.merchant_id) 
+      && ap.is_enabled
+    );
   };
 
   const handleSetupAutoPay = async () => {
@@ -119,13 +129,23 @@ export default function TransactionDetailScreen() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    try {
+      const date = new Date(dateString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid Date';
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -180,7 +200,11 @@ export default function TransactionDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={[styles.container, { paddingTop: insets.top }]}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backIcon}>
@@ -273,28 +297,6 @@ export default function TransactionDetailScreen() {
         </View>
       )}
 
-      {/* Fees */}
-      {transaction.fees && (
-        <View style={styles.detailsCard}>
-          <Text style={styles.cardTitle}>Fee Breakdown</Text>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Stripe Fee</Text>
-            <Text style={styles.detailValue}>{formatCurrency(transaction.fees.stripe_fee)}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Platform Fee</Text>
-            <Text style={styles.detailValue}>{formatCurrency(transaction.fees.platform_fee)}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Total Fees</Text>
-            <Text style={[styles.detailValue, styles.totalFee]}>{formatCurrency(transaction.fees.total_fees)}</Text>
-          </View>
-        </View>
-      )}
-
       {/* Auto Pay Setup */}
       {transaction.status === 'completed' && !isAutoPayAlreadyEnabled() && (
         <View style={styles.autoPayCard}>
@@ -322,11 +324,11 @@ export default function TransactionDetailScreen() {
             <Text style={styles.autoPayTitle}>Auto-Pay Enabled</Text>
           </View>
           <Text style={styles.autoPayDescription}>
-            Automatic payments are already enabled for {transaction.merchant_name}. You can manage your auto-pay settings in the Profile tab.
+            Automatic payments are configured for {transaction.merchant_name}. You can manage your auto-pay settings, edit limits, or disable auto-pay.
           </Text>
           <TouchableOpacity
-            style={[styles.setupAutoPayButton, { backgroundColor: '#6B7280' }]}
-            onPress={() => router.push('/(tabs)/profile')}
+            style={[styles.setupAutoPayButton, { backgroundColor: '#6B46C1' }]}
+            onPress={() => router.push('/autopay-settings')}
           >
             <Text style={styles.setupAutoPayButtonText}>Manage Auto-Pay</Text>
           </TouchableOpacity>

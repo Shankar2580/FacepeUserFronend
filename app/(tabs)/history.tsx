@@ -79,31 +79,26 @@ export default function HistoryScreen() {
       return;
     }
 
-    const existingAutoPay = autoPay.find(ap => ap.merchant_name === transaction.merchant_name);
+    const existingAutoPay = autoPay.find(ap => ap.merchant_id === transaction.merchant_id);
     
-    if (existingAutoPay) {
-      Alert.alert('AutoPay Already Enabled', 'AutoPay is already enabled for this merchant');
-      return;
-    }
-
     Alert.alert(
       'Enable AutoPay',
-      `Enable automatic payments for ${transaction.merchant_name}?\n\nFuture payments will be automatically processed using your default card.`,
+      `${existingAutoPay ? 'Update' : 'Enable'} automatic payments for ${transaction.merchant_name}?\n\nFuture payments will be automatically processed using your default card.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Enable',
+          text: existingAutoPay ? 'Update' : 'Enable',
           onPress: async () => {
             try {
               await apiService.addAutoPay({
                 merchant_id: transaction.merchant_id,
                 merchant_name: transaction.merchant_name,
                 payment_method_id: defaultCard.id,
-                max_amount: Math.ceil(transaction.amount * 1.5) // Set max amount 50% higher than current transaction
+                max_amount: Math.ceil((transaction.amount / 100) * 1.5) * 100 // Convert to dollars, increase by 50%, convert back to cents
               });
               
               await loadData(); // Refresh data
-              Alert.alert('Success', 'AutoPay enabled successfully');
+              Alert.alert('Success', `AutoPay ${existingAutoPay ? 'updated' : 'enabled'} successfully`);
             } catch (error: any) {
               Alert.alert('Error', error.response?.data?.message || 'Failed to enable AutoPay');
             }
@@ -114,7 +109,7 @@ export default function HistoryScreen() {
   };
 
   const formatAmount = (amount: number) => {
-    return `$${amount.toFixed(2)}`;
+    return `$${(amount / 100).toFixed(2)}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -157,8 +152,8 @@ export default function HistoryScreen() {
     }
   };
 
-  const isAutoPayEnabled = (merchantName: string) => {
-    return autoPay.some(ap => ap.merchant_name === merchantName && ap.is_enabled);
+  const isAutoPayEnabled = (merchantId: string) => {
+    return autoPay.some(ap => ap.merchant_id === merchantId && ap.is_enabled);
   };
 
   const filterButtons = [
@@ -272,7 +267,7 @@ export default function HistoryScreen() {
                     </Text>
                   </View>
                   
-                  {transaction.status === 'completed' && !isAutoPayEnabled(transaction.merchant_name) && (
+                  {transaction.status === 'completed' && !isAutoPayEnabled(transaction.merchant_id) && (
                     <TouchableOpacity
                       style={styles.autoPayButton}
                       onPress={() => handleEnableAutoPay(transaction)}
@@ -281,7 +276,7 @@ export default function HistoryScreen() {
                     </TouchableOpacity>
                   )}
                   
-                  {isAutoPayEnabled(transaction.merchant_name) && (
+                  {isAutoPayEnabled(transaction.merchant_id) && (
                     <View style={styles.autoPayIndicator}>
                       <Ionicons name="flash" size={12} color="#10B981" />
                       <Text style={styles.autoPayText}>AutoPay On</Text>
@@ -374,7 +369,8 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingBottom: Platform.OS === 'ios' ? 95 : 70,
+    // paddingBottom: 500,
+    marginBottom: 100,
   },
   transactionsList: {
     backgroundColor: '#FFFFFF',
