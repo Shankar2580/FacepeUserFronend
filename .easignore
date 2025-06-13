@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+.git/
+.vscode/
+
+# Documentation
+*.md
+*.txt
+
+# Development files
+*.log
+.env*
+*.ps1
+debug-*
+
+# Build artifacts
+.expo/
+dist/
+build/
+
+# Test files
+__tests__/
+*.test.*
+*.spec.*
+
+# IDE files
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp 

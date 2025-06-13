@@ -2,7 +2,7 @@
 // Run this script to test connectivity to your face registration server
 
 const testConnectivity = async () => {
-  const FACE_API_URL = 'http://192.168.148.2:8001';
+  const FACE_API_URL = 'http://3.142.236.38:8001';
   
   console.log('🔍 Testing Face Registration API Connectivity...');
   console.log('📡 Target URL:', FACE_API_URL);
@@ -35,8 +35,8 @@ const testConnectivity = async () => {
     if (error.code === 'ECONNREFUSED') {
       console.log('\n🔧 Troubleshooting Steps:');
       console.log('1. Check if your face registration API is running on port 8001');
-      console.log('2. Verify the IP address (192.168.148.2) is correct');
-      console.log('3. Make sure your device is on the same network');
+      console.log('2. Verify the IP address (3.142.236.38) is correct');
+      console.log('3. Make sure your device has internet connectivity');
       console.log('4. Check firewall settings');
     } else if (error.code === 'ETIMEDOUT') {
       console.log('\n🔧 Timeout Error - Check:');

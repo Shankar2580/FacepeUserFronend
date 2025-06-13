@@ -3,7 +3,8 @@ export const STRIPE_CONFIG = {
   PUBLISHABLE_KEY: 'pk_test_51RV2FNPSTCb7l9BW9VZanPBOOHxbtKkhrxp2iJNQhRa49RpBCKhkKdKTpU65LfG6yDyPad3IxsaCUwxwX5OI87W500aAed39G4', // You need to replace this with your actual key
   
   // API Base URL - replace with your backend URL
-  API_BASE_URL: 'http://192.168.112.2:8000', // You need to replace this with your actual backend URL
+  
+  API_BASE_URL: 'https://customer-backend-3esf.onrender.com', // Match the main API URL
   
   // Merchant display name
   MERCHANT_DISPLAY_NAME: 'PayByFaeAi',

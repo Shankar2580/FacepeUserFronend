@@ -40,15 +40,17 @@ export const useAuthProvider = () => {
     try {
       setIsLoading(true);
       const storedUser = await apiService.getStoredUser();
+      const accessToken = await apiService.getStoredToken('access_token');
+      const refreshToken = await apiService.getStoredToken('refresh_token');
       
-      if (storedUser) {
-        console.log('✅ checkAuthStatus: Found stored user:', `${storedUser.first_name} ${storedUser.last_name}`);
+      if (storedUser && (accessToken || refreshToken)) {
+        console.log('✅ checkAuthStatus: Found stored user and tokens:', `${storedUser.first_name} ${storedUser.last_name}`);
         
         // First set the stored user data immediately
         setUser(storedUser);
         console.log(`⚡ checkAuthStatus: User set immediately (${Date.now() - startTime}ms)`);
         
-        // Then try to verify token and refresh data in background
+        // If we have tokens, try to verify and refresh data
         try {
           const profile = await apiService.getProfile();
           console.log(`🌐 checkAuthStatus: Profile fetched from API (${Date.now() - startTime}ms)`);
@@ -69,12 +71,21 @@ export const useAuthProvider = () => {
             console.log(`✓ checkAuthStatus: No changes needed (${Date.now() - startTime}ms)`);
           }
           
-        } catch (apiError) {
+        } catch (apiError: any) {
           console.log(`❌ checkAuthStatus: API verification failed (${Date.now() - startTime}ms):`, apiError);
-          // Keep using stored user if API fails - this is fine for offline usage
+          
+          // If it's a 401 error and we have no refresh token, clear session
+          if (apiError.response?.status === 401 && !refreshToken) {
+            console.log('🚪 checkAuthStatus: No refresh token available, clearing session');
+            await apiService.logout();
+            setUser(null);
+          } else {
+            // Keep using stored user if API fails but we have tokens - this is fine for offline usage
+            console.log('📱 checkAuthStatus: Keeping stored user for offline usage');
+          }
         }
       } else {
-        console.log('❌ checkAuthStatus: No stored user found');
+        console.log('❌ checkAuthStatus: No stored user or tokens found');
         setUser(null);
       }
     } catch (error) {

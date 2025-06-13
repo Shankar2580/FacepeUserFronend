@@ -70,9 +70,7 @@ export default function LoginScreen() {
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    Alert.alert('Social Login', `${provider} login will be implemented soon`);
-  };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -157,35 +155,7 @@ export default function LoginScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Social Login */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with</Text>
-              <View style={styles.dividerLine} />
-            </View>
 
-            <View style={styles.socialContainer}>
-              <TouchableOpacity 
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin('Google')}
-              >
-                <Ionicons name="logo-google" size={24} color="#DB4437" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin('Apple')}
-              >
-                <Ionicons name="logo-apple" size={24} color="#000" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin('Facebook')}
-              >
-                <Ionicons name="logo-facebook" size={24} color="#4267B2" />
-              </TouchableOpacity>
-            </View>
           </View>
 
           {/* Footer */}

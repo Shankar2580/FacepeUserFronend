@@ -2,11 +2,12 @@
 // Use your computer's IP address when testing on physical device
 const API_BASE_URL =
 //  __DEV__ ?
-      'http://192.168.148.2:8000'  // Main API on port 8000
-  // : 'https://your-production-api.com'; // Replace with your production URL
+//       'http://192.168.148.2:8000'  // Main API on port 8000
+//   : 
+  'https://customer-backend-3esf.onrender.com'; // Replace with your production URL
 
 // Face registration API runs on port 8001
-const FACE_API_BASE_URL = 'http://192.168.148.2:8001';
+const FACE_API_BASE_URL = 'http://3.142.236.38:8001';
 
 export { API_BASE_URL, FACE_API_BASE_URL };
 

@@ -19,13 +19,18 @@ import {
 
 class ApiService {
   private api: AxiosInstance;
+  private isRefreshing: boolean = false;
+  private failedQueue: Array<{
+    resolve: (value?: any) => void;
+    reject: (error?: any) => void;
+  }> = [];
 
   constructor() {
     console.log('API Service initialized with base URL:', API_BASE_URL);
     
     this.api = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 10000,
+      timeout: 60000,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -34,7 +39,9 @@ class ApiService {
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
       async (config) => {
-        console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+        console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+        console.log(`📍 Full URL: ${config.baseURL}${config.url}`);
+        console.log(`📦 Request Data:`, config.data);
         const token = await SecureStore.getItemAsync('access_token');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
@@ -42,12 +49,12 @@ class ApiService {
         return config;
       },
       (error) => {
-        console.error('API Request Error:', error);
+        console.error('❌ API Request Error:', error);
         return Promise.reject(error);
       }
     );
 
-    // Response interceptor for error handling
+    // Response interceptor for error handling and token refresh
     this.api.interceptors.response.use(
       (response: AxiosResponse) => {
         console.log(`API Response: ${response.status} ${response.config.url}`);
@@ -55,19 +62,55 @@ class ApiService {
       },
       async (error) => {
         const isNetworkError = error.code === 'NETWORK_ERROR' || !error.response;
+        const originalRequest = error.config;
         
-        console.error('API Response Error:', {
+        console.error('🔥 API Response Error Details:', {
           url: error.config?.url,
+          fullURL: `${error.config?.baseURL}${error.config?.url}`,
           status: error.response?.status,
+          statusText: error.response?.statusText,
           message: error.message,
+          code: error.code,
           data: error.response?.data,
-          isNetworkError
+          isNetworkError,
+          headers: error.response?.headers,
+          requestData: error.config?.data
         });
         
-        if (error.response?.status === 401) {
-          // Token expired, logout user
-          console.log('Token expired, logging out user');
-          await this.logout();
+        // Handle 401 errors with token refresh
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          if (this.isRefreshing) {
+            // If already refreshing, queue this request
+            return new Promise((resolve, reject) => {
+              this.failedQueue.push({ resolve, reject });
+            }).then(() => {
+              return this.api(originalRequest);
+            }).catch(err => {
+              return Promise.reject(err);
+            });
+          }
+
+          originalRequest._retry = true;
+          this.isRefreshing = true;
+
+          try {
+            console.log('Token expired, attempting refresh...');
+            await this.refreshToken();
+            console.log('Token refreshed successfully, retrying original request');
+            
+            // Process queued requests
+            this.processQueue(null);
+            
+            // Retry original request with new token
+            return this.api(originalRequest);
+          } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
+            this.processQueue(refreshError);
+            await this.logout();
+            return Promise.reject(refreshError);
+          } finally {
+            this.isRefreshing = false;
+          }
         } else if (isNetworkError) {
           // Network error - don't logout, just log and continue
           console.log('Network error detected, keeping user logged in');
@@ -78,42 +121,125 @@ class ApiService {
     );
   }
 
+  private processQueue(error: any) {
+    this.failedQueue.forEach(({ resolve, reject }) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
+    
+    this.failedQueue = [];
+  }
+
+  private async refreshToken(): Promise<void> {
+    try {
+      const refreshToken = await SecureStore.getItemAsync('refresh_token');
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      console.log('Making refresh token request...');
+      const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+        refresh_token: refreshToken
+      });
+
+      const { access_token } = response.data;
+      if (access_token) {
+        await SecureStore.setItemAsync('access_token', access_token);
+        console.log('Access token refreshed and stored');
+      } else {
+        throw new Error('No access token in refresh response');
+      }
+    } catch (error) {
+      console.error('Refresh token request failed:', error);
+      throw error;
+    }
+  }
+
   // Authentication
   async login(data: LoginRequest): Promise<AuthResponse> {
     console.log('API Service - Making login request...');
-    const response = await this.api.post<AuthResponse>(API_ENDPOINTS.LOGIN, data);
-    console.log('API Service - Login response received:', {
-      hasToken: !!response.data.access_token,
-      hasUser: !!response.data.user,
-      userEmail: response.data.user?.email
-    });
     
-    if (response.data.access_token) {
-      console.log('API Service - Storing tokens...');
-      await SecureStore.setItemAsync('access_token', response.data.access_token);
-      await SecureStore.setItemAsync('user_data', JSON.stringify(response.data.user));
-      console.log('API Service - Tokens stored successfully');
+    // Retry logic for cold starts
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🔄 Login attempt ${attempt}/3...`);
+        const response = await this.api.post<AuthResponse>(API_ENDPOINTS.LOGIN, data);
+        console.log('API Service - Login response received:', {
+          hasToken: !!response.data.access_token,
+          hasRefreshToken: !!response.data.refresh_token,
+          hasUser: !!response.data.user,
+          userEmail: response.data.user?.email
+        });
+        
+        if (response.data.access_token && response.data.refresh_token) {
+          console.log('API Service - Storing tokens...');
+          await SecureStore.setItemAsync('access_token', response.data.access_token);
+          await SecureStore.setItemAsync('refresh_token', response.data.refresh_token);
+          await SecureStore.setItemAsync('user_data', JSON.stringify(response.data.user));
+          console.log('API Service - Tokens stored successfully');
+        }
+        return response.data;
+      } catch (error: any) {
+        lastError = error;
+        const isNetworkError = error.code === 'NETWORK_ERROR' || error.code === 'ERR_NETWORK' || !error.response;
+        
+        if (isNetworkError && attempt < 3) {
+          console.log(`⏳ Network error on attempt ${attempt}, retrying in ${attempt * 5} seconds... (Render.com might be cold starting)`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 5000)); // Wait 5s, then 10s
+          continue;
+        }
+        
+        console.error(`❌ Login failed on attempt ${attempt}:`, error);
+        break;
+      }
     }
-    return response.data;
+    
+    throw lastError;
   }
 
   async register(data: RegisterRequest): Promise<AuthResponse> {
     const response = await this.api.post<AuthResponse>(API_ENDPOINTS.REGISTER, data);
-    if (response.data.access_token) {
+    if (response.data.access_token && response.data.refresh_token) {
       await SecureStore.setItemAsync('access_token', response.data.access_token);
+      await SecureStore.setItemAsync('refresh_token', response.data.refresh_token);
       await SecureStore.setItemAsync('user_data', JSON.stringify(response.data.user));
     }
     return response.data;
   }
 
   async logout(): Promise<void> {
-    await SecureStore.deleteItemAsync('access_token');
-    await SecureStore.deleteItemAsync('user_data');
+    try {
+      // Try to revoke refresh token on server
+      const refreshToken = await SecureStore.getItemAsync('refresh_token');
+      if (refreshToken) {
+        try {
+          await this.api.post('/auth/logout', { refresh_token: refreshToken });
+          console.log('Refresh token revoked on server');
+        } catch (error) {
+          console.warn('Failed to revoke refresh token on server:', error);
+          // Continue with local logout even if server logout fails
+        }
+      }
+    } finally {
+      // Always clear local tokens
+      await SecureStore.deleteItemAsync('access_token');
+      await SecureStore.deleteItemAsync('refresh_token');
+      await SecureStore.deleteItemAsync('user_data');
+      console.log('Local tokens cleared');
+    }
   }
 
   async getStoredUser(): Promise<User | null> {
     const userData = await SecureStore.getItemAsync('user_data');
     return userData ? JSON.parse(userData) : null;
+  }
+
+  async getStoredToken(tokenType: 'access_token' | 'refresh_token'): Promise<string | null> {
+    return await SecureStore.getItemAsync(tokenType);
   }
 
   async updateStoredUser(user: User): Promise<void> {
@@ -184,8 +310,6 @@ class ApiService {
     const response = await this.api.put<User>(API_ENDPOINTS.UPDATE_PROFILE, data);
     return response.data;
   }
-
-
 
   async getFaceStatus(): Promise<ApiResponse<any>> {
     const response = await this.api.get<ApiResponse<any>>(API_ENDPOINTS.GET_FACE_STATUS);
@@ -294,15 +418,20 @@ class ApiService {
 
   async createSetupIntent(): Promise<{ client_secret: string; setup_intent_id: string }> {
     console.log('API Service - Creating Setup Intent...');
+    console.log('API Service - Using base URL:', this.api.defaults.baseURL);
     const response = await this.api.post<{ client_secret: string; setup_intent_id: string }>('/users/me/payment-methods/setup-intent');
-    console.log('API Service - Setup Intent created successfully:', response.data.setup_intent_id);
+    console.log('API Service - Setup Intent created successfully:', {
+      setup_intent_id: response.data.setup_intent_id,
+      client_secret_length: response.data.client_secret?.length || 0
+    });
     return response.data;
   }
 
   async confirmSetupIntent(setupIntentId: string): Promise<{ success: boolean; payment_method: PaymentMethod }> {
     console.log('API Service - Confirming Setup Intent:', setupIntentId);
+    console.log('API Service - Confirm URL:', `${this.api.defaults.baseURL}/users/me/payment-methods/confirm-setup-intent/${setupIntentId}`);
     const response = await this.api.post<{ success: boolean; payment_method: PaymentMethod }>(`/users/me/payment-methods/confirm-setup-intent/${setupIntentId}`);
-    console.log('API Service - Setup Intent confirmed successfully');
+    console.log('API Service - Setup Intent confirmed successfully:', response.data.success);
     return response.data;
   }
 
@@ -404,4 +533,4 @@ class ApiService {
   }
 }
 
-export const apiService = new ApiService(); 
+export const apiService = new ApiService();

@@ -47,9 +47,11 @@ export default function AddCardScreen() {
       console.log('Setup Intent confirmed successfully');
 
       // Step 3: Backend confirms Setup Intent and saves payment method
+      console.log('Confirming Setup Intent with backend:', setup_intent_id);
       const result = await apiService.confirmSetupIntent(setup_intent_id);
       
       if (!result.success) {
+        console.error('Backend confirmation failed:', result);
         throw new Error('Failed to save payment method');
       }
 
