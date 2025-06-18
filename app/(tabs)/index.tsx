@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   RefreshControl,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
@@ -26,11 +26,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  // Load data function
+  const loadData = useCallback(async () => {
     try {
       // Always load payment methods first
       const paymentMethods = await apiService.getPaymentMethods();
@@ -51,7 +48,19 @@ export default function HomeScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Auto-refresh when screen is focused (fixes the refresh issue)
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  // Initial load
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -77,6 +86,26 @@ export default function HomeScreen() {
       case 'discover': return 'DISCOVER';
       default: return 'CARD';
     }
+  };
+
+  // Updated getCardColor function to match cards section - brand-based colors
+  const getCardColor = (brand: string) => {
+    if (!brand || typeof brand !== 'string') return ['#4A5568', '#2D3748']; // Handle undefined/null/non-string brand
+    
+    switch (brand.toLowerCase()) {
+      case 'visa': return ['#1e3c72', '#2a5298']; // Premium blue gradient
+      case 'mastercard': return ['#2D3748', '#4A5568']; // Dark grey gradient
+      case 'amex': return ['#2c3e50', '#34495e']; // Premium dark gradient
+      case 'discover': return ['#f39c12', '#e67e22']; // Premium orange gradient
+      default: return ['#4A5568', '#2D3748'];
+    }
+  };
+
+  const formatExpiry = (month: number, year: number) => {
+    if (!month || !year || isNaN(month) || isNaN(year)) return '••/••';
+    const monthStr = String(month).padStart(2, '0');
+    const yearStr = String(year).slice(-2);
+    return `${monthStr}/${yearStr}`;
   };
 
   const formatAmount = (amount: number) => {
@@ -140,12 +169,20 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <ScrollView 
         style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { 
+            paddingTop: insets.top + 20,
+            paddingBottom: insets.bottom + 100 // Extra padding for tab bar
+          }
+        ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -189,32 +226,41 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Your Cards</Text>
           {defaultCard ? (
             <TouchableOpacity 
-              style={styles.creditCard}
+              style={[
+                styles.creditCard,
+                { backgroundColor: getCardColor(defaultCard.card_brand)[0] }
+              ]}
               onPress={() => router.push('/(tabs)/cards')}
             >
+              {/* Card Header */}
               <View style={styles.cardHeader}>
                 <Text style={styles.cardBrand}>
                   {getCardBrandIcon(defaultCard.card_brand)}
                 </Text>
-                <View style={styles.cardChip} />
+                <View style={styles.cardActions}>
+                  <View style={styles.defaultBadge}>
+                    <Text style={styles.defaultText}>DEFAULT</Text>
+                  </View>
+                  <View style={styles.cardChip} />
+                </View>
               </View>
+              
+              {/* Card Number */}
               <Text style={styles.cardNumber}>
                 {formatCardNumber(defaultCard.card_last_four)}
               </Text>
+              
+              {/* Card Footer */}
               <View style={styles.cardFooter}>
-                <View>
-                  <Text style={styles.cardLabel}>Card Holder</Text>
+                <View style={styles.cardExpiry}>
+                  <Text style={styles.cardLabel}>EXPIRES</Text>
                   <Text style={styles.cardValue}>
-                    {user?.first_name} {user?.last_name}
+                    {formatExpiry(defaultCard.card_exp_month, defaultCard.card_exp_year)}
                   </Text>
                 </View>
-                <View>
-                  <Text style={styles.cardLabel}>Expires</Text>
-                  <Text style={styles.cardValue}>
-                    {defaultCard.card_exp_month && defaultCard.card_exp_year
-                      ? `${String(defaultCard.card_exp_month).padStart(2, '0')}/${String(defaultCard.card_exp_year).slice(-2)}`
-                      : '••/••'
-                    }
+                <View style={styles.cardNetwork}>
+                  <Text style={styles.networkText}>
+                    {getCardBrandIcon(defaultCard.card_brand)}
                   </Text>
                 </View>
               </View>
@@ -237,15 +283,17 @@ export default function HomeScreen() {
         <View style={styles.transactionSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Payment Requests</Text>
-            <TouchableOpacity onPress={() => router.push('/history')}>
-              <Text style={styles.viewAllText}>View History</Text>
-            </TouchableOpacity>
+            {paymentRequests.length > 0 && (
+              <TouchableOpacity onPress={() => router.push('/(tabs)/history')}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            )}
           </View>
           
           {paymentRequests.length > 0 ? (
             <View style={styles.transactionList}>
-              {paymentRequests.map((request) => (
-                <View key={request.id} style={styles.paymentRequestItem}>
+              {paymentRequests.slice(0, 3).map((request) => (
+                <View key={request.id} style={styles.transactionItem}>
                   <View style={styles.transactionLeft}>
                     <View style={styles.transactionIcon}>
                       <Text style={styles.transactionEmoji}>
@@ -256,11 +304,8 @@ export default function HomeScreen() {
                       <Text style={styles.transactionMerchant}>
                         {request.merchant_name}
                       </Text>
-                      <Text style={styles.requestDescription}>
-                        {request.description || 'Payment request'}
-                      </Text>
-                      <Text style={styles.expiryTime}>
-                        {getTimeRemaining(request.expires_at)}
+                      <Text style={styles.transactionDate}>
+                        {formatDate(request.created_at)} • {getTimeRemaining(request.expires_at)}
                       </Text>
                     </View>
                   </View>
@@ -308,14 +353,15 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingBottom: Platform.OS === 'ios' ? 100 : 80,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: 20,
     paddingBottom: 16,
   },
   greeting: {
@@ -393,48 +439,98 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   creditCard: {
-    backgroundColor: '#6B46C1',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
-    minHeight: 200,
+    minHeight: 180,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 15,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 32,
+    alignItems: 'flex-start',
+    marginBottom: 20,
   },
   cardBrand: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  defaultBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  defaultText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   cardChip: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     width: 32,
     height: 24,
-    backgroundColor: '#F59E0B',
-    borderRadius: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   cardNumber: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '500',
     letterSpacing: 2,
-    marginBottom: 32,
+    marginBottom: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardExpiry: {
+    flex: 1,
   },
   cardLabel: {
-    color: '#E5E7EB',
-    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 10,
+    fontWeight: '500',
     marginBottom: 4,
+    letterSpacing: 0.5,
   },
   cardValue: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
+  },
+  cardNetwork: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  networkText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   addCardPrompt: {
     backgroundColor: '#FFFFFF',
@@ -507,86 +603,13 @@ const styles = StyleSheet.create({
   },
   transactionMerchant: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#1F2937',
   },
   transactionDate: {
     fontSize: 14,
     color: '#6B7280',
     marginTop: 2,
-  },
-  transactionRight: {
-    alignItems: 'flex-end',
-  },
-  transactionAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  amountCompleted: {
-    color: '#1F2937',
-  },
-  amountPending: {
-    color: '#F59E0B',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusCompleted: {
-    backgroundColor: '#D1FAE5',
-  },
-  statusPending: {
-    backgroundColor: '#FEF3C7',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
-    textTransform: 'capitalize',
-  },
-  statusTextCompleted: {
-    color: '#059669',
-  },
-  statusTextPending: {
-    color: '#D97706',
-  },
-  emptyState: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 48,
-    alignItems: 'center',
-  },
-  emptyStateText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginTop: 16,
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  paymentRequestItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  requestDescription: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  expiryTime: {
-    fontSize: 12,
-    color: '#F59E0B',
-    marginTop: 4,
-    fontWeight: '500',
   },
   requestRight: {
     alignItems: 'flex-end',
@@ -602,27 +625,45 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   declineButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#DC2626',
-    backgroundColor: '#FFFFFF',
+    borderColor: '#FECACA',
   },
   declineButtonText: {
     color: '#DC2626',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   approveButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#10B981',
+    backgroundColor: '#6B46C1',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
   approveButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
+  },
+  emptyState: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginTop: 16,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

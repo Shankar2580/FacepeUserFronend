@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   Alert,
   Platform,
@@ -11,11 +10,14 @@ import {
   Dimensions,
   Image,
   TextInput,
+  KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 
@@ -28,13 +30,12 @@ export default function FaceRegistrationScreen() {
   const [userId, setUserId] = useState('');
   const router = useRouter();
   const { refreshUser } = useAuth();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     // Load user data from secure store
     loadUserData();
   }, []);
-
-
 
   const loadUserData = async () => {
     try {
@@ -47,8 +48,6 @@ export default function FaceRegistrationScreen() {
       console.error('Error loading user data:', error);
     }
   };
-
-
 
   const handleStartRegistration = async () => {
     // Request camera permission
@@ -163,82 +162,114 @@ export default function FaceRegistrationScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView 
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Face Registration</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="scan" size={48} color="#6B46C1" />
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Face Recognition Setup</Text>
+            <View style={styles.placeholder} />
           </View>
-        </View>
 
-        <Text style={styles.title}>Secure Face Recognition</Text>
-        <Text style={styles.subtitle}>
-          Register your face for quick and secure payments. Your biometric data is encrypted and stored securely on your device.
-        </Text>
+          {/* Content */}
+          <View style={styles.content}>
+            <View style={styles.iconContainer}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="scan" size={48} color="#6B46C1" />
+              </View>
+            </View>
 
-        {/* Name Display (Read-only) */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Full Name</Text>
-          <View style={styles.readOnlyInput}>
-            <Text style={styles.readOnlyText}>{userName || 'Loading...'}</Text>
-          </View>
-        </View>
-
-        <View style={styles.features}>
-          <View style={styles.feature}>
-            <Ionicons name="shield-checkmark" size={24} color="#10B981" />
-            <Text style={styles.featureText}>Secure & Private</Text>
-          </View>
-          <View style={styles.feature}>
-            <Ionicons name="flash" size={24} color="#10B981" />
-            <Text style={styles.featureText}>Lightning Fast</Text>
-          </View>
-          <View style={styles.feature}>
-            <Ionicons name="lock-closed" size={24} color="#10B981" />
-            <Text style={styles.featureText}>Bank-Level Security</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity 
-          style={styles.startButton}
-          onPress={handleStartRegistration}
-          disabled={isLoading}
-        >
-          <LinearGradient
-            colors={['#6B46C1', '#9333EA']}
-            style={styles.startButtonGradient}
-          >
-            <Text style={styles.startButtonText}>
-              {isLoading ? 'Capturing...' : 'Take Photo'}
+            <Text style={styles.title}>Face Recognition Setup</Text>
+            <Text style={styles.subtitle}>
+              Enable facial recognition for quick and secure payments.
             </Text>
-          </LinearGradient>
-        </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.skipButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.skipButtonText}>Skip for now</Text>
-        </TouchableOpacity>
+            <View style={styles.descriptionContainer}>
+              <Text style={styles.descriptionTitle}>Description:</Text>
+              <Text style={styles.description}>
+                Register your face to verify your identity during transactions. Your biometric data is encrypted and securely stored in compliance with industry standards.
+              </Text>
+            </View>
 
+            {/* Name Input Field */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Full Name</Text>
+              <Text style={styles.inputSubtext}>Enter the name associated with your account</Text>
+              <View style={styles.readOnlyInput}>
+                <Text style={styles.readOnlyText}>{userName || 'Loading...'}</Text>
+              </View>
+            </View>
 
-      </View>
+            <View style={styles.benefitsContainer}>
+              <Text style={styles.benefitsTitle}>Why Use Face Recognition?</Text>
+              
+              <View style={styles.benefit}>
+                <Ionicons name="shield-checkmark" size={24} color="#10B981" />
+                <View style={styles.benefitTextContainer}>
+                  <Text style={styles.benefitTitle}>Secure & Encrypted</Text>
+                  <Text style={styles.benefitText}>Stored using bank-grade protection</Text>
+                </View>
+              </View>
 
+              <View style={styles.benefit}>
+                <Ionicons name="flash" size={24} color="#10B981" />
+                <View style={styles.benefitTextContainer}>
+                  <Text style={styles.benefitTitle}>Faster Payments</Text>
+                  <Text style={styles.benefitText}>You can enable Autopay</Text>
+                </View>
+              </View>
 
-    </SafeAreaView>
+              <View style={styles.benefit}>
+                <Ionicons name="lock-closed" size={24} color="#10B981" />
+                <View style={styles.benefitTextContainer}>
+                  <Text style={styles.benefitTitle}>Trusted Technology</Text>
+                  <Text style={styles.benefitText}>Built for secure transactions</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Fixed Bottom Actions */}
+        <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 20 }]}>
+          <TouchableOpacity 
+            style={styles.primaryButton}
+            onPress={handleStartRegistration}
+            disabled={isLoading}
+          >
+            <LinearGradient
+              colors={['#6B46C1', '#9333EA']}
+              style={styles.primaryButtonGradient}
+            >
+              <Text style={styles.primaryButtonText}>
+                {isLoading ? 'Registering...' : 'Register Face'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.skipButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.skipButtonText}>Skip for Now</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -246,7 +277,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-    paddingTop: Platform.OS === 'android' ? 25 : 0,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   header: {
     flexDirection: 'row',
@@ -254,19 +287,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   headerTitle: {
     fontSize: 18,
@@ -279,10 +310,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingTop: 32,
   },
   iconContainer: {
+    alignItems: 'center',
     marginBottom: 32,
   },
   iconCircle: {
@@ -298,32 +329,98 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1F2937',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 40,
+    marginBottom: 32,
   },
-  features: {
-    width: '100%',
-    marginBottom: 48,
+  descriptionContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  feature: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+  descriptionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
   },
-  featureText: {
+  description: {
+    fontSize: 15,
+    color: '#6B7280',
+    lineHeight: 22,
+  },
+  inputContainer: {
+    marginBottom: 32,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  inputSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 12,
+  },
+  readOnlyInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  readOnlyText: {
     fontSize: 16,
     color: '#374151',
-    marginLeft: 12,
     fontWeight: '500',
   },
-  startButton: {
-    width: '100%',
+  benefitsContainer: {
+    marginBottom: 40,
+  },
+  benefitsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 20,
+  },
+  benefit: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  benefitTextContainer: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  benefitTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  benefitText: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  bottomActions: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  primaryButton: {
     borderRadius: 12,
     marginBottom: 16,
     shadowColor: '#6B46C1',
@@ -332,114 +429,21 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  startButtonGradient: {
+  primaryButtonGradient: {
     paddingVertical: 16,
     alignItems: 'center',
     borderRadius: 12,
   },
-  startButtonText: {
+  primaryButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   skipButton: {
     paddingVertical: 12,
+    alignItems: 'center',
   },
   skipButtonText: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  inputContainer: {
-    width: '100%',
-    marginBottom: 24,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#1F2937',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  readOnlyInput: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  readOnlyText: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  modalSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  modalButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginLeft: 12,
-  },
-  modalCancelButton: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    marginTop: 8,
-  },
-  modalCancelText: {
     fontSize: 16,
     color: '#6B7280',
     fontWeight: '500',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   RefreshControl,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../../services/api';
@@ -25,11 +25,8 @@ export default function CardsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    loadCards();
-  }, []);
-
-  const loadCards = async () => {
+  // Load cards function
+  const loadCards = useCallback(async () => {
     try {
       const cards = await apiService.getPaymentMethods();
       setPaymentMethods(cards);
@@ -39,7 +36,19 @@ export default function CardsScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Auto-refresh when screen is focused (fixes the refresh issue)
+  useFocusEffect(
+    useCallback(() => {
+      loadCards();
+    }, [loadCards])
+  );
+
+  // Initial load
+  useEffect(() => {
+    loadCards();
+  }, [loadCards]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -86,7 +95,7 @@ export default function CardsScreen() {
   };
 
   const getCardBrandIcon = (brand: string) => {
-    if (!brand || typeof brand !== 'string') return '💳'; // Handle undefined/null/non-string brand
+    if (!brand || typeof brand !== 'string') return 'CARD'; // Handle undefined/null/non-string brand
     switch (brand.toLowerCase()) {
       case 'visa': return 'VISA';
       case 'mastercard': return 'Mastercard';
@@ -96,13 +105,13 @@ export default function CardsScreen() {
     }
   };
 
-  const getCardColor = (brand: string, isDefault: boolean) => {
-    if (isDefault) return ['#667eea', '#764ba2']; // Premium purple gradient for default
+  // Updated getCardColor function - brand-based colors regardless of default status
+  const getCardColor = (brand: string) => {
     if (!brand || typeof brand !== 'string') return ['#4A5568', '#2D3748']; // Handle undefined/null/non-string brand
     
     switch (brand.toLowerCase()) {
       case 'visa': return ['#1e3c72', '#2a5298']; // Premium blue gradient
-      case 'mastercard': return ['#ff6b6b', '#ee5a24']; // Premium red gradient
+      case 'mastercard': return ['#2D3748', '#4A5568']; // Dark grey gradient
       case 'amex': return ['#2c3e50', '#34495e']; // Premium dark gradient
       case 'discover': return ['#f39c12', '#e67e22']; // Premium orange gradient
       default: return ['#4A5568', '#2D3748'];
@@ -130,6 +139,10 @@ export default function CardsScreen() {
 
       <ScrollView 
         style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 100 } // Extra padding for tab bar
+        ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -138,7 +151,7 @@ export default function CardsScreen() {
         {paymentMethods.length > 0 ? (
           <View style={styles.cardsContainer}>
             {paymentMethods.map((card, index) => {
-              const gradientColors = getCardColor(card.card_brand, card.is_default);
+              const gradientColors = getCardColor(card.card_brand);
               return (
                 <View key={card.id} style={styles.cardWrapper}>
                   <View 
@@ -302,7 +315,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingBottom: Platform.OS === 'ios' ? 95 : 70,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   cardsContainer: {
     paddingHorizontal: 24,
@@ -391,6 +406,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  cardNetwork: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  networkText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
     letterSpacing: 0.5,
   },
   cardControls: {
@@ -515,19 +544,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     marginTop: 4,
-  },
-  cardNetwork: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  networkText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
   },
 }); 
