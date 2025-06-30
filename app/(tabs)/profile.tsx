@@ -8,11 +8,13 @@ import {
   Alert,
   RefreshControl,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
+import { useUpdates } from '../../hooks/useUpdates';
 import { apiService } from '../../services/api';
 import { AutoPay, PaymentMethod } from '../../constants/types';
 
@@ -24,6 +26,7 @@ export default function ProfileScreen() {
   const [initialLoad, setInitialLoad] = useState(true);
   
   const { user, logout, refreshUser } = useAuth();
+  const { isCheckingForUpdates, checkForUpdates, currentUpdateInfo } = useUpdates();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -111,6 +114,10 @@ export default function ProfileScreen() {
     router.push('/face-registration');
   };
 
+  const handleCheckForUpdates = async () => {
+    await checkForUpdates();
+  };
+
   const handleLogout = () => {
     Alert.alert(
       'Logout',
@@ -195,6 +202,29 @@ export default function ProfileScreen() {
         },
       ],
     },
+    {
+      title: 'App Settings',
+      items: [
+        {
+          icon: 'cloud-download',
+          title: 'Check for Updates',
+          subtitle: currentUpdateInfo?.channel ? `Channel: ${currentUpdateInfo.channel}` : 'Tap to check for updates',
+          action: 'update',
+          onPress: handleCheckForUpdates,
+          rightElement: isCheckingForUpdates ? (
+            <ActivityIndicator size="small" color="#6B46C1" />
+          ) : (
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          ),
+        },
+        {
+          icon: 'information-circle',
+          title: 'App Version',
+          subtitle: `v1.0.1 ${currentUpdateInfo?.updateId ? `(${currentUpdateInfo.updateId.slice(0, 8)})` : ''}`,
+          onPress: undefined,
+        },
+      ],
+    },
   ];
 
   // Show loading state during initial load
@@ -273,7 +303,7 @@ export default function ProfileScreen() {
                   </View>
                   <View style={styles.itemRight}>
                     {item.rightElement || (
-                      item.chevron && (
+                     ( item as any).chevron && (
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                       )
                     )}

@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CardField, useStripe, CardFieldInput } from '@stripe/stripe-react-native';
 import { apiService } from '../services/api';
@@ -263,42 +263,35 @@ function AddCardContent() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => {
-              addDebugInfo('Back button pressed');
-              router.back();
-            }}
-          >
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Payment Method</Text>
-          <View style={styles.placeholder} />
-        </View>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Add Payment Method</Text>
+        <View style={styles.placeholder} />
+      </View>
 
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0} // Adjusted offset for iOS
+      >
         <ScrollView 
           style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: insets.bottom + 40 }
-          ]}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
         >
+          {/* Title Section */}
           <View style={styles.titleSection}>
-            <Text style={styles.title}>Add Your Card</Text>
-            <Text style={styles.subtitle}>Enter your card details securely</Text>
+            <Text style={styles.title}>Add New Card</Text>
+            <Text style={styles.subtitle}>
+              Securely add your payment method using bank-level encryption
+            </Text>
           </View>
-          
-          {/* Enhanced Card Preview */}
+
+          {/* Card Preview */}
           <View style={styles.cardPreview}>
             <View style={[
               styles.previewCard,
@@ -393,57 +386,35 @@ function AddCardContent() {
               </View>
             </View>
           </View>
-
-          {/* Enhanced Test Cards Info */}
-          <View style={styles.testInfo}>
-            <View style={styles.testHeader}>
-              <Ionicons name="code-outline" size={16} color="#475569" />
-              <Text style={styles.testTitle}>Test Cards for Development</Text>
-            </View>
-            <View style={styles.testCards}>
-              <View style={styles.testCardRow}>
-                <Text style={styles.testCard}>4242 4242 4242 4242</Text>
-                <View style={styles.testStatus}>
-                  <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                  <Text style={styles.testStatusText}>Success</Text>
-                </View>
-              </View>
-              <View style={styles.testCardRow}>
-                <Text style={styles.testCard}>4000 0000 0000 0002</Text>
-                <View style={styles.testStatus}>
-                  <Ionicons name="close-circle" size={14} color="#EF4444" />
-                  <Text style={styles.testStatusTextError}>Declined</Text>
-                </View>
-              </View>
-            </View>
-            <Text style={styles.testSubtext}>Use any future expiry date and any 3-digit CVC</Text>
-          </View>
         </ScrollView>
-
-        {/* Fixed Bottom Button */}
-        <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 20 }]}>
-          <TouchableOpacity
-            style={[
-              styles.addButton,
-              (!cardComplete || loading) && styles.addButtonDisabled,
-            ]}
-            onPress={handleAddCard}
-            disabled={!cardComplete || loading}
-          >
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator color="white" size="small" />
-                <Text style={styles.loadingText}>Adding Card...</Text>
-              </View>
-            ) : (
-              <View style={styles.buttonContent}>
-                <Ionicons name="card" size={20} color="white" />
-                <Text style={styles.addButtonText}>Add Payment Method</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
       </KeyboardAvoidingView>
+
+      {/* Fixed Bottom Button */}
+      <SafeAreaView 
+        edges={['bottom']}
+        style={[styles.bottomActions, { paddingBottom: insets.bottom + 20 }]} 
+      >
+        <TouchableOpacity
+          style={[
+            styles.addButton,
+            (!cardComplete || loading) && styles.addButtonDisabled,
+          ]}
+          onPress={handleAddCard}
+          disabled={!cardComplete || loading}
+        >
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color="white" size="small" />
+              <Text style={styles.loadingText}>Adding Card...</Text>
+            </View>
+          ) : (
+            <View style={styles.buttonContent}>
+              <Ionicons name="card" size={20} color="white" />
+              <Text style={styles.addButtonText}>Add Payment Method</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </SafeAreaView>
     </View>
   );
 }
@@ -491,6 +462,9 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 40,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
@@ -689,61 +663,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     fontWeight: '500',
   },
-  testInfo: {
-    backgroundColor: '#F8FAFC',
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 20,
-  },
-  testHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  testTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#475569',
-    marginLeft: 8,
-  },
-  testCards: {
-    marginBottom: 12,
-  },
-  testCardRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-    paddingVertical: 4,
-  },
-  testCard: {
-    fontSize: 13,
-    color: '#64748B',
-    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
-  },
-  testStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  testStatusText: {
-    fontSize: 12,
-    color: '#10B981',
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  testStatusTextError: {
-    fontSize: 12,
-    color: '#EF4444',
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  testSubtext: {
-    fontSize: 12,
-    color: '#94A3B8',
-    lineHeight: 16,
-  },
+
   bottomActions: {
     paddingHorizontal: 24,
     paddingTop: 16,

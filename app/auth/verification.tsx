@@ -26,6 +26,7 @@ export default function VerificationScreen() {
   const firstName = params.first_name as string;
   const lastName = params.last_name as string;
   const password = params.password as string;
+  const email = (params.email as string) || '';
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -54,11 +55,6 @@ export default function VerificationScreen() {
       const nextInput = index + 1;
       // Focus logic would be implemented with refs in production
     }
-    
-    // Auto-submit when all digits are entered
-    if (newCode.every(digit => digit !== '') && newCode.join('').length === 6) {
-      handleVerify(newCode.join(''));
-    }
   };
 
   const handleVerify = async (verificationCode?: string) => {
@@ -80,6 +76,7 @@ export default function VerificationScreen() {
       // Then register the user
       await register({
         phone_number: phoneNumber,
+        email: email,
         first_name: firstName,
         last_name: lastName,
         password: password,

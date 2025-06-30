@@ -68,6 +68,7 @@ export default function FaceRegistrationScreen() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
+        cameraType: ImagePicker.CameraType.front, // Open front camera first for face registration
       });
 
       if (!result.canceled && result.assets[0]) {

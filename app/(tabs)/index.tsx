@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { apiService } from '../../services/api';
 import { PaymentMethod, Transaction, PaymentRequest } from '../../constants/types';
+import { notificationService } from '../../services/notificationService';
 
 export default function HomeScreen() {
   const [defaultCard, setDefaultCard] = useState<PaymentMethod | null>(null);
@@ -42,9 +43,12 @@ export default function HomeScreen() {
         console.log('Payment requests API not available yet, showing empty state');
         setPaymentRequests([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load payment methods:', error);
-      Alert.alert('Error', 'Failed to load your payment methods');
+      // If the user is not authenticated (401), silently ignore to avoid panic
+      if (error?.response?.status !== 401) {
+        Alert.alert('Oops', 'Something went wrong while loading your data. Please try again later.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -132,7 +136,21 @@ export default function HomeScreen() {
 
   const handleApprovePayment = async (requestId: string) => {
     try {
+      const request = paymentRequests.find(req => req.id === requestId);
+      if (!request) {
+        Alert.alert('Error', 'Payment request not found');
+        return;
+      }
+
       await apiService.approvePayment(requestId);
+      
+      // Send notification for successful payment approval
+      await notificationService.notifyPaymentApproved({
+        merchantName: request.merchant_name,
+        amount: request.amount,
+        paymentId: requestId,
+      });
+
       Alert.alert('Success', 'Payment request approved!');
       loadData(); // Refresh the data
     } catch (error) {
@@ -143,7 +161,22 @@ export default function HomeScreen() {
 
   const handleDeclinePayment = async (requestId: string) => {
     try {
+      const request = paymentRequests.find(req => req.id === requestId);
+      if (!request) {
+        Alert.alert('Error', 'Payment request not found');
+        return;
+      }
+
       await apiService.declinePayment(requestId);
+      
+      // Send notification for payment decline
+      await notificationService.notifyPaymentFailed({
+        merchantName: request.merchant_name,
+        amount: request.amount,
+        paymentId: requestId,
+        reason: 'Declined by user',
+      });
+
       Alert.alert('Success', 'Payment request declined');
       loadData(); // Refresh the data
     } catch (error) {
@@ -268,7 +301,7 @@ export default function HomeScreen() {
           ) : (
             <TouchableOpacity 
               style={styles.addCardPrompt}
-              onPress={() => router.push('/(tabs)/cards')}
+              onPress={() => router.push('/add-card')}
             >
               <Ionicons name="add-circle-outline" size={48} color="#6B46C1" />
               <Text style={styles.addCardText}>Add Your First Card</Text>

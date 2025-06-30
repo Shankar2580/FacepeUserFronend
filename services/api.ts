@@ -311,6 +311,13 @@ class ApiService {
     return response.data;
   }
 
+  async updatePushToken(pushToken: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post<ApiResponse<any>>('/users/me/push-token', {
+      push_token: pushToken,
+    });
+    return response.data;
+  }
+
   async getFaceStatus(): Promise<ApiResponse<any>> {
     const response = await this.api.get<ApiResponse<any>>(API_ENDPOINTS.GET_FACE_STATUS);
     return response.data;
@@ -528,7 +535,26 @@ class ApiService {
   }
 
   async deleteAutoPay(merchantId: string): Promise<ApiResponse<any>> {
-    const response = await this.api.delete<ApiResponse<any>>(`${API_ENDPOINTS.DELETE_AUTO_PAY}/${merchantId}`);
+    const response = await this.api.delete<ApiResponse<any>>(`/autopay/${merchantId}`);
+    return response.data;
+  }
+
+  // Password Reset methods
+  async requestPasswordReset(phoneNumber: string): Promise<ApiResponse<any>> {
+    console.log('API Service - Requesting password reset for:', phoneNumber);
+    const response = await this.api.post<ApiResponse<any>>('/auth/forgot-password/request', {
+      phone_number: phoneNumber
+    });
+    return response.data;
+  }
+
+  async verifyPasswordReset(data: {
+    phone_number: string;
+    verification_code: string;
+    new_password: string;
+  }): Promise<ApiResponse<any>> {
+    console.log('API Service - Verifying password reset for:', data.phone_number);
+    const response = await this.api.post<ApiResponse<any>>('/auth/forgot-password/verify', data);
     return response.data;
   }
 }

@@ -5,19 +5,91 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ScrollView,
+  StatusBar as NativeStatusBar, // Renamed for clarity
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../../services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+
+// Custom OTP Input Component
+const OTPInput = ({
+  code,
+  setCode,
+  onComplete,
+}: {
+  code: string;
+  setCode: (code: string) => void;
+  onComplete: (code: string) => void;
+}) => {
+  const inputs = React.useRef<TextInput[]>([]);
+
+  const handleTextChange = (text: string, index: number) => {
+    if (text.length > 1) {
+      // If pasting, distribute to all fields
+      if (text.length === 6) {
+        const newCode = text.split('');
+        setCode(newCode.join(''));
+        inputs.current[5].focus();
+        // Removed auto-submit to avoid premature verification. User must press Verify button.
+      }
+      return;
+    }
+
+    const newCode = [...code];
+    newCode[index] = text;
+    setCode(newCode.join(''));
+
+    // Move to next input
+    if (text && index < 5) {
+      inputs.current[index + 1].focus();
+    }
+    // Removed auto-submit when all digits are entered. Verification will occur when user presses button.
+  };
+
+  const handleKeyPress = (
+    { nativeEvent: { key } }: { nativeEvent: { key: string } },
+    index: number
+  ) => {
+    if (key === 'Backspace' && !code[index] && index > 0) {
+      inputs.current[index - 1].focus();
+    }
+  };
+
+  return (
+    <View style={styles.otpContainer}>
+      {Array(6)
+        .fill(0)
+        .map((_, index) => (
+          <TextInput
+            key={index}
+            ref={(el) => {
+              if (el) {
+                inputs.current[index] = el;
+              }
+            }}
+            style={styles.otpInput}
+            keyboardType="numeric"
+            maxLength={1}
+            onChangeText={(text) => handleTextChange(text, index)}
+            onKeyPress={(e) => handleKeyPress(e, index)}
+            value={code[index] || ''}
+          />
+        ))}
+    </View>
+  );
+};
 
 export default function RegisterScreen() {
   const [step, setStep] = useState<'mobile' | 'verification' | 'details'>('mobile');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState(''); // This will store the formatted number
+  const [rawPhoneNumber, setRawPhoneNumber] = useState(''); // This will store raw digits
   const [verificationCode, setVerificationCode] = useState('');
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -32,28 +104,38 @@ export default function RegisterScreen() {
   
   const router = useRouter();
 
-  // Format phone number with +1 prefix
-  const formatPhoneNumber = (input: string) => {
-    // Remove all non-digits
-    const digits = input.replace(/\D/g, '');
-    
-    // If it starts with 1, remove it (we'll add +1 prefix)
-    const cleanDigits = digits.startsWith('1') ? digits.slice(1) : digits;
-    
-    // Limit to 10 digits after +1
-    const limitedDigits = cleanDigits.slice(0, 10);
-    
-    return limitedDigits;
+  const formatPhoneNumberForDisplay = (digits: string) => {
+    if (!digits) return '';
+    const areaCode = digits.slice(0, 3);
+    const middle = digits.slice(3, 6);
+    const last = digits.slice(6, 10);
+  
+    if (digits.length > 6) {
+      return `(${areaCode}) ${middle}-${last}`;
+    } else if (digits.length > 3) {
+      return `(${areaCode}) ${middle}`;
+    } else if (digits.length > 0) {
+      return `(${areaCode}`;
+    }
+    return '';
   };
 
   const handlePhoneNumberChange = (input: string) => {
-    const formatted = formatPhoneNumber(input);
-    setPhoneNumber(formatted);
+    // Get only digits from the input
+    const digits = input.replace(/\D/g, '');
+    // Remove leading '1' if present
+    const cleanDigits = digits.startsWith('1') ? digits.slice(1) : digits;
+    // Limit to 10 digits
+    const limitedDigits = cleanDigits.slice(0, 10);
+    
+    setRawPhoneNumber(limitedDigits);
+    setPhoneNumber(formatPhoneNumberForDisplay(limitedDigits));
   };
+
 
   // Get full phone number with +1 prefix
   const getFullPhoneNumber = () => {
-    return phoneNumber ? `+1${phoneNumber}` : '';
+    return rawPhoneNumber ? `+1${rawPhoneNumber}` : '';
   };
 
   // Start countdown timer
@@ -71,12 +153,12 @@ export default function RegisterScreen() {
   };
 
   const handleSendVerification = async () => {
-    if (!phoneNumber) {
+    if (!rawPhoneNumber) {
       Alert.alert('Error', 'Please enter your mobile number');
       return;
     }
 
-    if (phoneNumber.length !== 10) {
+    if (rawPhoneNumber.length !== 10) {
       Alert.alert('Error', 'Please enter a valid 10-digit mobile number');
       return;
     }
@@ -104,8 +186,8 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (verificationCode.length < 4) {
-      Alert.alert('Error', 'Please enter a valid verification code');
+    if (verificationCode.length !== 6) {
+      Alert.alert('Error', 'Please enter a valid 6-digit verification code');
       return;
     }
 
@@ -194,7 +276,7 @@ export default function RegisterScreen() {
     switch (step) {
       case 'mobile': return 'Register Your Mobile';
       case 'verification': return 'Verify Your Mobile';
-      case 'details': return 'Complete Registration';
+      case 'details': return ''; // Remove header text for details step
       default: return 'Sign Up';
     }
   };
@@ -203,272 +285,303 @@ export default function RegisterScreen() {
     switch (step) {
       case 'mobile': return 'Enter your mobile number to get started';
       case 'verification': return `Code sent to ${getFullPhoneNumber()}`;
-      case 'details': return 'Fill in your details to complete registration';
+      case 'details': return ''; // Remove subtitle for details step
       default: return '';
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+    <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+      <StatusBar style="dark" translucent={false} /> // Reintroduce StatusBar
+
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 32}
+        style={{ flex: 1 }}
       >
-        <View style={styles.content}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>{getStepTitle()}</Text>
-            <Text style={styles.subtitle}>{getStepSubtitle()}</Text>
-            
-            <View style={styles.tabContainer}>
-              <TouchableOpacity 
-                style={styles.tab}
-                onPress={() => router.push('/auth/login')}
-              >
-                <Text style={styles.tabText}>Login</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.tab, styles.activeTab]}>
-                <Text style={[styles.tabText, styles.activeTabText]}>Signup</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Progress Indicator */}
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressDot, step === 'mobile' || step === 'verification' || step === 'details' ? styles.progressDotActive : null]} />
-              <View style={[styles.progressLine, step === 'verification' || step === 'details' ? styles.progressLineActive : null]} />
-              <View style={[styles.progressDot, step === 'verification' || step === 'details' ? styles.progressDotActive : null]} />
-              <View style={[styles.progressLine, step === 'details' ? styles.progressLineActive : null]} />
-              <View style={[styles.progressDot, step === 'details' ? styles.progressDotActive : null]} />
-            </View>
-          </View>
-
-          {/* Form */}
-          <View style={styles.form}>
-            {step === 'mobile' && (
-              <>
-                <View style={styles.inputContainer}>
-                  <Ionicons name="phone-portrait-outline" size={20} color="#999" style={styles.inputIcon} />
-                  <View style={styles.phoneInputContainer}>
-                    <Text style={styles.phonePrefix}>+1</Text>
-                    <TextInput
-                      style={styles.phoneInput}
-                      placeholder="(555) 123-4567"
-                      placeholderTextColor="#999"
-                      value={phoneNumber}
-                      onChangeText={handlePhoneNumberChange}
-                      keyboardType="phone-pad"
-                      autoCapitalize="none"
-                      maxLength={10}
-                    />
-                  </View>
+        <ScrollView
+          contentContainerStyle={{ 
+            flexGrow: 1, 
+            paddingHorizontal: 24, 
+            paddingBottom: 24 
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            {/* Header - Only show for mobile and verification steps */}
+            {(step === 'mobile' || step === 'verification') && (
+              <View style={styles.header}>
+                <Text style={styles.title}>{getStepTitle()}</Text>
+                <Text style={styles.subtitle}>{getStepSubtitle()}</Text>
+                
+                <View style={styles.tabContainer}>
+                  <TouchableOpacity 
+                    style={styles.tab}
+                    onPress={() => router.push('/auth/login')}
+                  >
+                    <Text style={styles.tabText}>Login</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.tab, styles.activeTab]}>
+                    <Text style={[styles.tabText, styles.activeTabText]}>Signup</Text>
+                  </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity 
-                  style={[styles.primaryButton, isLoading && styles.disabledButton]}
-                  onPress={handleSendVerification}
-                  disabled={isLoading}
-                >
-                  <LinearGradient
-                    colors={['#6B46C1', '#9333EA']}
-                    style={styles.primaryButtonGradient}
-                  >
-                    <Text style={styles.primaryButtonText}>
-                      {isLoading ? 'Sending...' : 'Send Verification Code'}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </>
-            )}
-
-            {step === 'verification' && (
-              <>
-                <View style={styles.inputContainer}>
-                  <Ionicons name="keypad-outline" size={20} color="#999" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="6-digit verification code"
-                    placeholderTextColor="#999"
-                    value={verificationCode}
-                    onChangeText={setVerificationCode}
-                    keyboardType="numeric"
-                    maxLength={6}
-                    autoCapitalize="none"
-                  />
+                {/* Progress Indicator */}
+                <View style={styles.progressContainer}>
+                  <View style={[styles.progressDot, styles.progressDotActive]} />
+                  <View style={[styles.progressLine, step === 'verification' ? styles.progressLineActive : null]} />
+                  <View style={[styles.progressDot, step === 'verification' ? styles.progressDotActive : null]} />
+                  <View style={[styles.progressLine, null]} />
+                  <View style={[styles.progressDot, null]} />
                 </View>
-
-                <TouchableOpacity 
-                  style={[styles.primaryButton, isLoading && styles.disabledButton]}
-                  onPress={handleVerifyCode}
-                  disabled={isLoading}
-                >
-                  <LinearGradient
-                    colors={['#6B46C1', '#9333EA']}
-                    style={styles.primaryButtonGradient}
-                  >
-                    <Text style={styles.primaryButtonText}>
-                      {isLoading ? 'Verifying...' : 'Verify Code'}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.secondaryButton, countdown > 0 && styles.disabledButton]}
-                  onPress={handleResendCode}
-                  disabled={countdown > 0}
-                >
-                  <Text style={styles.secondaryButtonText}>
-                    {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.backButton}
-                  onPress={() => setStep('mobile')}
-                >
-                  <Text style={styles.backButtonText}>Change Mobile Number</Text>
-                </TouchableOpacity>
-              </>
+              </View>
             )}
 
+            {/* For details step, show minimal header with just tabs and progress */}
             {step === 'details' && (
-              <>
-                <View style={styles.inputContainer}>
-                  <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Email Address"
-                    placeholderTextColor="#999"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="First Name"
-                    placeholderTextColor="#999"
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    autoCapitalize="words"
-                  />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Last Name"
-                    placeholderTextColor="#999"
-                    value={lastName}
-                    onChangeText={setLastName}
-                    autoCapitalize="words"
-                  />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    placeholderTextColor="#999"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                  />
+              <View style={[styles.header, { marginBottom: 20 }]}>
+                <View style={styles.tabContainer}>
                   <TouchableOpacity 
-                    style={styles.eyeButton}
-                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.tab}
+                    onPress={() => router.push('/auth/login')}
                   >
-                    <Ionicons 
-                      name={showPassword ? 'eye-off' : 'eye'} 
-                      size={20} 
-                      color="#999" 
-                    />
+                    <Text style={styles.tabText}>Login</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.tab, styles.activeTab]}>
+                    <Text style={[styles.tabText, styles.activeTabText]}>Signup</Text>
                   </TouchableOpacity>
                 </View>
 
-                <View style={styles.inputContainer}>
-                  <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Confirm Password"
-                    placeholderTextColor="#999"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry={!showConfirmPassword}
-                    autoCapitalize="none"
-                  />
-                  <TouchableOpacity 
-                    style={styles.eyeButton}
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    <Ionicons 
-                      name={showConfirmPassword ? 'eye-off' : 'eye'} 
-                      size={20} 
-                      color="#999" 
-                    />
-                  </TouchableOpacity>
+                {/* Progress Indicator - All steps active for details */}
+                <View style={styles.progressContainer}>
+                  <View style={[styles.progressDot, styles.progressDotActive]} />
+                  <View style={[styles.progressLine, styles.progressLineActive]} />
+                  <View style={[styles.progressDot, styles.progressDotActive]} />
+                  <View style={[styles.progressLine, styles.progressLineActive]} />
+                  <View style={[styles.progressDot, styles.progressDotActive]} />
                 </View>
-
-                {/* Terms and Conditions */}
-                <TouchableOpacity 
-                  style={styles.termsContainer}
-                  onPress={() => setTermsAccepted(!termsAccepted)}
-                >
-                  <View style={[styles.checkbox, termsAccepted && styles.checkedBox]}>
-                    {termsAccepted && (
-                      <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                    )}
-                  </View>
-                  <Text style={styles.termsText}>
-                    I agree to the <Text style={styles.linkText}>Terms & Conditions</Text>
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.primaryButton, isLoading && styles.disabledButton]}
-                  onPress={handleRegister}
-                  disabled={isLoading}
-                >
-                  <LinearGradient
-                    colors={['#6B46C1', '#9333EA']}
-                    style={styles.primaryButtonGradient}
-                  >
-                    <Text style={styles.primaryButtonText}>
-                      {isLoading ? 'Creating Account...' : 'Create Account'}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.backButton}
-                  onPress={() => setStep('verification')}
-                >
-                  <Text style={styles.backButtonText}>Back to Verification</Text>
-                </TouchableOpacity>
-              </>
+              </View>
             )}
-          </View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Already have an account?{' '}
-              <Text 
-                style={styles.footerLink}
-                onPress={() => router.push('/auth/login')}
-              >
-                Sign In
+            {/* Form */}
+            <View style={styles.form}>
+              {step === 'mobile' && (
+                <>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="phone-portrait-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <View style={styles.phoneInputContainer}>
+                      <Text style={styles.phonePrefix}>+1</Text>
+                      <TextInput
+                        style={styles.phoneInput}
+                        placeholder="(555) 123-4567"
+                        placeholderTextColor="#999"
+                        value={phoneNumber} // Display formatted number
+                        onChangeText={handlePhoneNumberChange} // Use new handler
+                        keyboardType="phone-pad"
+                        autoCapitalize="none"
+                      />
+                    </View>
+                  </View>
+
+                  <TouchableOpacity 
+                    style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                    onPress={handleSendVerification}
+                    disabled={isLoading}
+                  >
+                    <LinearGradient
+                      colors={['#6B46C1', '#9333EA']}
+                      style={styles.primaryButtonGradient}
+                    >
+                      <Text style={styles.primaryButtonText}>
+                        {isLoading ? 'Sending...' : 'Send Verification Code'}
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {step === 'verification' && (
+                <>
+                  <OTPInput
+                    code={verificationCode}
+                    setCode={setVerificationCode}
+                    onComplete={() => {}} // Disabled auto-submit
+                  />
+
+                  <TouchableOpacity 
+                    style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                    onPress={handleVerifyCode}
+                    disabled={isLoading}
+                  >
+                    <LinearGradient
+                      colors={['#6B46C1', '#9333EA']}
+                      style={styles.primaryButtonGradient}
+                    >
+                      <Text style={styles.primaryButtonText}>
+                        {isLoading ? 'Verifying...' : 'Verify Code'}
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.secondaryButton, countdown > 0 && styles.disabledButton]}
+                    onPress={handleResendCode}
+                    disabled={countdown > 0}
+                  >
+                    <Text style={styles.secondaryButtonText}>
+                      {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.backButton}
+                    onPress={() => setStep('mobile')}
+                  >
+                    <Text style={styles.backButtonText}>Change Mobile Number</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {step === 'details' && (
+                <>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Email Address"
+                      placeholderTextColor="#999"
+                      value={email}
+                      onChangeText={setEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="First Name"
+                      placeholderTextColor="#999"
+                      value={firstName}
+                      onChangeText={setFirstName}
+                      autoCapitalize="words"
+                    />
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Last Name"
+                      placeholderTextColor="#999"
+                      value={lastName}
+                      onChangeText={setLastName}
+                      autoCapitalize="words"
+                    />
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Password"
+                      placeholderTextColor="#999"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                    />
+                    <TouchableOpacity 
+                      style={styles.eyeButton}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <Ionicons 
+                        name={showPassword ? 'eye-off' : 'eye'} 
+                        size={20} 
+                        color="#999" 
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Confirm Password"
+                      placeholderTextColor="#999"
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry={!showConfirmPassword}
+                      autoCapitalize="none"
+                    />
+                    <TouchableOpacity 
+                      style={styles.eyeButton}
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      <Ionicons 
+                        name={showConfirmPassword ? 'eye-off' : 'eye'} 
+                        size={20} 
+                        color="#999" 
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Terms and Conditions */}
+                  <TouchableOpacity 
+                    style={styles.termsContainer}
+                    onPress={() => setTermsAccepted(!termsAccepted)}
+                  >
+                    <View style={[styles.checkbox, termsAccepted && styles.checkedBox]}>
+                      {termsAccepted && (
+                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                      )}
+                    </View>
+                    <Text style={styles.termsText}>
+                      I agree to the <Text style={styles.linkText}>Terms & Conditions</Text>
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                    onPress={handleRegister}
+                    disabled={isLoading}
+                  >
+                    <LinearGradient
+                      colors={['#6B46C1', '#9333EA']}
+                      style={styles.primaryButtonGradient}
+                    >
+                      <Text style={styles.primaryButtonText}>
+                        {isLoading ? 'Creating Account...' : 'Create Account'}
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.backButton}
+                    onPress={() => setStep('verification')}
+                  >
+                    <Text style={styles.backButtonText}>Back to Verification</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                Already have an account?{' '}
+                <Text 
+                  style={styles.footerLink}
+                  onPress={() => router.push('/auth/login')}
+                >
+                  Sign In
+                </Text>
               </Text>
-            </Text>
+            </View>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -484,7 +597,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
     justifyContent: 'center',
   },
   header: {
@@ -553,7 +665,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#6B46C1',
   },
   form: {
-    marginBottom: 32,
+    marginBottom: 40,
+    width: '100%', // Make form take full width like login screen
   },
   inputContainer: {
     flexDirection: 'row',
@@ -627,6 +740,7 @@ const styles = StyleSheet.create({
     color: '#6B46C1',
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
   },
   disabledButton: {
     opacity: 0.6,
@@ -684,5 +798,23 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#1F2937',
+  },
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 24,
+  },
+  otpInput: {
+    width: 48,
+    height: 56,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    backgroundColor: '#FFFFFF',
   },
 }); 

@@ -28,9 +28,12 @@ export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
       stripeService.setAuthToken(authToken);
       const methods = await stripeService.getPaymentMethods();
       setPaymentMethods(methods);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching payment methods:', error);
-      Alert.alert('Error', 'Failed to fetch payment methods');
+      // Ignore unauthorized errors to avoid alarming logged-out users
+      if (error?.response?.status !== 401) {
+        Alert.alert('Oops', 'Unable to load your payment methods right now. Please try again later.');
+      }
     }
   };
 

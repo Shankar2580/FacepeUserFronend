@@ -5,15 +5,18 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
+  // Removed SafeAreaView from react-native
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ScrollView, // Added ScrollView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
+import { SafeAreaView } from 'react-native-safe-area-context'; // Changed import
+import { StatusBar } from 'expo-status-bar'; // Added StatusBar
 
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState(''); // mobile number or email
@@ -73,104 +76,117 @@ export default function LoginScreen() {
 
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+    <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+      {/* keeps text below the notch on both OSes */}
+      <StatusBar style="dark" translucent={false} />
+
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 32} // tweak if needed
+        style={{ flex: 1 }}
       >
-        <View style={styles.content}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to your account</Text>
-            
-            <View style={styles.tabContainer}>
-              <TouchableOpacity style={[styles.tab, styles.activeTab]}>
-                <Text style={[styles.tabText, styles.activeTabText]}>Login</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.tab}
-                onPress={() => router.push('/auth/register')}
-              >
-                <Text style={styles.tabText}>Signup</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Form */}
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Mobile Number or Email"
-                placeholderTextColor="#999"
-                value={identifier}
-                onChangeText={setIdentifier}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+        {/* makes long forms scroll past the keyboard */}
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: 24 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={styles.title}>Welcome Back</Text>
+              <Text style={styles.subtitle}>Sign in to your account</Text>
+              
+              <View style={styles.tabContainer}>
+                <TouchableOpacity style={[styles.tab, styles.activeTab]}>
+                  <Text style={[styles.tabText, styles.activeTabText]}>Login</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.tab}
+                  onPress={() => router.push('/auth/register')}
+                >
+                  <Text style={styles.tabText}>Signup</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#999"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity 
-                style={styles.eyeButton}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons 
-                  name={showPassword ? 'eye-off' : 'eye'} 
-                  size={20} 
-                  color="#999" 
+            {/* Form */}
+            <View style={styles.form}>
+              <View style={styles.inputContainer}>
+                <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Mobile Number or Email"
+                  placeholderTextColor="#999"
+                  value={identifier}
+                  onChangeText={setIdentifier}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor="#999"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity 
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons 
+                    name={showPassword ? 'eye-off' : 'eye'} 
+                    size={20} 
+                    color="#999" 
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.forgotPasswordButton}
+                onPress={() => router.push('/auth/forgot-password')}
+              >
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.loginButton, isLoading && styles.disabledButton]}
+                onPress={handleLogin}
+                disabled={isLoading}
+              >
+                <LinearGradient
+                  colors={['#6B46C1', '#9333EA']}
+                  style={styles.loginButtonGradient}
+                >
+                  <Text style={styles.loginButtonText}>
+                    {isLoading ? 'Signing In...' : 'Sign In'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+
             </View>
 
-            <TouchableOpacity style={styles.forgotPasswordButton}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.loginButton, isLoading && styles.disabledButton]}
-              onPress={handleLogin}
-              disabled={isLoading}
-            >
-              <LinearGradient
-                colors={['#6B46C1', '#9333EA']}
-                style={styles.loginButtonGradient}
-              >
-                <Text style={styles.loginButtonText}>
-                  {isLoading ? 'Signing In...' : 'Sign In'}
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                Don't have an account?{' '}
+                <Text 
+                  style={styles.footerLink}
+                  onPress={() => router.push('/auth/register')}
+                >
+                  Sign Up
                 </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Don't have an account?{' '}
-              <Text 
-                style={styles.footerLink}
-                onPress={() => router.push('/auth/register')}
-              >
-                Sign Up
               </Text>
-            </Text>
+            </View>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

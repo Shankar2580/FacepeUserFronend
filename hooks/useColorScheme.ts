@@ -1,1 +1,4 @@
-export { useColorScheme } from 'react-native';
+// Always return 'light' to disable dark mode
+export function useColorScheme() {
+  return 'light' as const;
+}

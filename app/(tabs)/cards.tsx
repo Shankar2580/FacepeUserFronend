@@ -30,9 +30,11 @@ export default function CardsScreen() {
     try {
       const cards = await apiService.getPaymentMethods();
       setPaymentMethods(cards);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load cards:', error);
-      Alert.alert('Error', 'Failed to load payment methods');
+      if (error?.response?.status !== 401) {
+        Alert.alert('Oops', 'Unable to load your payment methods right now. Please try again later.');
+      }
     } finally {
       setIsLoading(false);
     }

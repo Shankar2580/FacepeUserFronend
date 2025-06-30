@@ -17,12 +17,13 @@ Notifications.setNotificationHandler({
 
 export interface PaymentNotificationData {
   [key: string]: unknown;
-  type: 'payment_request' | 'payment_approved' | 'payment_failed' | 'auto_payment_processed';
+  type: 'payment_request' | 'payment_approved' | 'payment_failed' | 'payment_declined' | 'auto_payment_processed';
   paymentId: string;
   merchantName: string;
   amount: number;
   requestId?: string;
   isAutoPayMerchant?: boolean;
+  reason?: string;
 }
 
 class NotificationService {
@@ -63,7 +64,7 @@ class NotificationService {
 
     try {
       const token = await Notifications.getExpoPushTokenAsync({
-        projectId: 'your-expo-project-id', // Replace with your actual project ID
+        projectId: '9a6e1234-6ddb-4e4d-84f3-74c1d5b24ff0', // Replace with your actual project ID from app.json
       });
       this.expoPushToken = token.data;
       console.log('Expo push token:', this.expoPushToken);
@@ -118,8 +119,9 @@ class NotificationService {
         }
         break;
         
-      case 'payment_approved':
+              case 'payment_approved':
       case 'payment_failed':
+      case 'payment_declined':
       case 'auto_payment_processed':
         // Navigate to transaction detail in history
         if (data.paymentId) {
@@ -196,16 +198,23 @@ class NotificationService {
     reason?: string;
   }) {
     const notificationData: PaymentNotificationData = {
-      type: 'payment_failed',
+      type: data.reason === 'Declined by user' ? 'payment_declined' : 'payment_failed',
       paymentId: data.paymentId,
       merchantName: data.merchantName,
       amount: data.amount,
+      reason: data.reason,
     };
+
+    const isDeclined = data.reason === 'Declined by user';
+    const title = isDeclined ? '🚫 Payment Declined' : '❌ Payment Failed';
+    const body = isDeclined 
+      ? `You declined payment of $${data.amount.toFixed(2)} to ${data.merchantName}`
+      : `Payment of $${data.amount.toFixed(2)} to ${data.merchantName} failed${data.reason ? `: ${data.reason}` : ''}`;
 
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '❌ Payment Failed',
-        body: `Payment of $${data.amount.toFixed(2)} to ${data.merchantName} failed${data.reason ? `: ${data.reason}` : ''}`,
+        title,
+        body,
         data: notificationData,
         sound: true,
         priority: Notifications.AndroidNotificationPriority.HIGH,

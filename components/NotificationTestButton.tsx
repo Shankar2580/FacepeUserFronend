@@ -2,85 +2,71 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
 import { notificationService } from '../services/notificationService';
 
-interface NotificationTestButtonProps {
-  onPress?: () => void;
-}
-
-export const NotificationTestButton: React.FC<NotificationTestButtonProps> = ({ onPress }) => {
+export default function NotificationTestButton() {
   const testNotifications = async () => {
-    Alert.alert(
-      'Test Notifications',
-      'Choose notification type to test:',
-      [
-        {
-          text: 'Payment Request',
-          onPress: () => {
-            notificationService.notifyPaymentRequest({
-              merchantName: 'Test Merchant',
-              amount: 25.99,
-              requestId: 'test-req-123',
-              paymentId: 'test-pay-123',
-              isAutoPayMerchant: false,
-            });
-          },
-        },
-        {
-          text: 'Auto Payment',
-          onPress: () => {
-            notificationService.notifyAutoPaymentProcessed({
-              merchantName: 'Auto Test Merchant',
-              amount: 15.50,
-              paymentId: 'test-auto-123',
-            });
-          },
-        },
-        {
-          text: 'Payment Approved',
-          onPress: () => {
-            notificationService.notifyPaymentApproved({
-              merchantName: 'Approved Merchant',
-              amount: 45.00,
-              paymentId: 'test-approved-123',
-            });
-          },
-        },
-        {
-          text: 'Payment Failed',
-          onPress: () => {
-            notificationService.notifyPaymentFailed({
-              merchantName: 'Failed Merchant',
-              amount: 35.75,
-              paymentId: 'test-failed-123',
-              reason: 'Insufficient funds',
-            });
-          },
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
-    
-    onPress?.();
+    try {
+      // Test different notification types
+      await notificationService.notifyPaymentRequest({
+        merchantName: 'Test Merchant',
+        amount: 25.50,
+        requestId: 'test-request-123',
+        paymentId: 'test-payment-123',
+        isAutoPayMerchant: false,
+      });
+
+      // Wait a bit then test payment approved
+      setTimeout(async () => {
+        await notificationService.notifyPaymentApproved({
+          merchantName: 'Test Merchant',
+          amount: 25.50,
+          paymentId: 'test-payment-123',
+        });
+      }, 2000);
+
+      // Wait a bit then test payment declined
+      setTimeout(async () => {
+        await notificationService.notifyPaymentFailed({
+          merchantName: 'Another Merchant',
+          amount: 15.75,
+          paymentId: 'test-payment-456',
+          reason: 'Declined by user',
+        });
+      }, 4000);
+
+      // Test auto payment
+      setTimeout(async () => {
+        await notificationService.notifyAutoPaymentProcessed({
+          merchantName: 'Auto Pay Merchant',
+          amount: 12.99,
+          paymentId: 'test-payment-789',
+        });
+      }, 6000);
+
+      Alert.alert('Success', 'Test notifications sent! Check your notification panel.');
+    } catch (error) {
+      console.error('Failed to send test notifications:', error);
+      Alert.alert('Error', 'Failed to send test notifications');
+    }
   };
 
   return (
-    <TouchableOpacity style={styles.testButton} onPress={testNotifications}>
-      <Text style={styles.testButtonText}>🔔 Test Notifications</Text>
+    <TouchableOpacity style={styles.button} onPress={testNotifications}>
+      <Text style={styles.buttonText}>🔔 Test Notifications</Text>
     </TouchableOpacity>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  testButton: {
-    backgroundColor: '#6B46C1',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  button: {
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: 8,
-    marginHorizontal: 20,
-    marginVertical: 10,
+    margin: 10,
   },
-  testButtonText: {
+  buttonText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
   },
