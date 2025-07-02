@@ -16,6 +16,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { apiService } from '../../services/api';
 import { PaymentMethod, Transaction, PaymentRequest } from '../../constants/types';
 import { notificationService } from '../../services/notificationService';
+import { PaymentCard } from '../../components/ui/PaymentCard';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 export default function HomeScreen() {
   const [defaultCard, setDefaultCard] = useState<PaymentMethod | null>(null);
@@ -26,6 +29,7 @@ export default function HomeScreen() {
   const { user, refreshUser } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
 
   // Load data function
   const loadData = useCallback(async () => {
@@ -74,42 +78,6 @@ export default function HomeScreen() {
 
   const handleFaceRegistration = () => {
     router.push('/face-registration');
-  };
-
-  const formatCardNumber = (lastFour: string) => {
-    if (!lastFour || typeof lastFour !== 'string') return '•••• •••• •••• ••••';
-    return `•••• •••• •••• ${lastFour}`;
-  };
-
-  const getCardBrandIcon = (brand: string) => {
-    if (!brand || typeof brand !== 'string') return 'CARD'; // Handle undefined/null/non-string brand
-    switch (brand.toLowerCase()) {
-      case 'visa': return 'VISA';
-      case 'mastercard': return 'Mastercard';
-      case 'amex': return 'AMEX';
-      case 'discover': return 'DISCOVER';
-      default: return 'CARD';
-    }
-  };
-
-  // Updated getCardColor function to match cards section - brand-based colors
-  const getCardColor = (brand: string) => {
-    if (!brand || typeof brand !== 'string') return ['#4A5568', '#2D3748']; // Handle undefined/null/non-string brand
-    
-    switch (brand.toLowerCase()) {
-      case 'visa': return ['#1e3c72', '#2a5298']; // Premium blue gradient
-      case 'mastercard': return ['#2D3748', '#4A5568']; // Dark grey gradient
-      case 'amex': return ['#2c3e50', '#34495e']; // Premium dark gradient
-      case 'discover': return ['#f39c12', '#e67e22']; // Premium orange gradient
-      default: return ['#4A5568', '#2D3748'];
-    }
-  };
-
-  const formatExpiry = (month: number, year: number) => {
-    if (!month || !year || isNaN(month) || isNaN(year)) return '••/••';
-    const monthStr = String(month).padStart(2, '0');
-    const yearStr = String(year).slice(-2);
-    return `${monthStr}/${yearStr}`;
   };
 
   const formatAmount = (amount: number) => {
@@ -202,15 +170,15 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { 
-            paddingTop: insets.top + 20,
-            paddingBottom: insets.bottom + 100 // Extra padding for tab bar
-          }
+          {
+            paddingTop: 20,
+            paddingBottom: tabBarHeight + insets.bottom + 20,
+          },
         ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -258,46 +226,11 @@ export default function HomeScreen() {
         <View style={styles.cardSection}>
           <Text style={styles.sectionTitle}>Your Cards</Text>
           {defaultCard ? (
-            <TouchableOpacity 
-              style={[
-                styles.creditCard,
-                { backgroundColor: getCardColor(defaultCard.card_brand)[0] }
-              ]}
+            <PaymentCard
+              card={defaultCard}
+              showDefaultBadge={true}
               onPress={() => router.push('/(tabs)/cards')}
-            >
-              {/* Card Header */}
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardBrand}>
-                  {getCardBrandIcon(defaultCard.card_brand)}
-                </Text>
-                <View style={styles.cardActions}>
-                  <View style={styles.defaultBadge}>
-                    <Text style={styles.defaultText}>DEFAULT</Text>
-                  </View>
-                  <View style={styles.cardChip} />
-                </View>
-              </View>
-              
-              {/* Card Number */}
-              <Text style={styles.cardNumber}>
-                {formatCardNumber(defaultCard.card_last_four)}
-              </Text>
-              
-              {/* Card Footer */}
-              <View style={styles.cardFooter}>
-                <View style={styles.cardExpiry}>
-                  <Text style={styles.cardLabel}>EXPIRES</Text>
-                  <Text style={styles.cardValue}>
-                    {formatExpiry(defaultCard.card_exp_month, defaultCard.card_exp_year)}
-                  </Text>
-                </View>
-                <View style={styles.cardNetwork}>
-                  <Text style={styles.networkText}>
-                    {getCardBrandIcon(defaultCard.card_brand)}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
+            />
           ) : (
             <TouchableOpacity 
               style={styles.addCardPrompt}
@@ -375,7 +308,7 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -471,100 +404,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 16,
   },
-  creditCard: {
-    borderRadius: 20,
-    padding: 24,
-    minHeight: 180,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 15,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  },
-  cardBrand: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  defaultBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  defaultText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  cardChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    width: 32,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  cardNumber: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '500',
-    letterSpacing: 2,
-    marginBottom: 20,
-    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardExpiry: {
-    flex: 1,
-  },
-  cardLabel: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 10,
-    fontWeight: '500',
-    marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  cardValue: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  cardNetwork: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  networkText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
+
   addCardPrompt: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,

@@ -292,7 +292,7 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-      <StatusBar style="dark" translucent={false} /> // Reintroduce StatusBar
+      <StatusBar style="dark" translucent={false} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -375,8 +375,8 @@ export default function RegisterScreen() {
                         style={styles.phoneInput}
                         placeholder="(555) 123-4567"
                         placeholderTextColor="#999"
-                        value={phoneNumber} // Display formatted number
-                        onChangeText={handlePhoneNumberChange} // Use new handler
+                        value={phoneNumber}
+                        onChangeText={handlePhoneNumberChange}
                         keyboardType="phone-pad"
                         autoCapitalize="none"
                       />
@@ -405,7 +405,7 @@ export default function RegisterScreen() {
                   <OTPInput
                     code={verificationCode}
                     setCode={setVerificationCode}
-                    onComplete={() => {}} // Disabled auto-submit
+                    onComplete={() => {}}
                   />
 
                   <TouchableOpacity 

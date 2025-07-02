@@ -13,6 +13,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiService } from '../services/api';
 import { TransactionDetail, PaymentMethod, CreateAutoPayRequest, AutoPay } from '../constants/types';
 
@@ -20,6 +21,8 @@ export default function TransactionDetailScreen() {
   const { transactionId } = useLocalSearchParams<{ transactionId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // This screen is in a stack outside the tab navigator, so there is no bottom tab bar.
+  const tabBarHeight = 0;
   
   const [transaction, setTransaction] = useState<TransactionDetail | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -200,231 +203,237 @@ export default function TransactionDetailScreen() {
   }
 
   return (
-    <ScrollView 
-      style={[styles.container, { paddingTop: insets.top }]}
-      contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backIcon}>
-          <Ionicons name="arrow-back" size={24} color="#6B46C1" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Transaction Details</Text>
-      </View>
-
-      {/* Transaction Status */}
-      <View style={styles.statusCard}>
-        <View style={styles.statusHeader}>
-          <Ionicons
-            name={getStatusIcon(transaction.status)}
-            size={32}
-            color={getStatusColor(transaction.status)}
-          />
-          <View style={styles.statusInfo}>
-            <Text style={styles.statusText}>{transaction.status.toUpperCase()}</Text>
-            <Text style={styles.amountText}>{formatCurrency(transaction.amount)}</Text>
-          </View>
-        </View>
-        {transaction.is_auto_paid && (
-          <View style={styles.autoPayBadge}>
-            <Ionicons name="flash" size={16} color="#4CAF50" />
-            <Text style={styles.autoPayText}>Auto-paid</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Transaction Details */}
-      <View style={styles.detailsCard}>
-        <Text style={styles.cardTitle}>Transaction Information</Text>
-        
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Merchant</Text>
-          <Text style={styles.detailValue}>{transaction.merchant_name}</Text>
-        </View>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Amount</Text>
-          <Text style={styles.detailValue}>{formatCurrency(transaction.amount)}</Text>
-        </View>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Currency</Text>
-          <Text style={styles.detailValue}>{transaction.currency.toUpperCase()}</Text>
-        </View>
-
-        {transaction.description && (
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Description</Text>
-            <Text style={styles.detailValue}>{transaction.description}</Text>
-          </View>
-        )}
-
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Transaction ID</Text>
-          <Text style={styles.detailValue}>{transaction.id}</Text>
-        </View>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Date</Text>
-          <Text style={styles.detailValue}>{formatDate(transaction.created_at)}</Text>
-        </View>
-
-        {transaction.stripe_payment_intent_id && (
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Stripe Payment ID</Text>
-            <Text style={styles.detailValue}>{transaction.stripe_payment_intent_id}</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Payment Method */}
-      {transaction.payment_method && (
-        <View style={styles.detailsCard}>
-          <Text style={styles.cardTitle}>Payment Method</Text>
-          
-          <View style={styles.paymentMethodInfo}>
-            <Ionicons name="card" size={24} color="#6B46C1" />
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardBrand}>
-                {transaction.payment_method.card_brand.toUpperCase()} •••• {transaction.payment_method.card_last_four}
-              </Text>
-              <Text style={styles.cardExpiry}>
-                Expires {transaction.payment_method.card_exp_month}/{transaction.payment_method.card_exp_year}
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Auto Pay Setup */}
-      {transaction.status === 'completed' && !isAutoPayAlreadyEnabled() && (
-        <View style={styles.autoPayCard}>
-          <View style={styles.autoPayHeader}>
-            <Ionicons name="flash" size={24} color="#4CAF50" />
-            <Text style={styles.autoPayTitle}>Set up Auto-Pay</Text>
-          </View>
-          <Text style={styles.autoPayDescription}>
-            Enable automatic payments for {transaction.merchant_name} to skip approval for future transactions under your set limit.
-          </Text>
-          <TouchableOpacity
-            style={styles.setupAutoPayButton}
-            onPress={() => setShowAutoPayModal(true)}
-          >
-            <Text style={styles.setupAutoPayButtonText}>Set Up Auto-Pay</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Auto Pay Already Enabled */}
-      {isAutoPayAlreadyEnabled() && (
-        <View style={styles.autoPayCard}>
-          <View style={styles.autoPayHeader}>
-            <Ionicons name="flash" size={24} color="#10B981" />
-            <Text style={styles.autoPayTitle}>Auto-Pay Enabled</Text>
-          </View>
-          <Text style={styles.autoPayDescription}>
-            Automatic payments are configured for {transaction.merchant_name}. You can manage your auto-pay settings, edit limits, or disable auto-pay.
-          </Text>
-          <TouchableOpacity
-            style={[styles.setupAutoPayButton, { backgroundColor: '#6B46C1' }]}
-            onPress={() => router.push('/autopay-settings')}
-          >
-            <Text style={styles.setupAutoPayButtonText}>Manage Auto-Pay</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Auto Pay Setup Modal */}
-      <Modal
-        visible={showAutoPayModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowAutoPayModal(false)}
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowAutoPayModal(false)}>
-              <Text style={styles.modalCancelButton}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Set Up Auto-Pay</Text>
-            <TouchableOpacity onPress={handleSetupAutoPay} disabled={settingUpAutoPay}>
-              <Text style={[styles.modalSaveButton, settingUpAutoPay && styles.disabledButton]}>
-                {settingUpAutoPay ? 'Setting Up...' : 'Save'}
-              </Text>
-            </TouchableOpacity>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backIcon}>
+            <Ionicons name="arrow-back" size={24} color="#6B46C1" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Transaction Details</Text>
+        </View>
+
+        {/* Transaction Status */}
+        <View style={styles.statusCard}>
+          <View style={styles.statusHeader}>
+            <Ionicons
+              name={getStatusIcon(transaction.status)}
+              size={32}
+              color={getStatusColor(transaction.status)}
+            />
+            <View style={styles.statusInfo}>
+              <Text style={styles.statusText}>{transaction.status.toUpperCase()}</Text>
+              <Text style={styles.amountText}>{formatCurrency(transaction.amount)}</Text>
+            </View>
+          </View>
+          {transaction.is_auto_paid && (
+            <View style={styles.autoPayBadge}>
+              <Ionicons name="flash" size={16} color="#4CAF50" />
+              <Text style={styles.autoPayText}>Auto-paid</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Transaction Details */}
+        <View style={styles.detailsCard}>
+          <Text style={styles.cardTitle}>Transaction Information</Text>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Merchant</Text>
+            <Text style={styles.detailValue}>{transaction.merchant_name}</Text>
           </View>
 
-          <ScrollView style={styles.modalContent}>
-            <Text style={styles.modalMerchant}>{transaction.merchant_name}</Text>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Amount</Text>
+            <Text style={styles.detailValue}>{formatCurrency(transaction.amount)}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Currency</Text>
+            <Text style={styles.detailValue}>{transaction.currency.toUpperCase()}</Text>
+          </View>
+
+          {transaction.description && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Description</Text>
+              <Text style={styles.detailValue}>{transaction.description}</Text>
+            </View>
+          )}
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Transaction ID</Text>
+            <Text style={styles.detailValue}>{transaction.id}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Date</Text>
+            <Text style={styles.detailValue}>{formatDate(transaction.created_at)}</Text>
+          </View>
+
+          {transaction.stripe_payment_intent_id && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Stripe Payment ID</Text>
+              <Text style={styles.detailValue}>{transaction.stripe_payment_intent_id}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Payment Method */}
+        {transaction.payment_method && (
+          <View style={styles.detailsCard}>
+            <Text style={styles.cardTitle}>Payment Method</Text>
             
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Maximum Amount Limit</Text>
-              <View style={styles.inputContainer}>
-                <Text style={styles.currencySymbol}>$</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  value={autoPayLimit}
-                  onChangeText={(text) => {
-                    // Allow only numbers and decimal point
-                    const filteredText = text.replace(/[^0-9.]/g, '');
-                    // Ensure only one decimal point
-                    const parts = filteredText.split('.');
-                    if (parts.length > 2) {
-                      return;
-                    }
-                    // Limit to 2 decimal places
-                    if (parts[1] && parts[1].length > 2) {
-                      return;
-                    }
-                    setAutoPayLimit(filteredText);
-                  }}
-                  placeholder="0.00"
-                  keyboardType="decimal-pad"
-                  editable={!settingUpAutoPay}
-                  returnKeyType="done"
-                />
+            <View style={styles.paymentMethodInfo}>
+              <Ionicons name="card" size={24} color="#6B46C1" />
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardBrand}>
+                  {transaction.payment_method.card_brand.toUpperCase()} •••• {transaction.payment_method.card_last_four}
+                </Text>
+                <Text style={styles.cardExpiry}>
+                  Expires {transaction.payment_method.card_exp_month}/{transaction.payment_method.card_exp_year}
+                </Text>
               </View>
-              <Text style={styles.inputHint}>
-                Any transaction from {transaction.merchant_name} under this amount will be automatically approved and charged to your selected payment method.
-              </Text>
-              <Text style={styles.inputExample}>
-                Examples: $25.00 for coffee shops, $100.00 for grocery stores
-              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Auto Pay Setup */}
+        {transaction.status === 'completed' && !isAutoPayAlreadyEnabled() && (
+          <View style={styles.autoPayCard}>
+            <View style={styles.autoPayHeader}>
+              <Ionicons name="flash" size={24} color="#4CAF50" />
+              <Text style={styles.autoPayTitle}>Set up Auto-Pay</Text>
+            </View>
+            <Text style={styles.autoPayDescription}>
+              Enable automatic payments for {transaction.merchant_name} to skip approval for future transactions under your set limit.
+            </Text>
+            <TouchableOpacity
+              style={styles.setupAutoPayButton}
+              onPress={() => setShowAutoPayModal(true)}
+            >
+              <Text style={styles.setupAutoPayButtonText}>Set Up Auto-Pay</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Auto Pay Already Enabled */}
+        {isAutoPayAlreadyEnabled() && (
+          <View style={styles.autoPayCard}>
+            <View style={styles.autoPayHeader}>
+              <Ionicons name="flash" size={24} color="#10B981" />
+              <Text style={styles.autoPayTitle}>Auto-Pay Enabled</Text>
+            </View>
+            <Text style={styles.autoPayDescription}>
+              Automatic payments are configured for {transaction.merchant_name}. You can manage your auto-pay settings, edit limits, or disable auto-pay.
+            </Text>
+            <TouchableOpacity
+              style={[styles.setupAutoPayButton, { backgroundColor: '#6B46C1' }]}
+              onPress={() => router.push('/autopay-settings')}
+            >
+              <Text style={styles.setupAutoPayButtonText}>Manage Auto-Pay</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Auto Pay Setup Modal */}
+        <Modal
+          visible={showAutoPayModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowAutoPayModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setShowAutoPayModal(false)}>
+                <Text style={styles.modalCancelButton}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Set Up Auto-Pay</Text>
+              <TouchableOpacity onPress={handleSetupAutoPay} disabled={settingUpAutoPay}>
+                <Text style={[styles.modalSaveButton, settingUpAutoPay && styles.disabledButton]}>
+                  {settingUpAutoPay ? 'Setting Up...' : 'Save'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Payment Method</Text>
-              {paymentMethods.map((method) => (
-                <TouchableOpacity
-                  key={method.id}
-                  style={[
-                    styles.paymentMethodOption,
-                    selectedPaymentMethod === method.id && styles.selectedPaymentMethod,
-                  ]}
-                  onPress={() => setSelectedPaymentMethod(method.id)}
-                  disabled={settingUpAutoPay}
-                >
-                  <Ionicons name="card" size={20} color="#6B46C1" />
-                  <Text style={styles.paymentMethodText}>
-                    {method.card_brand.toUpperCase()} •••• {method.card_last_four}
-                  </Text>
-                  {method.is_default && (
-                    <View style={styles.defaultBadge}>
-                      <Text style={styles.defaultBadgeText}>Default</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
-    </ScrollView>
+            <ScrollView style={styles.modalContent}>
+              <Text style={styles.modalMerchant}>{transaction.merchant_name}</Text>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Maximum Amount Limit</Text>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.currencySymbol}>$</Text>
+                  <TextInput
+                    style={styles.amountInput}
+                    value={autoPayLimit}
+                    onChangeText={(text) => {
+                      // Allow only numbers and decimal point
+                      const filteredText = text.replace(/[^0-9.]/g, '');
+                      // Ensure only one decimal point
+                      const parts = filteredText.split('.');
+                      if (parts.length > 2) {
+                        return;
+                      }
+                      // Limit to 2 decimal places
+                      if (parts[1] && parts[1].length > 2) {
+                        return;
+                      }
+                      setAutoPayLimit(filteredText);
+                    }}
+                    placeholder="0.00"
+                    keyboardType="decimal-pad"
+                    editable={!settingUpAutoPay}
+                    returnKeyType="done"
+                  />
+                </View>
+                <Text style={styles.inputHint}>
+                  Any transaction from {transaction.merchant_name} under this amount will be automatically approved and charged to your selected payment method.
+                </Text>
+                <Text style={styles.inputExample}>
+                  Examples: $25.00 for coffee shops, $100.00 for grocery stores
+                </Text>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Payment Method</Text>
+                {paymentMethods.map((method) => (
+                  <TouchableOpacity
+                    key={method.id}
+                    style={[
+                      styles.paymentMethodOption,
+                      selectedPaymentMethod === method.id && styles.selectedPaymentMethod,
+                    ]}
+                    onPress={() => setSelectedPaymentMethod(method.id)}
+                    disabled={settingUpAutoPay}
+                  >
+                    <Ionicons name="card" size={20} color="#6B46C1" />
+                    <Text style={styles.paymentMethodText}>
+                      {method.card_brand.toUpperCase()} •••• {method.card_last_four}
+                    </Text>
+                    {method.is_default && (
+                      <View style={styles.defaultBadge}>
+                        <Text style={styles.defaultBadgeText}>Default</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        </Modal>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',

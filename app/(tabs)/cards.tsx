@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../../services/api';
 import { PaymentMethod } from '../../constants/types';
 import { useAuth } from '../../hooks/useAuth';
+import { PaymentCard } from '../../components/ui/PaymentCard';
 
 export default function CardsScreen() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -91,41 +92,7 @@ export default function CardsScreen() {
     );
   };
 
-  const formatCardNumber = (lastFour: string) => {
-    if (!lastFour || typeof lastFour !== 'string') return '•••• •••• •••• ••••';
-    return `•••• •••• •••• ${lastFour}`;
-  };
 
-  const getCardBrandIcon = (brand: string) => {
-    if (!brand || typeof brand !== 'string') return 'CARD'; // Handle undefined/null/non-string brand
-    switch (brand.toLowerCase()) {
-      case 'visa': return 'VISA';
-      case 'mastercard': return 'Mastercard';
-      case 'amex': return 'AMEX';
-      case 'discover': return 'DISCOVER';
-      default: return 'CARD';
-    }
-  };
-
-  // Updated getCardColor function - brand-based colors regardless of default status
-  const getCardColor = (brand: string) => {
-    if (!brand || typeof brand !== 'string') return ['#4A5568', '#2D3748']; // Handle undefined/null/non-string brand
-    
-    switch (brand.toLowerCase()) {
-      case 'visa': return ['#1e3c72', '#2a5298']; // Premium blue gradient
-      case 'mastercard': return ['#2D3748', '#4A5568']; // Dark grey gradient
-      case 'amex': return ['#2c3e50', '#34495e']; // Premium dark gradient
-      case 'discover': return ['#f39c12', '#e67e22']; // Premium orange gradient
-      default: return ['#4A5568', '#2D3748'];
-    }
-  };
-
-  const formatExpiry = (month: number, year: number) => {
-    if (!month || !year || isNaN(month) || isNaN(year)) return '••/••';
-    const monthStr = String(month).padStart(2, '0');
-    const yearStr = String(year).slice(-2);
-    return `${monthStr}/${yearStr}`;
-  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -152,77 +119,16 @@ export default function CardsScreen() {
       >
         {paymentMethods.length > 0 ? (
           <View style={styles.cardsContainer}>
-            {paymentMethods.map((card, index) => {
-              const gradientColors = getCardColor(card.card_brand);
-              return (
-                <View key={card.id} style={styles.cardWrapper}>
-                  <View 
-                    style={[
-                      styles.creditCard,
-                      { backgroundColor: gradientColors[0] }
-                    ]}
-                  >
-                    {/* Card Header */}
-                    <View style={styles.cardHeader}>
-                      <Text style={styles.cardBrand}>
-                        {getCardBrandIcon(card.card_brand)}
-                      </Text>
-                      <View style={styles.cardActions}>
-                        {card.is_default && (
-                          <View style={styles.defaultBadge}>
-                            <Text style={styles.defaultText}>DEFAULT</Text>
-                          </View>
-                        )}
-                        <View style={styles.cardChip} />
-                      </View>
-                    </View>
-
-                    {/* Card Number */}
-                    <Text style={styles.cardNumber}>
-                      {formatCardNumber(card.card_last_four)}
-                    </Text>
-
-                    {/* Card Footer - Only Expiry */}
-                    <View style={styles.cardFooter}>
-                      <View style={styles.cardExpiry}>
-                        <Text style={styles.cardLabel}>EXPIRES</Text>
-                        <Text style={styles.cardValue}>
-                          {formatExpiry(card.card_exp_month, card.card_exp_year)}
-                        </Text>
-                      </View>
-                      <View style={styles.cardNetwork}>
-                        <Text style={styles.networkText}>
-                          {getCardBrandIcon(card.card_brand)}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Card Controls */}
-                  <View style={styles.cardControls}>
-                    {!card.is_default && (
-                      <TouchableOpacity
-                        style={styles.controlButton}
-                        onPress={() => handleSetDefault(card.id)}
-                      >
-                        <Ionicons name="star-outline" size={20} color="#6B46C1" />
-                        <Text style={styles.controlButtonText}>Set as Default</Text>
-                      </TouchableOpacity>
-                    )}
-                    
-                    <TouchableOpacity
-                      style={[styles.controlButton, styles.deleteButton]}
-                      onPress={() => handleDeleteCard(card.id)}
-                    >
-                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                      <Text style={[styles.controlButtonText, styles.deleteButtonText]}>
-                        Delete
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })}
+            {paymentMethods.map((card, index) => (
+              <PaymentCard
+                key={card.id}
+                card={card}
+                showDefaultBadge={true}
+                showControls={true}
+                onSetDefault={handleSetDefault}
+                onDelete={handleDeleteCard}
+              />
+            ))}
           </View>
         ) : (
           <View style={styles.emptyState}>
@@ -324,141 +230,7 @@ const styles = StyleSheet.create({
   cardsContainer: {
     paddingHorizontal: 24,
   },
-  cardWrapper: {
-    marginBottom: 24,
-  },
-  creditCard: {
-    borderRadius: 20,
-    padding: 24,
-    minHeight: 180,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 15,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  },
-  cardBrand: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  defaultBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  defaultText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  cardChip: {
-    width: 32,
-    height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  cardNumber: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '500',
-    letterSpacing: 2,
-    marginBottom: 24,
-    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  cardExpiry: {
-    alignItems: 'flex-start',
-  },
-  cardLabel: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  cardValue: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  cardNetwork: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  networkText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  cardControls: {
-    flexDirection: 'row',
-    marginTop: 12,
-    gap: 12,
-  },
-  controlButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  controlButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B46C1',
-  },
-  deleteButton: {
-    backgroundColor: '#FFFFFF',
-  },
-  deleteButtonText: {
-    color: '#EF4444',
-  },
+
   emptyState: {
     flex: 1,
     alignItems: 'center',

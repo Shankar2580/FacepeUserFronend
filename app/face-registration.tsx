@@ -20,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { FaceRegistrationInstructionModal } from '../components/ui/FaceRegistrationInstructionModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,6 +29,7 @@ export default function FaceRegistrationScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
   const [userId, setUserId] = useState('');
+  const [showInstructionModal, setShowInstructionModal] = useState(false);
   const router = useRouter();
   const { refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
@@ -50,6 +52,12 @@ export default function FaceRegistrationScreen() {
   };
 
   const handleStartRegistration = async () => {
+    // Show instruction modal first
+    setShowInstructionModal(true);
+  };
+
+  const handleInstructionsComplete = async () => {
+    setShowInstructionModal(false);
     // Request camera permission
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
@@ -270,6 +278,13 @@ export default function FaceRegistrationScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Face Registration Instruction Modal */}
+      <FaceRegistrationInstructionModal
+        visible={showInstructionModal}
+        onClose={() => setShowInstructionModal(false)}
+        onComplete={handleInstructionsComplete}
+      />
     </View>
   );
 }

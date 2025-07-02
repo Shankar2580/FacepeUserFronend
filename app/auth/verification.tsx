@@ -139,21 +139,23 @@ export default function VerificationScreen() {
 
         <View style={styles.codeContainer}>
           <Text style={styles.codeLabel}>Enter verification code</Text>
-          <View style={styles.codeInputs}>
-            {code.map((digit, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.codeInput,
-                  digit ? styles.codeInputFilled : null
-                ]}
-                onPress={() => {
-                  // In production, you'd focus the TextInput here
-                }}
-              >
-                <Text style={styles.codeInputText}>{digit}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.codeInputsContainer}>
+            <View style={styles.codeInputs}>
+              {code.map((digit, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.codeInput,
+                    digit ? styles.codeInputFilled : null
+                  ]}
+                  onPress={() => {
+                    // In production, you'd focus the TextInput here
+                  }}
+                >
+                  <Text style={styles.codeInputText}>{digit}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </View>
 
@@ -282,9 +284,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontWeight: '500',
   },
+  codeInputsContainer: {
+    width: '100%',
+    maxWidth: 380,
+    alignItems: 'center',
+  },
   codeInputs: {
     flexDirection: 'row',
     gap: 12,
+    justifyContent: 'center',
   },
   codeInput: {
     width: 48,

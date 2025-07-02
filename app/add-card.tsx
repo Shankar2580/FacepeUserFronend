@@ -15,6 +15,8 @@ import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { CardField, useStripe, CardFieldInput } from '@stripe/stripe-react-native';
 import { apiService } from '../services/api';
+import { PaymentCard } from '../components/ui/PaymentCard';
+import { CardSuccessModal } from '../components/ui/CardSuccessModal';
 
 // Define types for card details
 interface CardDetails {
@@ -72,6 +74,9 @@ function AddCardContent() {
   const [cardComplete, setCardComplete] = useState(false);
   const [cardDetails, setCardDetails] = useState<CardDetails | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [addedCardDetails, setAddedCardDetails] = useState<{brand?: string; last4?: string} | null>(null);
+  const [addedCardIsDefault, setAddedCardIsDefault] = useState<boolean>(false);
   const { confirmSetupIntent } = useStripe();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -177,15 +182,17 @@ function AddCardContent() {
 
       addDebugInfo(`Payment method saved successfully: ${confirmResult.payment_method.id}`);
 
-      Alert.alert('Success', 'Payment method added successfully!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            addDebugInfo('Navigating back after success');
-            router.back();
-          },
-        },
-      ]);
+      // Capture default status to control "Default" badge in success modal
+      setAddedCardIsDefault(!!confirmResult.payment_method.is_default);
+
+      // Store card details for success modal
+      setAddedCardDetails({
+        brand: cardDetails?.brand,
+        last4: cardDetails?.last4
+      });
+
+      // Show success modal instead of alert
+      setShowSuccessModal(true);
 
     } catch (error: any) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -234,33 +241,7 @@ function AddCardContent() {
     }
   };
 
-  const getCardBrandName = (brand?: string): string => {
-    if (!brand) return 'CARD';
-    switch (brand.toLowerCase()) {
-      case 'visa': return 'VISA';
-      case 'mastercard': return 'MASTERCARD';
-      case 'amex': return 'AMEX';
-      case 'discover': return 'DISCOVER';
-      default: return 'CARD';
-    }
-  };
 
-  const formatCardNumber = (number?: string): string => {
-    if (!number) return '•••• •••• •••• ••••';
-    const maskedNumber = '•••• •••• •••• ' + number.slice(-4);
-    return maskedNumber;
-  };
-
-  const getCardStyleForBrand = (brand?: string) => {
-    if (!brand) return null;
-    switch (brand.toLowerCase()) {
-      case 'visa': return styles.cardvisa;
-      case 'mastercard': return styles.cardmastercard;
-      case 'amex': return styles.cardamex;
-      case 'discover': return styles.carddiscover;
-      default: return null;
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -293,36 +274,11 @@ function AddCardContent() {
 
           {/* Card Preview */}
           <View style={styles.cardPreview}>
-            <View style={[
-              styles.previewCard,
-              cardDetails?.brand && getCardStyleForBrand(cardDetails.brand)
-            ]}>
-              <View style={styles.cardTop}>
-                <View style={styles.previewChip} />
-                <Text style={styles.cardBrandText}>
-                  {cardDetails?.brand ? getCardBrandName(cardDetails.brand) : 'CARD'}
-                </Text>
-              </View>
-              <Text style={styles.previewNumber}>
-                {cardDetails?.last4 ? 
-                  formatCardNumber(cardDetails.last4) : 
-                  '•••• •••• •••• ••••'
-                }
-              </Text>
-              <View style={styles.previewFooter}>
-                <Text style={styles.previewLabel}>
-                  {cardDetails?.expiryMonth && cardDetails?.expiryYear ? 
-                    `${String(cardDetails.expiryMonth).padStart(2, '0')}/${String(cardDetails.expiryYear).slice(-2)}` : 
-                    '••/••'
-                  }
-                </Text>
-                <View style={styles.cardStatus}>
-                  {cardComplete && (
-                    <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                  )}
-                </View>
-              </View>
-            </View>
+            <PaymentCard
+              cardDetails={cardDetails || undefined}
+              variant="preview"
+              isPreview={true}
+            />
           </View>
 
           {/* Enhanced Form Section */}
@@ -415,6 +371,18 @@ function AddCardContent() {
           )}
         </TouchableOpacity>
       </SafeAreaView>
+
+      {/* Card Success Modal */}
+      <CardSuccessModal
+        visible={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          addDebugInfo('Navigating back after success modal');
+          router.back();
+        }}
+        cardDetails={addedCardDetails || undefined}
+        isDefault={addedCardIsDefault}
+      />
     </View>
   );
 }
@@ -492,78 +460,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     alignItems: 'center',
   },
-  previewCard: {
-    backgroundColor: '#6366F1',
-    borderRadius: 16,
-    padding: 20,
-    width: '100%',
-    maxWidth: 320,
-    aspectRatio: 1.586,
-    shadowColor: '#6366F1',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  cardvisa: {
-    backgroundColor: '#1A365D',
-  },
-  cardmastercard: {
-    backgroundColor: '#CC5500',
-  },
-  cardamex: {
-    backgroundColor: '#2E8B57',
-  },
-  carddiscover: {
-    backgroundColor: '#FF6000',
-  },
-  cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  previewChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    width: 40,
-    height: 28,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  cardBrandText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  previewNumber: {
-    fontSize: 18,
-    color: '#FFFFFF',
-    fontWeight: '500',
-    letterSpacing: 2,
-    marginBottom: 20,
-    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
-  },
-  previewFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  previewLabel: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '500',
-  },
-  cardStatus: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+
   formSection: {
     marginBottom: 32,
   },
