@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../../services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { PasswordStrengthIndicator } from '../../components/ui/PasswordStrengthIndicator';
 
 // Custom OTP Input Component
 const OTPInput = ({
@@ -504,6 +505,9 @@ export default function RegisterScreen() {
                       />
                     </TouchableOpacity>
                   </View>
+                  
+                  {/* Password Strength Indicator */}
+                  <PasswordStrengthIndicator password={password} />
 
                   <View style={styles.inputContainer}>
                     <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />

@@ -12,6 +12,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { apiService } from '../../services/api';
 import { PaymentMethod } from '../../constants/types';
 import { useAuth } from '../../hooks/useAuth';
@@ -96,15 +97,23 @@ export default function CardsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Your Cards</Text>
+      <LinearGradient
+        colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View>
+          <Text style={styles.title}>Your Cards</Text>
+          <Text style={styles.subtitle}>Manage your payment methods</Text>
+        </View>
         <TouchableOpacity 
           style={styles.addButton}
           onPress={() => router.push('/add-card')}
         >
           <Ionicons name="add" size={24} color="#6B46C1" />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       <ScrollView 
         style={styles.scrollView}
@@ -198,12 +207,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingVertical: 24,
+    paddingBottom: 32,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#FFFFFF',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    marginTop: 4,
+    opacity: 0.9,
   },
   addButton: {
     width: 44,

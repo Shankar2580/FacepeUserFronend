@@ -74,7 +74,7 @@ if (Test-Path $apkPath) {
     Write-Host "  adb install `"$outputApk`"" -ForegroundColor White
     Write-Host "" -ForegroundColor White
     Write-Host "Network Configuration:" -ForegroundColor Cyan
-    Write-Host "  Face API: http://3.142.236.38:8001" -ForegroundColor White
+    Write-Host "  Face API: https://18.188.145.222:8443" -ForegroundColor White
     Write-Host "  Main API: https://customer-backend-3esf.onrender.com" -ForegroundColor White
     Write-Host "  HTTP traffic allowed for face registration" -ForegroundColor White
     

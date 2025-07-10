@@ -4,7 +4,7 @@
 
 ### ✅ **1. Face Registration Working**
 - **Camera capture** works perfectly
-- **API integration** with port 8001 successful
+- **API integration** with port 8443 successful
 - **FormData upload** properly formatted for FastAPI
 - **Success response** shows embedding ID
 
@@ -28,7 +28,7 @@
 
 ### **1. Face Registration API Integration**
 ```typescript
-// Endpoint: POST http://192.168.148.2:8001/register
+// Endpoint: POST https://18.188.145.222:8443/register
 // FormData: user_id, name, file (image)
 // Response: RegistrationResponse with embedding_id
 ```
@@ -68,7 +68,7 @@
 
 ## 🛠️ **Backend Integration**
 
-### **Face Registration API (Port 8001)**
+### **Face Registration API (Port 8443)**
 - ✅ **Working perfectly**
 - ✅ **Returns embedding ID**
 - ✅ **Processes face successfully**

@@ -12,8 +12,10 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { apiService } from '../../services/api';
 import { Transaction, AutoPay, PaymentMethod } from '../../constants/types';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 export default function HistoryScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -26,6 +28,7 @@ export default function HistoryScreen() {
   
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
 
   useEffect(() => {
     loadData();
@@ -166,9 +169,15 @@ export default function HistoryScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
         <Text style={styles.title}>Transaction History</Text>
-      </View>
+        <Text style={styles.subtitle}>View all your payment transactions</Text>
+      </LinearGradient>
 
       {/* Filter Buttons */}
       <View style={styles.filterContainer}>
@@ -214,6 +223,9 @@ export default function HistoryScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        contentContainerStyle={{
+          paddingBottom: tabBarHeight + insets.bottom + 20, // Add padding for tab bar and some extra space
+        }}
       >
         {filteredTransactions.length > 0 ? (
           <View style={styles.transactionsList}>
@@ -310,12 +322,30 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingVertical: 24,
+    paddingBottom: 32,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#FFFFFF',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    marginTop: 4,
+    opacity: 0.9,
   },
   filterContainer: {
     paddingHorizontal: 24,
@@ -369,8 +399,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    // paddingBottom: 500,
-    marginBottom: 100,
   },
   transactionsList: {
     backgroundColor: '#FFFFFF',

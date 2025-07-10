@@ -141,7 +141,7 @@ class ApiService {
       }
 
       console.log('Making refresh token request...');
-      const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+      const response = await axios.post(`${API_BASE_URL}${API_ENDPOINTS.REFRESH_TOKEN}`, {
         refresh_token: refreshToken
       });
 
@@ -217,7 +217,7 @@ class ApiService {
       const refreshToken = await SecureStore.getItemAsync('refresh_token');
       if (refreshToken) {
         try {
-          await this.api.post('/auth/logout', { refresh_token: refreshToken });
+          await this.api.post(API_ENDPOINTS.LOGOUT, { refresh_token: refreshToken });
           console.log('Refresh token revoked on server');
         } catch (error) {
           console.warn('Failed to revoke refresh token on server:', error);
@@ -270,7 +270,7 @@ class ApiService {
 
       // Update the main backend database
       try {
-        await this.api.put('/users/me/face-status', {
+        await this.api.put(API_ENDPOINTS.UPDATE_FACE_STATUS, {
           has_face_registered: hasFaceRegistered
         });
         console.log('Updated main backend face registration status:', hasFaceRegistered);
@@ -312,7 +312,7 @@ class ApiService {
   }
 
   async updatePushToken(pushToken: string): Promise<ApiResponse<any>> {
-    const response = await this.api.post<ApiResponse<any>>('/users/me/push-token', {
+    const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.UPDATE_PUSH_TOKEN, {
       push_token: pushToken,
     });
     return response.data;
@@ -330,7 +330,7 @@ class ApiService {
 
   async registerFace(userId: string, name: string, imageUri: string): Promise<any> {
     console.log('API Service - Starting face registration...');
-    console.log('Face API URL:', `${FACE_API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`);
+    console.log('API Service - Registering face via backend proxy:', `${API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`);
     
     try {
       // Create FormData for React Native
@@ -344,6 +344,7 @@ class ApiService {
       const uriParts = imageUri.split('.');
       const fileType = uriParts[uriParts.length - 1];
       
+      // Fix: Use proper React Native FormData format
       formData.append('file', {
         uri: imageUri,
         name: `photo.${fileType}`,
@@ -354,41 +355,41 @@ class ApiService {
       const authHeader = await this.getAuthHeader();
       
       console.log('API Service - Request details:', {
-        url: `${FACE_API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`,
+        url: `${API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`,
         user_id: userId,
         name: name,
         imageUri: imageUri,
         hasAuth: !!authHeader
       });
 
-      // Make request without setting Content-Type (let React Native handle it)
-      const response = await fetch(`${FACE_API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`, {
+      // Use axios instead of fetch for better FormData handling
+      const response = await axios({
         method: 'POST',
+        url: `${API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`,
+        data: formData,
         headers: {
           ...(authHeader ? { 'Authorization': authHeader } : {}),
-          // Don't set Content-Type - let fetch handle multipart boundary
+          'Content-Type': 'multipart/form-data',
         },
-        body: formData,
+        timeout: 60000,
       });
 
       console.log('API Service - Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Service - Error response:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-      
-      const responseData = await response.json();
-      console.log('API Service - Face registration successful:', responseData);
-      return responseData;
+      console.log('API Service - Face registration successful:', response.data);
+      return response.data;
       
     } catch (error: any) {
       console.error('API Service - Face registration failed:', {
         message: error.message,
-        stack: error.stack,
-        url: `${FACE_API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: `${API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`,
       });
+      
+      // Re-throw with better error handling
+      if (error.response?.status === 422) {
+        throw new Error(`HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`);
+      }
       throw error;
     }
   }
@@ -426,7 +427,7 @@ class ApiService {
   async createSetupIntent(): Promise<{ client_secret: string; setup_intent_id: string }> {
     console.log('API Service - Creating Setup Intent...');
     console.log('API Service - Using base URL:', this.api.defaults.baseURL);
-    const response = await this.api.post<{ client_secret: string; setup_intent_id: string }>('/users/me/payment-methods/setup-intent');
+    const response = await this.api.post<{ client_secret: string; setup_intent_id: string }>(API_ENDPOINTS.CREATE_SETUP_INTENT);
     console.log('API Service - Setup Intent created successfully:', {
       setup_intent_id: response.data.setup_intent_id,
       client_secret_length: response.data.client_secret?.length || 0
@@ -436,8 +437,8 @@ class ApiService {
 
   async confirmSetupIntent(setupIntentId: string): Promise<{ success: boolean; payment_method: PaymentMethod }> {
     console.log('API Service - Confirming Setup Intent:', setupIntentId);
-    console.log('API Service - Confirm URL:', `${this.api.defaults.baseURL}/users/me/payment-methods/confirm-setup-intent/${setupIntentId}`);
-    const response = await this.api.post<{ success: boolean; payment_method: PaymentMethod }>(`/users/me/payment-methods/confirm-setup-intent/${setupIntentId}`);
+    console.log('API Service - Confirm URL:', `${this.api.defaults.baseURL}${API_ENDPOINTS.CONFIRM_SETUP_INTENT}/${setupIntentId}`);
+    const response = await this.api.post<{ success: boolean; payment_method: PaymentMethod }>(`${API_ENDPOINTS.CONFIRM_SETUP_INTENT}/${setupIntentId}`);
     console.log('API Service - Setup Intent confirmed successfully:', response.data.success);
     return response.data;
   }
@@ -446,7 +447,7 @@ class ApiService {
     stripe_payment_method_id: string;
     is_default?: boolean;
   }): Promise<PaymentMethod> {
-    const response = await this.api.post<PaymentMethod>('/users/me/payment-methods/secure', {
+    const response = await this.api.post<PaymentMethod>(API_ENDPOINTS.ADD_PAYMENT_METHOD_SECURE, {
       stripe_payment_method_id: data.stripe_payment_method_id,
       is_default: data.is_default || false,
     });
@@ -535,14 +536,14 @@ class ApiService {
   }
 
   async deleteAutoPay(merchantId: string): Promise<ApiResponse<any>> {
-    const response = await this.api.delete<ApiResponse<any>>(`/autopay/${merchantId}`);
+    const response = await this.api.delete<ApiResponse<any>>(`${API_ENDPOINTS.DELETE_AUTO_PAY}/${merchantId}`);
     return response.data;
   }
 
   // Password Reset methods
   async requestPasswordReset(phoneNumber: string): Promise<ApiResponse<any>> {
     console.log('API Service - Requesting password reset for:', phoneNumber);
-    const response = await this.api.post<ApiResponse<any>>('/auth/forgot-password/request', {
+    const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.FORGOT_PASSWORD_REQUEST, {
       phone_number: phoneNumber
     });
     return response.data;
@@ -554,7 +555,7 @@ class ApiService {
     new_password: string;
   }): Promise<ApiResponse<any>> {
     console.log('API Service - Verifying password reset for:', data.phone_number);
-    const response = await this.api.post<ApiResponse<any>>('/auth/forgot-password/verify', data);
+    const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.FORGOT_PASSWORD_VERIFY, data);
     return response.data;
   }
 }

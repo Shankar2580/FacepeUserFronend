@@ -1,57 +1,64 @@
 // For development, use localhost when testing on web or simulator
 // Use your computer's IP address when testing on physical device
-const API_BASE_URL =
-//  __DEV__ ?
-//       'http://192.168.148.2:8000'  // Main API on port 8000
-//   : 
-  'https://customer-backend-3esf.onrender.com'; // Replace with your production URL
+const API_BASE_URL = 'http://10.238.184.2:80'; // Updated to Wi-Fi IP for Expo Go
 
-// Face registration API runs on port 8001
-const FACE_API_BASE_URL = 'http://3.142.236.38:8001';
+// FACE_API_BASE_URL is no longer directly used as Face API requests also go through Nginx.
+// However, keeping it defined for consistency or if you have other uses for it.
+const FACE_API_BASE_URL = 'http://10.238.184.2';
 
 export { API_BASE_URL, FACE_API_BASE_URL };
 
 export const API_ENDPOINTS = {
-  // Authentication
-  REGISTER: '/auth/register-frontend',
-  LOGIN: '/auth/login',
-  VERIFY_TOKEN: '/auth/verify-token',
+  // Authentication (routed through /customer/)
+  REGISTER: '/customer/auth/register-frontend',
+  LOGIN: '/customer/auth/login',
+  VERIFY_TOKEN: '/customer/auth/verify-token',
+  REFRESH_TOKEN: '/auth/refresh',
+  LOGOUT: '/auth/logout',
+  FORGOT_PASSWORD_REQUEST: '/auth/forgot-password/request',
+  FORGOT_PASSWORD_VERIFY: '/auth/forgot-password/verify',
   
-  // Verification
-  SEND_VERIFICATION: '/verification/send-phone-code',
-  VERIFY_CODE: '/verification/verify-phone-code',
+  // Verification (routed through /customer/)
+  SEND_VERIFICATION: '/customer/verification/send-phone-code',
+  VERIFY_CODE: '/customer/verification/verify-phone-code',
   
-  // Users
-  GET_PROFILE: '/users/me',
-  UPDATE_PROFILE: '/users/me',
-  GET_FACE_STATUS: '/users/me/face-status',
-  UPDATE_FACE_STATUS: '/users/me/face-status',
-  DELETE_FACE_ENROLLMENT: '/users/me/face-enrollment',
+  // Users (routed through /customer/)
+  GET_PROFILE: '/customer/users/me',
+  UPDATE_PROFILE: '/customer/users/me',
+  UPDATE_PUSH_TOKEN: '/customer/users/me/push-token',
+  GET_FACE_STATUS: '/customer/users/me/face-status',
+  UPDATE_FACE_STATUS: '/customer/users/me/face-status',
+  DELETE_FACE_ENROLLMENT: '/customer/users/me/face-enrollment',
   
-  // Face Registration
-  REGISTER_FACE: '/register',
+  // Face Registration (routed through /face/)
+  // Note the double '/face/' here is correct based on your Nginx configuration,
+  // where Nginx routes /face/ and the face service itself expects a '/face/' prefix.
+  REGISTER_FACE: '/face/register',
   
-  // Payment Methods
-  GET_PAYMENT_METHODS: '/users/me/payment-methods',
-  ADD_PAYMENT_METHOD: '/users/me/payment-methods',
-  UPDATE_PAYMENT_METHOD: '/users/me/payment-methods',
-  DELETE_PAYMENT_METHOD: '/users/me/payment-methods',
-  SET_DEFAULT_PAYMENT_METHOD: '/users/me/payment-methods',
+  // Payment Methods (routed through /customer/)
+  GET_PAYMENT_METHODS: '/customer/users/me/payment-methods',
+  ADD_PAYMENT_METHOD: '/customer/users/me/payment-methods',
+  UPDATE_PAYMENT_METHOD: '/customer/users/me/payment-methods',
+  DELETE_PAYMENT_METHOD: '/customer/users/me/payment-methods',
+  SET_DEFAULT_PAYMENT_METHOD: '/customer/users/me/payment-methods',
+  CREATE_SETUP_INTENT: '/customer/users/me/payment-methods/setup-intent',
+  CONFIRM_SETUP_INTENT: '/customer/users/me/payment-methods/confirm-setup-intent',
+  ADD_PAYMENT_METHOD_SECURE: '/customer/users/me/payment-methods/secure',
   
-  // Auto Pay
-  GET_AUTO_PAY: '/users/me/autopay',
-  ADD_AUTO_PAY: '/users/me/autopay',
-  UPDATE_AUTO_PAY: '/users/me/autopay',
-  DELETE_AUTO_PAY: '/users/me/autopay',
+  // Auto Pay (routed through /customer/)
+  GET_AUTO_PAY: '/customer/users/me/autopay',
+  ADD_AUTO_PAY: '/customer/users/me/autopay',
+  UPDATE_AUTO_PAY: '/customer/users/me/autopay',
+  DELETE_AUTO_PAY: '/customer/users/me/autopay',
   
-  // Transactions
-  GET_TRANSACTIONS: '/users/me/transactions',
+  // Transactions (routed through /customer/)
+  GET_TRANSACTIONS: '/customer/users/me/transactions',
   
-  // Payments
-  CREATE_PAYMENT: '/users/me/payments',
-  APPROVE_PAYMENT: '/users/me/payments', // /{request_id}/approve
-  DECLINE_PAYMENT: '/users/me/payments', // /{request_id}/decline
+  // Payments (routed through /customer/)
+  CREATE_PAYMENT: '/customer/users/me/payments',
+  APPROVE_PAYMENT: '/customer/users/me/payments', // /{request_id}/approve
+  DECLINE_PAYMENT: '/customer/users/me/payments', // /{request_id}/decline
   
-  // Payment Requests
-  GET_PAYMENT_REQUESTS: '/users/me/payment-requests',
-}; 
+  // Payment Requests (routed through /customer/)
+  GET_PAYMENT_REQUESTS: '/customer/users/me/payment-requests/',
+};

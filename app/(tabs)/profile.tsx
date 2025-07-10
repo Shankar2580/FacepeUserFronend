@@ -9,14 +9,20 @@ import {
   RefreshControl,
   Switch,
   ActivityIndicator,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../hooks/useAuth';
 import { useUpdates } from '../../hooks/useUpdates';
 import { apiService } from '../../services/api';
 import { AutoPay, PaymentMethod } from '../../constants/types';
+import * as Haptics from 'expo-haptics';
+
+const { width } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const [autoPay, setAutoPay] = useState<AutoPay[]>([]);
@@ -24,6 +30,8 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [isAccountActive, setIsAccountActive] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(50));
   
   const { user, logout, refreshUser } = useAuth();
   const { isCheckingForUpdates, checkForUpdates, currentUpdateInfo } = useUpdates();
@@ -41,6 +49,7 @@ export default function ProfileScreen() {
     
     if (user) {
       loadData();
+      startAnimations();
     }
   }, [user]);
 
@@ -49,6 +58,21 @@ export default function ProfileScreen() {
       setIsAccountActive(user.is_active ?? true);
     }
   }, [user]);
+
+  const startAnimations = () => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   const loadData = async () => {
     try {
@@ -138,17 +162,38 @@ export default function ProfileScreen() {
 
   const profileSections = [
     {
-      title: 'Security',
+      title: 'Account Settings',
+      items: [
+        {
+          icon: 'person-outline',
+          title: 'Edit Profile',
+          subtitle: 'Update personal information',
+          action: 'navigate',
+          chevron: true,
+          onPress: undefined,
+        },
+        {
+          icon: 'key-outline',
+          title: 'Change Password',
+          subtitle: 'Update security credentials',
+          action: 'navigate',
+          chevron: true,
+          onPress: undefined,
+        },
+      ],
+    },
+    {
+      title: 'Payment & Security',
       items: [
         {
           icon: 'scan',
-          title: 'Face Recognition',
-          subtitle: user?.has_face_registered ? 'Registered' : 'Not registered',
+          title: 'Facial Data Re-enrollment',
+          subtitle: 'Update biometric data',
           action: 'setup',
-          onPress: user?.has_face_registered ? undefined : handleFaceRegistration,
+          onPress: handleFaceRegistration,
           rightElement: user?.has_face_registered ? (
             <View style={styles.statusBadge}>
-              <Ionicons name="checkmark-circle" size={16} color="#059669" />
+              <Ionicons name="checkmark-circle" size={16} color="#10B981" />
               <Text style={styles.statusText}>Active</Text>
             </View>
           ) : (
@@ -158,47 +203,20 @@ export default function ProfileScreen() {
           ),
         },
         {
-          icon: 'shield-checkmark',
-          title: 'Account Security',
-          subtitle: 'Change password & security settings',
-          action: 'navigate',
-          chevron: true,
-          onPress: undefined,
-        },
-      ],
-    },
-    {
-      title: 'Payment Settings',
-      items: [
-        {
-          icon: 'card',
-          title: 'Payment Methods',
-          subtitle: `${paymentMethods.length} card${paymentMethods.length !== 1 ? 's' : ''} added`,
+          icon: 'card-outline',
+          title: 'Manage Saved Cards',
+          subtitle: 'Payment methods & billing',
           action: 'navigate',
           onPress: () => router.push('/(tabs)/cards'),
           chevron: true,
         },
         {
-          icon: 'flash',
-          title: 'AutoPay Settings',
-          subtitle: `${autoPay.length} merchant${autoPay.length !== 1 ? 's' : ''} configured`,
+          icon: 'shield-checkmark-outline',
+          title: 'Security Settings',
+          subtitle: 'Privacy & authentication',
           action: 'navigate',
-          onPress: () => router.push('/autopay-settings'),
           chevron: true,
-        },
-        {
-          icon: 'power',
-          title: 'Payment Status',
-          subtitle: isAccountActive ? 'Active - All payments enabled' : 'Inactive - Payments disabled',
           onPress: undefined,
-          rightElement: (
-            <Switch
-              value={isAccountActive}
-              onValueChange={handleToggleAccountStatus}
-              trackColor={{ false: '#E5E7EB', true: '#6B46C1' }}
-              thumbColor={isAccountActive ? '#FFFFFF' : '#F3F4F6'}
-            />
-          ),
         },
       ],
     },
@@ -206,7 +224,7 @@ export default function ProfileScreen() {
       title: 'App Settings',
       items: [
         {
-          icon: 'cloud-download',
+          icon: 'cloud-download-outline',
           title: 'Check for Updates',
           subtitle: currentUpdateInfo?.channel ? `Channel: ${currentUpdateInfo.channel}` : 'Tap to check for updates',
           action: 'update',
@@ -218,7 +236,15 @@ export default function ProfileScreen() {
           ),
         },
         {
-          icon: 'information-circle',
+          icon: 'help-circle-outline',
+          title: 'Help & Support',
+          subtitle: 'Get assistance',
+          action: 'navigate',
+          chevron: true,
+          onPress: undefined,
+        },
+        {
+          icon: 'information-circle-outline',
           title: 'App Version',
           subtitle: `v1.0.1 ${currentUpdateInfo?.updateId ? `(${currentUpdateInfo.updateId.slice(0, 8)})` : ''}`,
           onPress: undefined,
@@ -231,6 +257,7 @@ export default function ProfileScreen() {
   if (initialLoad && !user) {
     return (
       <View style={[styles.container, styles.loadingContainer, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color="#6B46C1" />
         <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
@@ -247,31 +274,67 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.userInfo}>
-          <View style={styles.avatarContainer}>
+      {/* Gradient Header */}
+      <LinearGradient
+        colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
+        style={styles.gradientHeader}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <TouchableOpacity style={styles.menuButton}>
+            <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+
+      {/* User Profile Card */}
+      <Animated.View 
+        style={[
+          styles.profileCard,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <View style={styles.avatarContainer}>
+          <LinearGradient
+            colors={['#6B46C1', '#8B5CF6']}
+            style={styles.avatarGradient}
+          >
             <Text style={styles.avatarText}>
               {user.first_name?.[0] || 'U'}{user.last_name?.[0] || 'S'}
             </Text>
-          </View>
-          <View style={styles.userDetails}>
-            <Text style={styles.userName}>
-              {user.first_name && user.last_name 
-                ? `${user.first_name} ${user.last_name}` 
-                : 'User'
-              }
-            </Text>
-            <Text style={styles.userEmail}>
-              {user.email || user.phone_number || 'No contact info'}
-            </Text>
+          </LinearGradient>
+          <View style={styles.verifiedBadge}>
+            <Ionicons name="checkmark" size={12} color="#FFFFFF" />
           </View>
         </View>
-      </View>
+        
+        <Text style={styles.userName}>
+          {user.first_name && user.last_name 
+            ? `${user.first_name} ${user.last_name}` 
+            : 'User'
+          }
+        </Text>
+        <Text style={styles.userEmail}>
+          {user.email || user.phone_number || 'No contact info'}
+        </Text>
+        <Text style={styles.userPhone}>
+          {user.phone_number || ''}
+        </Text>
+        
+        <View style={styles.brandContainer}>
+          <Text style={styles.brandText}>FACEPE</Text>
+          <Text style={styles.brandSubtext}>Secure Facial Payment</Text>
+        </View>
+      </Animated.View>
 
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -279,22 +342,37 @@ export default function ProfileScreen() {
       >
         {/* Profile Sections */}
         {profileSections.map((section, index) => (
-          <View key={index} style={styles.section}>
+          <Animated.View 
+            key={index} 
+            style={[
+              styles.section,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
             <Text style={styles.sectionTitle}>{section.title}</Text>
             <View style={styles.sectionItems}>
               {section.items.map((item, itemIndex) => (
-                <TouchableOpacity
-                  key={itemIndex}
-                  style={[
-                    styles.sectionItem,
-                    itemIndex === section.items.length - 1 && styles.lastSectionItem
-                  ]}
-                  onPress={item.onPress}
-                  disabled={!item.onPress}
-                >
+                                  <TouchableOpacity
+                    key={itemIndex}
+                    style={[
+                      styles.sectionItem,
+                      itemIndex === section.items.length - 1 && styles.lastSectionItem
+                    ]}
+                    onPress={() => {
+                      if (item.onPress) {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        item.onPress();
+                      }
+                    }}
+                    disabled={!item.onPress}
+                    activeOpacity={0.7}
+                  >
                   <View style={styles.itemLeft}>
                     <View style={styles.itemIcon}>
-                      <Ionicons name={item.icon as any} size={20} color="#6B46C1" />
+                      <Ionicons name={item.icon as any} size={22} color="#6B46C1" />
                     </View>
                     <View style={styles.itemContent}>
                       <Text style={styles.itemTitle}>{item.title}</Text>
@@ -311,18 +389,32 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
+          </Animated.View>
         ))}
 
         {/* Logout Section */}
-        <View style={styles.section}>
+        <Animated.View 
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
           <View style={styles.sectionItems}>
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-              <Text style={styles.logoutText}>Logout</Text>
+            <TouchableOpacity 
+              style={styles.logoutButton} 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                handleLogout();
+              }}
+            >
+              <Ionicons name="log-out-outline" size={22} color="#EF4444" />
+              <Text style={styles.logoutText}>Log Out</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -333,36 +425,72 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FA',
   },
-  header: {
-    backgroundColor: '#FFFFFF',
+  gradientHeader: {
+    height: 120,
     paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingTop: 20,
+    paddingBottom: 40,
   },
-  userInfo: {
+  headerContent: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  menuButton: {
+    padding: 8,
+  },
+  profileCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 24,
+    marginTop: -30,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
   avatarContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#6B46C1',
+    position: 'relative',
+    marginBottom: 16,
+  },
+  avatarGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
   },
   avatarText: {
     color: '#FFFFFF',
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
   },
-  userDetails: {
-    flex: 1,
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   userName: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#1F2937',
     marginBottom: 4,
@@ -370,9 +498,30 @@ const styles = StyleSheet.create({
   userEmail: {
     fontSize: 16,
     color: '#6B7280',
+    marginBottom: 2,
+  },
+  userPhone: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginBottom: 20,
+  },
+  brandContainer: {
+    alignItems: 'center',
+  },
+  brandText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#6B46C1',
+    letterSpacing: 1,
+  },
+  brandSubtext: {
+    fontSize: 12,
+    color: '#8B5CF6',
+    marginTop: 2,
   },
   scrollView: {
     flex: 1,
+    marginTop: 20,
   },
   section: {
     marginTop: 24,
@@ -388,6 +537,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
   },
   sectionItem: {
     flexDirection: 'row',
@@ -405,9 +562,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
@@ -418,7 +575,7 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#1F2937',
     marginBottom: 2,
   },
@@ -435,20 +592,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#D1FAE5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 12,
     gap: 4,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '500',
-    color: '#059669',
+    fontWeight: '600',
+    color: '#10B981',
   },
   setupButton: {
     backgroundColor: '#6B46C1',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 12,
   },
   setupButtonText: {
@@ -471,6 +628,7 @@ const styles = StyleSheet.create({
   loadingContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 16,
   },
   loadingText: {
     fontSize: 16,

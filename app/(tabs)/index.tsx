@@ -12,6 +12,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../hooks/useAuth';
 import { apiService } from '../../services/api';
 import { PaymentMethod, Transaction, PaymentRequest } from '../../constants/types';
@@ -186,7 +187,12 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <LinearGradient
+          colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
+          style={styles.header}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
           <View>
             <Text style={styles.greeting}>Hello, {user?.first_name}</Text>
             <Text style={styles.subtitle}>Welcome back!</Text>
@@ -199,7 +205,7 @@ export default function HomeScreen() {
               {user?.first_name?.[0]}{user?.last_name?.[0]}
             </Text>
           </TouchableOpacity>
-        </View>
+        </LinearGradient>
 
         {/* Face Registration Prompt */}
         {user && !user.has_face_registered && (
@@ -328,28 +334,49 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingBottom: 16,
+    paddingVertical: 24,
+    paddingBottom: 32,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   greeting: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#FFFFFF',
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#FFFFFF',
     marginTop: 4,
+    opacity: 0.9,
   },
   avatarContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#6B46C1',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: '#6B46C1',
     fontSize: 16,
     fontWeight: '600',
   },

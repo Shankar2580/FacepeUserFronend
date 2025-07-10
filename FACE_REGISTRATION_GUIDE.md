@@ -15,7 +15,7 @@ This document explains the face registration feature implementation for the PayB
   - Success/Error handling
 
 ### 2. API Integration
-- **Endpoint**: `POST /register` (running on port 8001)
+- **Endpoint**: `POST /register` (running on port 8443)
 - **Parameters**:
   - `user_id`: User's unique identifier
   - `name`: User's full name
@@ -62,12 +62,12 @@ The app requests the following permissions:
 The APIs are configured in `constants/api.ts`:
 ```typescript
 const API_BASE_URL = 'http://192.168.148.2:8000'        // Main API (port 8000)
-const FACE_API_BASE_URL = 'http://192.168.148.2:8001'   // Face registration API (port 8001)
+const FACE_API_BASE_URL = 'https://18.188.145.222:8443'   // Face registration API (port 8443)
 ```
 
 ### Endpoint
 ```typescript
-REGISTER_FACE: '/register'  // Uses FACE_API_BASE_URL (port 8001)
+REGISTER_FACE: '/register'  // Uses FACE_API_BASE_URL (port 8443)
 ```
 
 ## Error Handling
@@ -89,7 +89,7 @@ The implementation includes comprehensive error handling for:
 ## Testing
 
 ### Prerequisites
-1. Ensure backend API is running on port 8001
+1. Ensure backend API is running on port 8443
 2. Update IP address in `constants/api.ts` to match your development environment
 3. Install dependencies using the provided script
 
@@ -109,7 +109,7 @@ The implementation includes comprehensive error handling for:
    - Check device settings for app permissions
 
 2. **API Connection Failed**
-   - Verify API is running on correct port (8001)
+   - Verify API is running on correct port (8443)
    - Check IP address configuration in constants/api.ts
    - Ensure device is on same network as development server
 

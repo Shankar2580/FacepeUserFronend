@@ -102,7 +102,7 @@ export default function FaceRegistrationScreen() {
       console.log('User Name:', userName.trim());
       console.log('Image URI:', imageUri);
       
-      // Call the external Face Registration API (port 8001)
+      // Call the external Face Registration API (port 8443)
       const faceApiResponse = await apiService.registerFace(userId, userName.trim(), imageUri);
       
       console.log('Face API registration response:', faceApiResponse);
@@ -154,7 +154,7 @@ export default function FaceRegistrationScreen() {
       let errorMessage = 'Failed to register face';
       
       if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
-        errorMessage = 'Network Error: Cannot connect to face registration server. Please check:\n\n1. Face registration API is running on port 8001\n2. Your device is connected to the same network\n3. IP address is correct (192.168.148.2)';
+        errorMessage = 'Network Error: Cannot connect to face registration server. Please check:\n\n1. Face registration API is running on port 8443\n2. Your device is connected to the same network\n3. IP address is correct (18.188.145.222)';
       } else if (error.response?.status === 422) {
         errorMessage = 'Invalid data format. Please try again.';
       } else if (error.response?.data?.detail) {

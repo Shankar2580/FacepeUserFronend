@@ -17,9 +17,9 @@ export const STRIPE_CONFIG = {
 } as const;
 
 export const STRIPE_ENDPOINTS = {
-  CREATE_SETUP_INTENT: '/users/me/payment-methods/setup-intent',
-  CONFIRM_SETUP_INTENT: '/users/me/payment-methods/confirm-setup-intent',
-  GET_PAYMENT_METHODS: '/users/me/payment-methods',
-  DELETE_PAYMENT_METHOD: '/users/me/payment-methods',
-  ADD_PAYMENT_METHOD_SECURE: '/users/me/payment-methods/secure',
+  CREATE_SETUP_INTENT: '/customer/users/me/payment-methods/setup-intent',
+  CONFIRM_SETUP_INTENT: '/customer/users/me/payment-methods/confirm-setup-intent',
+  GET_PAYMENT_METHODS: '/customer/users/me/payment-methods',
+  DELETE_PAYMENT_METHOD: '/customer/users/me/payment-methods',
+  ADD_PAYMENT_METHOD_SECURE: '/customer/users/me/payment-methods/secure',
 } as const; 
