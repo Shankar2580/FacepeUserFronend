@@ -18,7 +18,8 @@ import { apiService } from '../../services/api';
 import { PaymentMethod, Transaction, PaymentRequest } from '../../constants/types';
 import { notificationService } from '../../services/notificationService';
 import { PaymentCard } from '../../components/ui/PaymentCard';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAlert } from '../../components/ui/AlertModal';
+// SafeAreaView no longer needed - using View with paddingTop: insets.top
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 export default function HomeScreen() {
@@ -26,11 +27,14 @@ export default function HomeScreen() {
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [totalEarnings, setTotalEarnings] = useState<number>(0);
+  const [completedTransactionsCount, setCompletedTransactionsCount] = useState<number>(0);
   
   const { user, refreshUser } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const { showAlert, AlertComponent } = useAlert();
 
   // Load data function
   const loadData = useCallback(async () => {
@@ -40,6 +44,24 @@ export default function HomeScreen() {
       const defaultPaymentMethod = paymentMethods.find(pm => pm.is_default);
       setDefaultCard(defaultPaymentMethod || null);
       
+      // Load transactions and calculate summary
+      const transactions = await apiService.getTransactions();
+      
+      // Filter for today's transactions only
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const todaysTransactions = transactions.filter(t => {
+        const transactionDate = new Date(t.created_at);
+        return transactionDate >= today && transactionDate < tomorrow && t.status === 'completed';
+      });
+      
+      const total = todaysTransactions.reduce((sum, t) => sum + t.amount, 0) / 100; // Convert cents to dollars
+      setTotalEarnings(total);
+      setCompletedTransactionsCount(todaysTransactions.length);
+
       // Try to load payment requests (optional - API might not exist yet)
       try {
         const requests = await apiService.getPaymentRequests();
@@ -49,10 +71,10 @@ export default function HomeScreen() {
         setPaymentRequests([]);
       }
     } catch (error: any) {
-      console.error('Failed to load payment methods:', error);
+      console.error('Failed to load payment methods or transactions:', error);
       // If the user is not authenticated (401), silently ignore to avoid panic
       if (error?.response?.status !== 401) {
-        Alert.alert('Oops', 'Something went wrong while loading your data. Please try again later.');
+        showAlert('Oops', 'Something went wrong while loading your data. Please try again later.', undefined, 'error');
       }
     } finally {
       setIsLoading(false);
@@ -103,11 +125,36 @@ export default function HomeScreen() {
     return '🏪';
   };
 
+  const getDisplayName = (request: PaymentRequest) => {
+    // Prioritize business_name if available
+    if (request.business_name && request.business_name.trim()) {
+      return request.business_name;
+    }
+    
+    // Clean up merchant_name if it contains the merchant ID pattern
+    if (request.merchant_name) {
+      // If merchant_name contains "(acct_...)" pattern, extract just the business name part
+      const match = request.merchant_name.match(/^(.+?)\s*\(acct_[^)]+\)$/);
+      if (match) {
+        return match[1].trim();
+      }
+      
+      // If it's just "Merchant (acct_...)", try to use a fallback
+      if (request.merchant_name.startsWith('Merchant (acct_')) {
+        return 'Business'; // Generic fallback
+      }
+      
+      return request.merchant_name;
+    }
+    
+    return 'Unknown Merchant';
+  };
+
   const handleApprovePayment = async (requestId: string) => {
     try {
       const request = paymentRequests.find(req => req.id === requestId);
       if (!request) {
-        Alert.alert('Error', 'Payment request not found');
+        showAlert('Error', 'Payment request not found', undefined, 'error');
         return;
       }
 
@@ -115,16 +162,18 @@ export default function HomeScreen() {
       
       // Send notification for successful payment approval
       await notificationService.notifyPaymentApproved({
-        merchantName: request.merchant_name,
+        merchantName: getDisplayName(request),
         amount: request.amount,
         paymentId: requestId,
       });
 
-      Alert.alert('Success', 'Payment request approved!');
-      loadData(); // Refresh the data
+      showAlert('Success', 'Payment request approved!', undefined, 'success');
+      // Remove the approved request immediately from the list
+      setPaymentRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
+      loadData(); // Refresh other data if necessary
     } catch (error) {
       console.error('Failed to approve payment:', error);
-      Alert.alert('Error', 'Failed to approve payment request');
+      showAlert('Error', 'Failed to approve payment request', undefined, 'error');
     }
   };
 
@@ -132,7 +181,7 @@ export default function HomeScreen() {
     try {
       const request = paymentRequests.find(req => req.id === requestId);
       if (!request) {
-        Alert.alert('Error', 'Payment request not found');
+        showAlert('Error', 'Payment request not found', undefined, 'error');
         return;
       }
 
@@ -140,17 +189,19 @@ export default function HomeScreen() {
       
       // Send notification for payment decline
       await notificationService.notifyPaymentFailed({
-        merchantName: request.merchant_name,
+        merchantName: getDisplayName(request),
         amount: request.amount,
         paymentId: requestId,
         reason: 'Declined by user',
       });
 
-      Alert.alert('Success', 'Payment request declined');
-      loadData(); // Refresh the data
+      showAlert('Success', 'Payment request declined', undefined, 'success');
+      // Remove the declined request immediately from the list
+      setPaymentRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
+      loadData(); // Refresh other data if necessary
     } catch (error) {
       console.error('Failed to decline payment:', error);
-      Alert.alert('Error', 'Failed to decline payment request');
+      showAlert('Error', 'Failed to decline payment request', undefined, 'error');
     }
   };
 
@@ -171,28 +222,14 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingTop: 20,
-            paddingBottom: tabBarHeight + insets.bottom + 20,
-          },
-        ]}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <LinearGradient
+        colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        {/* Header */}
-        <LinearGradient
-          colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
-          style={styles.header}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
           <View>
             <Text style={styles.greeting}>Hello, {user?.first_name}</Text>
             <Text style={styles.subtitle}>Welcome back!</Text>
@@ -207,8 +244,21 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </LinearGradient>
 
-        {/* Face Registration Prompt */}
-        {user && !user.has_face_registered && (
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingBottom: tabBarHeight + insets.bottom + 20,
+            },
+          ]}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Face Registration Prompt */}
+          {user && !user.has_face_registered && (
           <TouchableOpacity 
             style={styles.facePrompt}
             onPress={handleFaceRegistration}
@@ -227,6 +277,23 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
         )}
+
+        {/* Today's Summary */}
+        <View style={styles.summarySection}>
+          <Text style={styles.sectionTitle}>Today's Summary</Text>
+          <View style={styles.summaryCardsContainer}>
+            <TouchableOpacity style={[styles.summaryCard, styles.earningsCard]}>
+              <Ionicons name="trending-down" size={24} color="#FFFFFF" style={styles.summaryIcon} />
+              <Text style={styles.summaryAmount}>${totalEarnings.toFixed(2)}</Text>
+              <Text style={styles.summaryLabel}>Spent Today</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.summaryCard, styles.transactionsCard]}>
+              <Ionicons name="swap-horizontal" size={24} color="#FFFFFF" style={styles.summaryIcon} />
+              <Text style={styles.summaryAmount}>{completedTransactionsCount}</Text>
+              <Text style={styles.summaryLabel}>Transactions</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* Default Card */}
         <View style={styles.cardSection}>
@@ -269,12 +336,12 @@ export default function HomeScreen() {
                   <View style={styles.transactionLeft}>
                     <View style={styles.transactionIcon}>
                       <Text style={styles.transactionEmoji}>
-                        {getMerchantIcon(request.merchant_name)}
+                        {getMerchantIcon(getDisplayName(request))}
                       </Text>
                     </View>
                     <View style={styles.transactionInfo}>
                       <Text style={styles.transactionMerchant}>
-                        {request.merchant_name}
+                        {getDisplayName(request)}
                       </Text>
                       <Text style={styles.transactionDate}>
                         {formatDate(request.created_at)} • {getTimeRemaining(request.expires_at)}
@@ -314,14 +381,17 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+      
+      {/* Alert Component */}
+      <AlertComponent />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F8F7FF',
   },
   scrollView: {
     flex: 1,
@@ -525,45 +595,91 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   declineButton: {
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#FECACA',
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
   declineButtonText: {
     color: '#DC2626',
-    fontSize: 12,
     fontWeight: '600',
   },
   approveButton: {
     backgroundColor: '#6B46C1',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
   approveButtonText: {
     color: '#FFFFFF',
-    fontSize: 12,
     fontWeight: '600',
   },
   emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
+    marginHorizontal: 24,
+    marginTop: 20,
   },
   emptyStateText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#4B5563',
     marginTop: 16,
   },
   emptyStateSubtext: {
     fontSize: 14,
     color: '#6B7280',
-    marginTop: 8,
+    marginTop: 4,
     textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  summarySection: {
+    marginHorizontal: 24,
+    marginBottom: 24,
+  },
+  summaryCardsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+    minHeight: 100,
+  },
+  earningsCard: {
+    backgroundColor: '#10B981',
+  },
+  transactionsCard: {
+    backgroundColor: '#6B46C1',
+  },
+  summaryIcon: {
+    marginBottom: 8,
+  },
+  summaryAmount: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    opacity: 0.9,
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });

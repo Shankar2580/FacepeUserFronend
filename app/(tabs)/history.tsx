@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   Platform,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiService } from '../../services/api';
 import { Transaction, AutoPay, PaymentMethod } from '../../constants/types';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useAlert } from '../../components/ui/AlertModal';
 
 export default function HistoryScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -29,6 +29,7 @@ export default function HistoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const { showAlert, AlertComponent } = useAlert();
 
   useEffect(() => {
     loadData();
@@ -51,7 +52,7 @@ export default function HistoryScreen() {
       setPaymentMethods(paymentMethodsData);
     } catch (error) {
       console.error('Failed to load data:', error);
-      Alert.alert('Error', 'Failed to load transaction history');
+      showAlert('Error', 'Failed to load transaction history', undefined, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -78,13 +79,13 @@ export default function HistoryScreen() {
     const defaultCard = paymentMethods.find(pm => pm.is_default);
     
     if (!defaultCard) {
-      Alert.alert('No Default Card', 'Please set a default payment method first');
+      showAlert('No Default Card', 'Please set a default payment method first', undefined, 'warning');
       return;
     }
 
     const existingAutoPay = autoPay.find(ap => ap.merchant_id === transaction.merchant_id);
     
-    Alert.alert(
+    showAlert(
       'Enable AutoPay',
       `${existingAutoPay ? 'Update' : 'Enable'} automatic payments for ${transaction.merchant_name}?\n\nFuture payments will be automatically processed using your default card.`,
       [
@@ -101,9 +102,9 @@ export default function HistoryScreen() {
               });
               
               await loadData(); // Refresh data
-              Alert.alert('Success', `AutoPay ${existingAutoPay ? 'updated' : 'enabled'} successfully`);
+              showAlert('Success', `AutoPay ${existingAutoPay ? 'updated' : 'enabled'} successfully`, undefined, 'success');
             } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.message || 'Failed to enable AutoPay');
+              showAlert('Error', error.response?.data?.message || 'Failed to enable AutoPay', undefined, 'error');
             }
           },
         },
@@ -301,16 +302,14 @@ export default function HistoryScreen() {
         ) : (
           <View style={styles.emptyState}>
             <Ionicons name="receipt-outline" size={64} color="#9CA3AF" />
-            <Text style={styles.emptyStateTitle}>No Transactions</Text>
-            <Text style={styles.emptyStateSubtitle}>
-              {selectedFilter === 'all' 
-                ? 'Your transaction history will appear here'
-                : `No ${selectedFilter} transactions found`
-              }
+            <Text style={styles.emptyTitle}>No Transactions Yet</Text>
+            <Text style={styles.emptyDescription}>
+              Your transaction history will appear here once you make a payment.
             </Text>
           </View>
         )}
       </ScrollView>
+      <AlertComponent />
     </View>
   );
 }
@@ -318,7 +317,7 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F8F7FF',
   },
   header: {
     paddingHorizontal: 24,
@@ -371,7 +370,7 @@ const styles = StyleSheet.create({
     borderColor: '#6B46C1',
   },
   filterButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
     color: '#6B7280',
   },
@@ -499,14 +498,14 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
     paddingHorizontal: 48,
   },
-  emptyStateTitle: {
+  emptyTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#1F2937',
     marginTop: 16,
     marginBottom: 8,
   },
-  emptyStateSubtitle: {
+  emptyDescription: {
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',

@@ -90,6 +90,7 @@ export interface PaymentRequest {
   user_id: string;
   merchant_name: string;
   merchant_id: string;
+  business_name?: string; // Add optional business_name field
   amount: number;
   currency: string;
   description?: string;
@@ -130,6 +131,7 @@ export interface RegisterRequest {
   first_name: string;
   last_name: string;
   password: string;
+  pin: string;
   verification_code: string;
 }
 
@@ -149,4 +151,16 @@ export interface FaceRegistrationResponse {
   user_id: string;
   name: string;
   embedding_id: string;
+}
+
+export interface PinResetRequest {
+  phone_number: string;
+  verification_code: string;
+  current_pin: string;
+  new_pin: string;
+}
+
+export interface PinResetResponse {
+  success: boolean;
+  message: string;
 } 

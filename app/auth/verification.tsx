@@ -1,32 +1,45 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  Alert,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { apiService } from '../../services/api';
+import { useAlert } from '../../components/ui/AlertModal';
 
 export default function VerificationScreen() {
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
   
   const router = useRouter();
   const { register } = useAuth();
   const params = useLocalSearchParams();
+  const { showAlert, AlertComponent } = useAlert();
+  const isScreenFocused = useRef(true);
   
   const phoneNumber = params.phone_number as string;
   const firstName = params.first_name as string;
   const lastName = params.last_name as string;
   const password = params.password as string;
   const email = (params.email as string) || '';
+
+  // Track screen focus to prevent alerts when user navigates away
+  useFocusEffect(
+    React.useCallback(() => {
+      isScreenFocused.current = true;
+      return () => {
+        isScreenFocused.current = false;
+      };
+    }, [])
+  );
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -61,7 +74,7 @@ export default function VerificationScreen() {
     const codeToVerify = verificationCode || code.join('');
     
     if (codeToVerify.length !== 6) {
-      Alert.alert('Error', 'Please enter the complete verification code');
+      showAlert('Error', 'Please enter the complete verification code', undefined, 'error');
       return;
     }
 
@@ -80,12 +93,13 @@ export default function VerificationScreen() {
         first_name: firstName,
         last_name: lastName,
         password: password,
-        verification_code: codeToVerify
+        verification_code: codeToVerify,
+        pin: ''
       });
       
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Verification Failed', error.response?.data?.message || 'Please try again');
+      showAlert('Verification Failed', error.response?.data?.message || 'Please try again', undefined, 'error');
       setCode(['', '', '', '', '', '']);
     } finally {
       setIsLoading(false);
@@ -93,8 +107,9 @@ export default function VerificationScreen() {
   };
 
   const handleResend = async () => {
-    if (!canResend) return;
+    if (!canResend || isResending) return;
     
+    setIsResending(true);
     try {
       await apiService.sendVerification({
         phone_number: phoneNumber,
@@ -103,9 +118,13 @@ export default function VerificationScreen() {
       
       setCountdown(60);
       setCanResend(false);
-      Alert.alert('Success', 'Verification code sent successfully');
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to resend code');
+      // Only show alert if screen is still focused
+      if (isScreenFocused.current) {
+        showAlert('Error', error.response?.data?.message || 'Failed to resend code', undefined, 'error');
+      }
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -194,12 +213,12 @@ export default function VerificationScreen() {
 
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.resendButton, !canResend && styles.disabledButton]}
+            style={[styles.resendButton, (!canResend || isResending) && styles.disabledButton]}
             onPress={handleResend}
-            disabled={!canResend}
+            disabled={!canResend || isResending}
           >
-            <Text style={[styles.resendText, !canResend && styles.disabledText]}>
-              {canResend ? 'Resend Code' : `Resend in ${countdown}s`}
+            <Text style={[styles.resendText, (!canResend || isResending) && styles.disabledText]}>
+              {isResending ? 'Sending...' : canResend ? 'Resend Code' : `Resend in ${countdown}s`}
             </Text>
           </TouchableOpacity>
 
@@ -214,6 +233,7 @@ export default function VerificationScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      <AlertComponent />
     </SafeAreaView>
   );
 }
@@ -221,7 +241,7 @@ export default function VerificationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F8F7FF',
   },
   content: {
     flex: 1,

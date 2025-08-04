@@ -6,10 +6,21 @@ import {
   TouchableOpacity,
   Platform,
   Dimensions,
+  Animated,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { PaymentMethod } from '../../constants/types';
+import { designSystem, spacing, shadows, borderRadius, gradients } from '../../constants/DesignSystem';
+
+// Import card brand images
+const cardBrandImages = {
+  visa: require('../../assets/images/Visa.png'),
+  mastercard: require('../../assets/images/mastercard.png'),
+  discover: require('../../assets/images/discover.png'),
+  amex: require('../../assets/images/AMX.png'),
+};
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth > 768;
@@ -73,19 +84,30 @@ export function PaymentCard({
     }
   };
 
+  const getCardBrandImage = (brand?: string) => {
+    if (!brand || typeof brand !== 'string') return null;
+    switch (brand.toLowerCase()) {
+      case 'visa': return cardBrandImages.visa;
+      case 'mastercard': return cardBrandImages.mastercard;
+      case 'amex': return cardBrandImages.amex;
+      case 'discover': return cardBrandImages.discover;
+      default: return null;
+    }
+  };
+
   const getCardColor = (brand?: string): [string, string] => {
-    if (!brand || typeof brand !== 'string') return ['#1a1a2e', '#16213e'];
+    if (!brand || typeof brand !== 'string') return [...gradients.cardDefault] as [string, string];
     
     switch (brand.toLowerCase()) {
-      case 'visa': return ['#1a478d', '#1a478d'];
-      case 'mastercard': return ['#252525', '#252525'];
-      case 'amex': return ['#0077c8', '#0077c8'];
-      case 'discover': return ['#333333', '#333333'];
+      case 'visa': return [...gradients.cardVisa] as [string, string];
+      case 'mastercard': return [...gradients.cardMastercard] as [string, string];
+      case 'amex': return [...gradients.cardAmex] as [string, string];
+      case 'discover': return [...gradients.cardDiscover] as [string, string];
       case 'unionpay': return ['#d32f2f', '#f44336'];
       case 'jcb': return ['#1976d2', '#2196f3'];
       case 'diners': return ['#424242', '#616161'];
       case 'maestro': return ['#7b1fa2', '#9c27b0'];
-      default: return ['#1a1a2e', '#16213e'];
+      default: return [...gradients.cardDefault] as [string, string];
     }
   };
 
@@ -193,9 +215,17 @@ export function PaymentCard({
           </Text>
         </View>
         <View style={styles.cardNetwork}>
-          <Text style={styles.networkText}>
-            {getCardBrandIcon(brand)}
-          </Text>
+          {getCardBrandImage(brand) ? (
+            <Image 
+              source={getCardBrandImage(brand)} 
+              style={styles.cardBrandImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <Text style={styles.networkText}>
+              {getCardBrandIcon(brand)}
+            </Text>
+          )}
         </View>
       </View>
       
@@ -246,30 +276,23 @@ export function PaymentCard({
 
 const styles = StyleSheet.create({
   cardWrapper: {
-    marginBottom: 24,
+    marginBottom: spacing.xxl,
     alignSelf: 'center',
     width: '100%',
     maxWidth: 345.6,
   },
   creditCard: {
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: borderRadius.xxl,
+    padding: spacing.xxl,
     minHeight: isTablet ? 200 : 180,
     aspectRatio: 1.586, // Standard credit card ratio
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 12,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 25,
-    elevation: 20,
+    ...shadows.card,
     overflow: 'hidden',
     position: 'relative',
   },
   compactCard: {
     minHeight: 160,
-    padding: 20,
+    padding: spacing.xl,
   },
   previewCard: {
     maxWidth: 320,
@@ -416,20 +439,20 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   cardNetwork: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    // backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minHeight: 32,
+    minWidth: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardBrandImage: {
+    width: 45,
+    height: 28,
+    maxWidth: 45,
+    maxHeight: 28,
   },
   networkText: {
     color: '#FFFFFF',

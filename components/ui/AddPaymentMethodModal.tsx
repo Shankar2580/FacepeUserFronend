@@ -6,15 +6,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { CardField, useStripe } from '@stripe/stripe-react-native';
 import { apiService } from '../../services/api';
+import { StripeServiceError } from '../../services/stripeService';
 
 interface AddPaymentMethodModalProps {
   visible: boolean;
   onClose: () => void;
-  onPaymentMethodAdded: () => void;
+  onPaymentMethodAdded: () => Promise<void>;
   authToken: string;
 }
 
@@ -27,24 +27,24 @@ export const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
   const { createPaymentMethod } = useStripe();
+  const [error, setError] = useState<string | null>(null);
 
   const handleAddPaymentMethod = async () => {
     if (!cardComplete) {
-      Alert.alert('Error', 'Please enter complete card details');
+      setError('Please enter complete card details');
       return;
     }
-
+    setError(null);
     setLoading(true);
     try {
       // Step 1: Create PaymentMethod with Stripe.js (tokenize card data)
       // Raw card information never touches our server - Stripe handles it securely
-      const { paymentMethod, error } = await createPaymentMethod({
+      const { paymentMethod, error: stripeError } = await createPaymentMethod({
         paymentMethodType: 'Card',
       });
 
-      if (error) {
-        console.error('Stripe error:', error);
-        throw new Error(error.message || 'Failed to process card details');
+      if (stripeError) {
+        throw new Error(stripeError.message || 'Failed to process card details');
       }
 
       if (!paymentMethod?.id) {
@@ -60,16 +60,16 @@ export const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
         is_default: true, // Usually make the new card default
       });
 
-      Alert.alert('Success', 'Payment method added successfully!');
-      onPaymentMethodAdded();
+      await onPaymentMethodAdded();
       onClose();
 
-    } catch (error) {
-      console.error('Error adding payment method:', error);
-      Alert.alert(
-        'Error',
-        error instanceof Error ? error.message : 'Failed to add payment method'
-      );
+    } catch (err: any) {
+      console.error('Error adding payment method:', err);
+      if (err instanceof StripeServiceError) {
+        setError(err.message);
+      } else {
+        setError(err.message || 'Failed to add payment method');
+      }
     } finally {
       setLoading(false);
     }
@@ -104,9 +104,14 @@ export const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
               style={styles.cardFieldWrapper}
               onCardChange={(cardDetails) => {
                 setCardComplete(cardDetails.complete);
+                if (cardDetails.complete) {
+                  setError(null);
+                }
               }}
             />
           </View>
+
+          {error && <Text style={styles.errorText}>{error}</Text>}
 
           <View style={styles.securityInfo}>
             <Text style={styles.securityText}>
@@ -186,6 +191,11 @@ const styles = StyleSheet.create({
     borderColor: '#E5E5E5',
     borderRadius: 8,
     fontSize: 16,
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: 10,
   },
   securityInfo: {
     marginBottom: 40,

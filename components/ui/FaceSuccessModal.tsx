@@ -8,44 +8,29 @@ import {
   Animated,
   Dimensions,
   StatusBar,
-  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// Import card brand images
-const cardBrandImages = {
-  visa: require('../../assets/images/Visa.png'),
-  mastercard: require('../../assets/images/mastercard.png'),
-  discover: require('../../assets/images/discover.png'),
-  amex: require('../../assets/images/AMX.png'),
-};
-
 const { width, height } = Dimensions.get('window');
 
-interface CardSuccessModalProps {
+interface FaceSuccessModalProps {
   visible: boolean;
   onClose: () => void;
-  cardDetails?: {
-    brand?: string;
-    last4?: string;
-  };
-  /**
-   * Indicates whether the newly-added card is the user's default payment method.
-   * When true the modal will show a "Default" badge – otherwise the badge is hidden.
-   */
-  isDefault?: boolean;
+  userName?: string;
+  isUpdate?: boolean; // true for face update, false for face registration
 }
 
-export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
+export const FaceSuccessModal: React.FC<FaceSuccessModalProps> = ({
   visible,
   onClose,
-  cardDetails,
-  isDefault = false,
+  userName,
+  isUpdate = false,
 }) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const bounceAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (visible) {
@@ -78,46 +63,35 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
           }),
         ]),
       ]).start();
+
+      // Continuous pulse animation for the face icon
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
     } else {
       // Reset animations when modal is hidden
       scaleAnim.setValue(0);
       fadeAnim.setValue(0);
       bounceAnim.setValue(0);
+      pulseAnim.setValue(1);
     }
   }, [visible]);
 
-  const getCardBrandIcon = (brand?: string): string => {
-    if (!brand) return 'card';
-    switch (brand.toLowerCase()) {
-      case 'visa': return 'card';
-      case 'mastercard': return 'card';
-      case 'amex': return 'card';
-      case 'discover': return 'card';
-      default: return 'card';
-    }
-  };
-
-  const getCardBrandImage = (brand?: string) => {
-    if (!brand || typeof brand !== 'string') return null;
-    switch (brand.toLowerCase()) {
-      case 'visa': return cardBrandImages.visa;
-      case 'mastercard': return cardBrandImages.mastercard;
-      case 'amex': return cardBrandImages.amex;
-      case 'discover': return cardBrandImages.discover;
-      default: return null;
-    }
-  };
-
-  const getCardBrandColor = (brand?: string): string => {
-    if (!brand) return '#6B46C1';
-    switch (brand.toLowerCase()) {
-      case 'visa': return '#1A1F71';
-      case 'mastercard': return '#EB001B';
-      case 'amex': return '#006FCF';
-      case 'discover': return '#FF6000';
-      default: return '#6B46C1';
-    }
-  };
+  const title = isUpdate ? 'Face Updated Successfully!' : 'Face Registration Complete!';
+  const subtitle = isUpdate 
+    ? 'Your facial recognition has been updated and is ready to use'
+    : 'Your face is now registered for secure biometric authentication';
 
   return (
     <Modal
@@ -131,8 +105,10 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
           <LinearGradient
-            colors={['#10B981', '#059669']}
+            colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
             style={styles.modalContent}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           >
             {/* Success Icon with Animation */}
             <Animated.View 
@@ -152,7 +128,9 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
               ]}
             >
               <View style={styles.successIcon}>
-                <Ionicons name="checkmark" size={48} color="white" />
+                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                  <Ionicons name="scan" size={48} color="white" />
+                </Animated.View>
               </View>
             </Animated.View>
 
@@ -163,43 +141,16 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
                 { opacity: fadeAnim }
               ]}
             >
-              <Text style={styles.successTitle}>Card Added Successfully!</Text>
-              <Text style={styles.successSubtitle}>
-                Your payment method has been securely saved
-              </Text>
+              <Text style={styles.successTitle}>{title}</Text>
+              <Text style={styles.successSubtitle}>{subtitle}</Text>
 
-              {/* Card Details */}
-              {cardDetails && (
-                <View style={styles.cardDetailsContainer}>
-                  <View style={styles.cardIcon}>
-                    {getCardBrandImage(cardDetails.brand) ? (
-                      <Image 
-                        source={getCardBrandImage(cardDetails.brand)} 
-                        style={styles.cardBrandImage}
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <Ionicons 
-                        name={getCardBrandIcon(cardDetails.brand) as any} 
-                        size={24} 
-                        color={getCardBrandColor(cardDetails.brand)} 
-                      />
-                    )}
+              {/* User Name Display */}
+              {userName && (
+                <View style={styles.userContainer}>
+                  <View style={styles.userIcon}>
+                    <Ionicons name="person" size={20} color="rgba(255,255,255,0.9)" />
                   </View>
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.cardBrand}>
-                      {cardDetails.brand?.toUpperCase() || 'CARD'}
-                    </Text>
-                    <Text style={styles.cardNumber}>
-                      •••• •••• •••• {cardDetails.last4 || '••••'}
-                    </Text>
-                  </View>
-                  {isDefault && (
-                    <View style={styles.defaultBadge}>
-                      <Ionicons name="star" size={16} color="#F59E0B" />
-                      <Text style={styles.defaultText}>Default</Text>
-                    </View>
-                  )}
+                  <Text style={styles.userName}>{userName}</Text>
                 </View>
               )}
 
@@ -207,15 +158,19 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
               <View style={styles.featuresContainer}>
                 <View style={styles.feature}>
                   <Ionicons name="shield-checkmark" size={20} color="rgba(255,255,255,0.9)" />
-                  <Text style={styles.featureText}>Secured with bank-grade encryption</Text>
+                  <Text style={styles.featureText}>Encrypted biometric storage</Text>
                 </View>
                 <View style={styles.feature}>
                   <Ionicons name="flash" size={20} color="rgba(255,255,255,0.9)" />
-                  <Text style={styles.featureText}>Ready for instant payments</Text>
+                  <Text style={styles.featureText}>Instant payment authentication</Text>
                 </View>
                 <View style={styles.feature}>
                   <Ionicons name="finger-print" size={20} color="rgba(255,255,255,0.9)" />
-                  <Text style={styles.featureText}>Compatible with face recognition</Text>
+                  <Text style={styles.featureText}>Bank-grade security enabled</Text>
+                </View>
+                <View style={styles.feature}>
+                  <Ionicons name="checkmark-circle" size={20} color="rgba(255,255,255,0.9)" />
+                  <Text style={styles.featureText}>Ready for AutoPay setup</Text>
                 </View>
               </View>
             </Animated.View>
@@ -225,7 +180,7 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
               style={styles.doneButton}
               onPress={onClose}
             >
-              <Text style={styles.doneButtonText}>Done</Text>
+              <Text style={styles.doneButtonText}>Awesome!</Text>
             </TouchableOpacity>
           </LinearGradient>
 
@@ -267,7 +222,7 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
               }
             ]}
           >
-            <Ionicons name="star" size={16} color="#10B981" />
+            <Ionicons name="sparkles" size={16} color="#06B6D4" />
           </Animated.View>
 
           <Animated.View 
@@ -287,7 +242,27 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
               }
             ]}
           >
-            <Ionicons name="heart" size={18} color="#EF4444" />
+            <Ionicons name="shield-checkmark" size={18} color="#10B981" />
+          </Animated.View>
+
+          <Animated.View 
+            style={[
+              styles.celebrationElement,
+              styles.celebrationElement4,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  { 
+                    rotate: bounceAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '180deg'],
+                    })
+                  }
+                ]
+              }
+            ]}
+          >
+            <Ionicons name="scan" size={14} color="#8B5CF6" />
           </Animated.View>
         </View>
       </View>
@@ -298,25 +273,28 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
   },
   modalContainer: {
-    position: 'relative',
-    width: '100%',
+    width: width * 0.9,
     maxWidth: 400,
+    position: 'relative',
   },
   modalContent: {
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
     shadowRadius: 20,
-    elevation: 20,
+    elevation: 10,
   },
   successIconContainer: {
     marginBottom: 24,
@@ -326,16 +304,18 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   contentContainer: {
     alignItems: 'center',
-    width: '100%',
+    marginBottom: 32,
   },
   successTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: 'white',
     textAlign: 'center',
     marginBottom: 8,
@@ -344,87 +324,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
-    marginBottom: 24,
     lineHeight: 22,
+    marginBottom: 24,
   },
-  cardDetailsContainer: {
+  userContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 16,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
     marginBottom: 24,
-    width: '100%',
   },
-  cardIcon: {
-    width: 50,
-    height: 32,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+  userIcon: {
+    marginRight: 8,
   },
-  cardBrandImage: {
-    width: 45,
-    height: 28,
-    maxWidth: 45,
-    maxHeight: 28,
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  cardBrand: {
+  userName: {
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
-    marginBottom: 2,
-  },
-  cardNumber: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontFamily: 'Courier',
-  },
-  defaultBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  defaultText: {
-    fontSize: 12,
-    color: '#F59E0B',
-    fontWeight: '600',
-    marginLeft: 4,
   },
   featuresContainer: {
+    gap: 12,
     width: '100%',
-    marginBottom: 32,
   },
   feature: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: 12,
   },
   featureText: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.9)',
-    marginLeft: 12,
-    flex: 1,
+    fontWeight: '500',
   },
   doneButton: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    paddingVertical: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     minWidth: 120,
   },
   doneButtonText: {
+    color: 'white',
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#10B981',
+    fontWeight: '600',
     textAlign: 'center',
   },
   celebrationElement: {
@@ -436,10 +382,14 @@ const styles = StyleSheet.create({
   },
   celebrationElement2: {
     top: 60,
-    left: 10,
+    left: 20,
   },
   celebrationElement3: {
-    bottom: 40,
+    bottom: 80,
     right: 30,
+  },
+  celebrationElement4: {
+    bottom: 40,
+    left: 30,
   },
 }); 

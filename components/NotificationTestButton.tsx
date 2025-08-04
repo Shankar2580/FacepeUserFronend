@@ -1,8 +1,11 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { notificationService } from '../services/notificationService';
+import { useAlert } from './ui/AlertModal';
 
 export default function NotificationTestButton() {
+  const { showAlert, AlertComponent } = useAlert();
+
   const testNotifications = async () => {
     try {
       // Test different notification types
@@ -42,17 +45,20 @@ export default function NotificationTestButton() {
         });
       }, 6000);
 
-      Alert.alert('Success', 'Test notifications sent! Check your notification panel.');
+      showAlert('Success', 'Test notifications sent! Check your notification panel.', undefined, 'success');
     } catch (error) {
       console.error('Failed to send test notifications:', error);
-      Alert.alert('Error', 'Failed to send test notifications');
+      showAlert('Error', 'Failed to send test notifications', undefined, 'error');
     }
   };
 
   return (
-    <TouchableOpacity style={styles.button} onPress={testNotifications}>
-      <Text style={styles.buttonText}>🔔 Test Notifications</Text>
-    </TouchableOpacity>
+    <View>
+      <TouchableOpacity style={styles.button} onPress={testNotifications}>
+        <Text style={styles.buttonText}>🔔 Test Notifications</Text>
+      </TouchableOpacity>
+      <AlertComponent />
+    </View>
   );
 }
 

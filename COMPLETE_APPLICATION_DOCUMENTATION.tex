@@ -1,0 +1,1345 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+
+% Page setup
+\geometry{left=2.5cm,right=2.5cm,top=3cm,bottom=3cm}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{PayByFaeAi - Complete Documentation}
+\lhead{\leftmark}
+\cfoot{\thepage}
+
+% Code listing setup
+\lstset{
+    backgroundcolor=\color{gray!10},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    commentstyle=\color{green!60!black},
+    deletekeywords={...},
+    escapeinside={\%*}{*)},
+    extendedchars=true,
+    frame=single,
+    keepspaces=true,
+    keywordstyle=\color{blue},
+    language=JavaScript,
+    morekeywords={*,...},
+    numbers=left,
+    numbersep=5pt,
+    numberstyle=\tiny\color{gray},
+    rulecolor=\color{black},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    stepnumber=1,
+    stringstyle=\color{orange},
+    tabsize=2,
+    title=\lstname
+}
+
+% Hyperlink setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    pdftitle={PayByFaeAi Complete Documentation},
+    pdfauthor={Development Team}
+}
+
+% Title formatting
+\titleformat{\section}{\Large\bfseries\color{blue}}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\color{blue!80}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{blue!60}}{\thesubsubsection}{1em}{}
+
+\title{
+    \Huge\textbf{PayByFaeAi}\\
+    \Large Complete Application Documentation\\
+    \large For New Developer Understanding
+}
+\author{Development Team}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\newpage
+
+\tableofcontents
+\newpage
+
+\section{Executive Summary}
+
+PayByFaeAi (branded as "Facepe") is a comprehensive mobile payment application built with React Native and Expo, featuring advanced face recognition technology, secure payment processing through Stripe, and real-time notification systems. The application provides users with a seamless payment experience through biometric authentication, automated payment processing, and comprehensive transaction management.
+
+\subsection{Key Features}
+\begin{itemize}
+    \item \textbf{Face Recognition Authentication}: Secure biometric authentication using advanced face recognition technology
+    \item \textbf{Stripe Payment Integration}: PCI-compliant payment processing with secure card storage
+    \item \textbf{Auto-Pay System}: Automated payment processing for trusted merchants
+    \item \textbf{Real-time Notifications}: Push notifications for payment requests and transaction updates
+    \item \textbf{Multi-platform Support}: iOS and Android compatibility through React Native
+    \item \textbf{Comprehensive Security}: JWT authentication, secure storage, and encrypted data transmission
+\end{itemize}
+
+\subsection{Technology Stack}
+\begin{itemize}
+    \item \textbf{Frontend}: React Native 0.79.3, Expo SDK 53
+    \item \textbf{Navigation}: Expo Router with file-based routing
+    \item \textbf{State Management}: React Context API with custom hooks
+    \item \textbf{Payment Processing}: Stripe React Native SDK
+    \item \textbf{Authentication}: JWT tokens with secure storage
+    \item \textbf{Notifications}: Expo Notifications with push token management
+    \item \textbf{Face Recognition}: Custom API integration with multipart form data
+\end{itemize}
+
+\section{Application Architecture}
+
+\subsection{Project Structure}
+
+The application follows a well-organized directory structure optimized for maintainability and scalability:
+
+\begin{lstlisting}[language=bash, caption=Project Directory Structure]
+PayByFaeAi/
+├── app/                          # Screen components (file-based routing)
+│   ├── (tabs)/                   # Main tab navigation screens
+│   │   ├── index.tsx            # Home screen
+│   │   ├── cards.tsx            # Payment methods management
+│   │   ├── history.tsx          # Transaction history
+│   │   └── profile.tsx          # User profile and settings
+│   ├── auth/                    # Authentication screens
+│   │   ├── login.tsx            # Login screen
+│   │   ├── register.tsx         # Registration screen
+│   │   └── verification.tsx     # Phone verification
+│   ├── _layout.tsx              # Root layout with providers
+│   ├── add-card.tsx             # Add payment method screen
+│   ├── face-registration.tsx    # Face registration screen
+│   ├── update-face.tsx          # Face update screen
+│   ├── autopay-settings.tsx     # Auto-pay configuration
+│   ├── pin-reset.tsx            # PIN reset functionality
+│   ├── change-password.tsx      # Password change screen
+│   └── transaction-detail.tsx   # Transaction details screen
+├── components/                   # Reusable UI components
+│   ├── ui/                      # Core UI components
+│   │   ├── PaymentCard.tsx      # Payment card display
+│   │   ├── AddPaymentMethodModal.tsx  # Card addition modal
+│   │   ├── AlertModal.tsx       # Alert dialog component
+│   │   ├── ProcessingAnimation.tsx    # Loading animations
+│   │   └── EmptyState.tsx       # Empty state component
+│   ├── ThemedText.tsx           # Themed text component
+│   ├── ThemedView.tsx           # Themed view component
+│   └── NotificationTestButton.tsx     # Development testing
+├── services/                    # Business logic and API services
+│   ├── api.ts                   # Main API service
+│   ├── stripeService.ts         # Stripe payment service
+│   ├── notificationService.ts   # Push notification service
+│   └── updateService.ts         # App update service
+├── hooks/                       # Custom React hooks
+│   ├── useAuth.ts               # Authentication hook
+│   ├── useNotifications.ts      # Notification management
+│   └── useUpdates.ts            # Update management
+├── constants/                   # Configuration and constants
+│   ├── api.ts                   # API endpoints configuration
+│   ├── types.ts                 # TypeScript type definitions
+│   ├── Colors.ts                # Color scheme
+│   ├── DesignSystem.ts          # Design system tokens
+│   └── Stripe.ts                # Stripe configuration
+├── assets/                      # Static assets
+│   ├── images/                  # Image assets
+│   └── fonts/                   # Font files
+└── android/                     # Android-specific configuration
+    └── app/                     # Android app configuration
+\end{lstlisting}
+
+\subsection{Core Architecture Patterns}
+
+\subsubsection{File-Based Routing}
+The application uses Expo Router's file-based routing system, where the file structure in the \texttt{app/} directory directly corresponds to the application's navigation structure.
+
+\subsubsection{Service Layer Architecture}
+Business logic is separated into dedicated service classes:
+\begin{itemize}
+    \item \texttt{ApiService}: Handles all HTTP requests and authentication
+    \item \texttt{StripeService}: Manages payment processing
+    \item \texttt{NotificationService}: Handles push notifications
+    \item \texttt{UpdateService}: Manages app updates
+\end{itemize}
+
+\subsubsection{Context-Based State Management}
+The application uses React Context API for global state management, particularly for authentication and user data.
+
+\section{Authentication System}
+
+\subsection{Authentication Flow}
+
+The authentication system implements a comprehensive JWT-based authentication with phone verification:
+
+\begin{lstlisting}[language=TypeScript, caption=Authentication Context Interface]
+interface AuthContextType {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  login: (data: LoginRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+}
+\end{lstlisting}
+
+\subsubsection{Registration Process}
+\begin{enumerate}
+    \item Phone number verification via SMS/call
+    \item User information collection (name, email, password, PIN)
+    \item Account creation with backend validation
+    \item Automatic login after successful registration
+\end{enumerate}
+
+\subsubsection{Login Process}
+\begin{enumerate}
+    \item Username/password authentication
+    \item JWT token generation and secure storage
+    \item User profile data retrieval
+    \item Navigation to main application
+\end{enumerate}
+
+\subsubsection{Token Management}
+\begin{lstlisting}[language=TypeScript, caption=Token Refresh Implementation]
+// Automatic token refresh on 401 responses
+private async refreshToken(): Promise<void> {
+  const refreshToken = await SecureStore.getItemAsync('refresh_token');
+  if (!refreshToken) {
+    throw new Error('No refresh token available');
+  }
+
+  const response = await this.api.post(API_ENDPOINTS.REFRESH_TOKEN, {
+    refresh_token: refreshToken
+  });
+
+  const { access_token, refresh_token: newRefreshToken } = response.data;
+  
+  await SecureStore.setItemAsync('access_token', access_token);
+  await SecureStore.setItemAsync('refresh_token', newRefreshToken);
+}
+\end{lstlisting}
+
+\subsection{Security Features}
+
+\subsubsection{Secure Storage}
+All sensitive data is stored using Expo SecureStore:
+\begin{itemize}
+    \item JWT access and refresh tokens
+    \item User profile information
+    \item Payment method preferences
+    \item Face registration status
+\end{itemize}
+
+\subsubsection{Request Interceptors}
+Automatic token attachment and error handling:
+\begin{lstlisting}[language=TypeScript, caption=Request Interceptor]
+this.api.interceptors.request.use(
+  async (config) => {
+    const token = await SecureStore.getItemAsync('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  }
+);
+\end{lstlisting}
+
+\section{Face Recognition System}
+
+\subsection{Face Registration Architecture}
+
+The face recognition system integrates with an external face recognition API to provide secure biometric authentication:
+
+\subsubsection{Registration Flow}
+\begin{enumerate}
+    \item User initiates face registration from profile or home screen
+    \item Camera permission request and access
+    \item Image capture using Expo Camera
+    \item Image processing and FormData preparation
+    \item API call to face registration service
+    \item Embedding ID storage and user status update
+    \item UI refresh to reflect registration status
+\end{enumerate}
+
+\subsubsection{API Integration}
+\begin{lstlisting}[language=TypeScript, caption=Face Registration API Call]
+async registerFace(userId: string, name: string, imageUri: string): Promise<any> {
+  const formData = new FormData();
+  
+  formData.append('user_id', userId);
+  formData.append('name', name);
+  
+  const uriParts = imageUri.split('.');
+  const fileType = uriParts[uriParts.length - 1];
+  
+  formData.append('file', {
+    uri: imageUri,
+    name: `photo.${fileType}`,
+    type: `image/${fileType}`,
+  } as any);
+
+  const response = await axios({
+    method: 'POST',
+    url: `${API_BASE_URL}${API_ENDPOINTS.REGISTER_FACE}`,
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      'Authorization': await this.getAuthHeader()
+    },
+    timeout: 60000,
+  });
+
+  return response.data;
+}
+\end{lstlisting}
+
+\subsection{Face Registration Components}
+
+\subsubsection{Face Registration Screen}
+The main face registration screen (\texttt{app/face-registration.tsx}) provides:
+\begin{itemize}
+    \item User-friendly interface with instructions
+    \item Camera integration for photo capture
+    \item Processing animations during API calls
+    \item Success/error feedback modals
+    \item Automatic navigation after completion
+\end{itemize}
+
+\subsubsection{UI State Management}
+The system uses conditional rendering based on face registration status:
+\begin{lstlisting}[language=TypeScript, caption=Conditional Face Registration UI]
+// Home screen conditional display
+{user && !user.has_face_registered && (
+  <FaceRegistrationPrompt onPress={() => router.push('/face-registration')} />
+)}
+
+// Profile screen status display
+<Text style={styles.statusText}>
+  {user?.has_face_registered ? 'Registered' : 'Not registered'}
+</Text>
+{user?.has_face_registered && (
+  <View style={styles.activeBadge}>
+    <Text style={styles.activeText}>Active</Text>
+  </View>
+)}
+\end{lstlisting}
+
+\section{Payment System Integration}
+
+\subsection{Stripe Integration Architecture}
+
+The payment system implements PCI-compliant payment processing using Stripe's React Native SDK:
+
+\subsubsection{Security-First Approach}
+\begin{itemize}
+    \item Raw card data never touches application servers
+    \item Stripe handles all sensitive card information
+    \item Only secure tokens are stored and transmitted
+    \item PCI compliance maintained through Stripe's infrastructure
+\end{itemize}
+
+\subsubsection{Payment Method Addition Flow}
+\begin{enumerate}
+    \item User enters card details in Stripe CardField component
+    \item Stripe tokenizes card data on their servers
+    \item Application receives secure PaymentMethod token
+    \item Token is sent to backend for storage
+    \item Backend associates token with user account
+    \item Payment method becomes available for transactions
+\end{enumerate}
+
+\subsection{Stripe Service Implementation}
+
+\begin{lstlisting}[language=TypeScript, caption=Stripe Service Class]
+class StripeService {
+  private apiBaseUrl: string;
+  private authToken: string | null = null;
+
+  async createSetupIntent(): Promise<SetupIntentResponse> {
+    return this.makeApiCall('/users/me/payment-methods/setup-intent', {
+      method: 'POST',
+    });
+  }
+
+  async confirmSetupIntent(setupIntentId: string): Promise<any> {
+    return this.makeApiCall(
+      `/users/me/payment-methods/confirm-setup-intent/${setupIntentId}`, 
+      {
+        method: 'POST',
+      }
+    );
+  }
+
+  async getPaymentMethods(): Promise<PaymentMethod[]> {
+    return this.makeApiCall('/users/me/payment-methods');
+  }
+
+  async deletePaymentMethod(paymentMethodId: string): Promise<void> {
+    return this.makeApiCall(
+      `/users/me/payment-methods?payment_method_id=${paymentMethodId}`, 
+      {
+        method: 'DELETE',
+      }
+    );
+  }
+}
+\end{lstlisting}
+
+\subsection{Payment Components}
+
+\subsubsection{Add Payment Method Modal}
+The \texttt{AddPaymentMethodModal} component provides:
+\begin{itemize}
+    \item Stripe CardField for secure card input
+    \item Real-time validation feedback
+    \item Loading states during processing
+    \item Error handling and user feedback
+    \item Automatic modal dismissal on success
+\end{itemize}
+
+\subsubsection{Payment Card Display}
+The \texttt{PaymentCard} component renders:
+\begin{itemize}
+    \item Card brand logos (Visa, Mastercard, etc.)
+    \item Masked card numbers (last 4 digits)
+    \item Expiration dates
+    \item Default card indicators
+    \item Action buttons for card management
+\end{itemize}
+
+\section{Auto-Pay System}
+
+\subsection{Auto-Pay Architecture}
+
+The auto-pay system enables users to configure automatic payment approval for trusted merchants:
+
+\subsubsection{Configuration Components}
+\begin{itemize}
+    \item Merchant selection and verification
+    \item Payment amount limits
+    \item Default payment method assignment
+    \item Enable/disable toggles
+    \item Merchant name matching logic
+\end{itemize}
+
+\subsubsection{Auto-Pay Processing Logic}
+\begin{lstlisting}[language=TypeScript, caption=Auto-Pay Processing]
+const checkForNewPaymentRequests = async () => {
+  const [requests, autoPaySettings] = await Promise.all([
+    apiService.getPaymentRequests(),
+    apiService.getAutoPay().catch(() => [])
+  ]);
+
+  const pendingRequests = requests.filter(request => request.status === 'pending');
+  
+  for (const request of newRequests) {
+    const isAutoPayMerchant = autoPaySettings.find(autoPay => 
+      autoPay.merchant_name.toLowerCase() === request.merchant_name.toLowerCase() && 
+      autoPay.is_enabled &&
+      (autoPay.max_amount ? autoPay.max_amount >= request.amount : false)
+    );
+
+    if (isAutoPayMerchant) {
+      try {
+        await apiService.approvePayment(request.id);
+        await notificationService.notifyAutoPaymentProcessed({
+          merchantName: request.merchant_name,
+          amount: request.amount,
+          paymentId: request.id,
+        });
+      } catch (autoPayError) {
+        // Fallback to manual approval notification
+        await notificationService.notifyPaymentRequest(request);
+      }
+    }
+  }
+};
+\end{lstlisting}
+
+\subsection{Auto-Pay Configuration Screen}
+
+The auto-pay settings screen (\texttt{app/autopay-settings.tsx}) provides:
+\begin{itemize}
+    \item List of configured auto-pay merchants
+    \item Add new merchant functionality
+    \item Edit existing merchant settings
+    \item Remove merchant configurations
+    \item Payment method selection per merchant
+    \item Amount limit configuration
+\end{itemize}
+
+\section{Notification System}
+
+\subsection{Notification Architecture}
+
+The notification system provides real-time alerts for payment activities:
+
+\subsubsection{Notification Types}
+\begin{itemize}
+    \item \textbf{Payment Request}: New payment requests from merchants
+    \item \textbf{Auto Payment}: Automated payment processing notifications
+    \item \textbf{Payment Approved}: Successful payment confirmations
+    \item \textbf{Payment Failed}: Failed payment alerts with error details
+\end{itemize}
+
+\subsubsection{Notification Service Implementation}
+\begin{lstlisting}[language=TypeScript, caption=Notification Service Class]
+class NotificationService {
+  private expoPushToken: string | null = null;
+
+  async initialize() {
+    await this.registerForPushNotifications();
+    this.setupNotificationHandlers();
+  }
+
+  private async registerForPushNotifications() {
+    if (!Device.isDevice) return;
+
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') return;
+
+    const token = await Notifications.getExpoPushTokenAsync({
+      projectId: '9e1f0d76-0db2-4b5e-b263-3fb11c9e737b',
+    });
+    
+    this.expoPushToken = token.data;
+    await this.sendTokenToBackend(this.expoPushToken);
+  }
+
+  async notifyPaymentRequest(data: PaymentNotificationData) {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Payment Request',
+        body: `${data.merchantName} is requesting $${data.amount}`,
+        data: { type: 'payment_request', ...data },
+        sound: true,
+        priority: Notifications.AndroidImportance.HIGH,
+      },
+      trigger: null,
+    });
+  }
+}
+\end{lstlisting}
+
+\subsection{Background Processing}
+
+The notification system includes background processing capabilities:
+\begin{itemize}
+    \item Periodic checks for new payment requests (every 30 seconds)
+    \item App state monitoring for foreground/background transitions
+    \item Offline notification queuing
+    \item Smart navigation based on notification type
+\end{itemize}
+
+\section{User Interface and Design System}
+
+\subsection{Design System Architecture}
+
+The application implements a comprehensive design system for consistency:
+
+\subsubsection{Design Tokens}
+\begin{lstlisting}[language=TypeScript, caption=Design System Tokens]
+// Spacing Scale - 8px grid system
+export const spacing = {
+  xs: 4,   sm: 8,   md: 12,  lg: 16,
+  xl: 20,  xxl: 24, xxxl: 32, huge: 40, massive: 48,
+} as const;
+
+// Typography Scale
+export const typography = {
+  fontSize: {
+    xs: 12, sm: 14, md: 16, lg: 18, xl: 20,
+    xxl: 24, xxxl: 28, huge: 32, massive: 36,
+  },
+  fontWeight: {
+    light: '300', regular: '400', medium: '500',
+    semiBold: '600', bold: '700',
+  },
+  lineHeight: {
+    tight: 1.1, normal: 1.4, relaxed: 1.6,
+  },
+} as const;
+
+// Color System
+export const colors = {
+  primary: {
+    50: '#f0f9ff',   100: '#e0f2fe',  200: '#bae6fd',
+    300: '#7dd3fc',  400: '#38bdf8',  500: '#0ea5e9',
+    600: '#0284c7',  700: '#0369a1',  800: '#075985',
+    900: '#0c4a6e',
+  },
+  // ... additional color scales
+} as const;
+\end{lstlisting}
+
+\subsubsection{Component Architecture}
+The UI components follow a hierarchical structure:
+\begin{itemize}
+    \item \textbf{Base Components}: ThemedText, ThemedView
+    \item \textbf{Form Components}: Input fields, buttons, modals
+    \item \textbf{Display Components}: Cards, lists, badges
+    \item \textbf{Navigation Components}: Tab bars, headers
+    \item \textbf{Feedback Components}: Alerts, loading states, empty states
+\end{itemize}
+
+\subsection{Screen Components}
+
+\subsubsection{Tab Navigation Structure}
+The main application uses a tab-based navigation with four primary screens:
+
+\begin{lstlisting}[language=TypeScript, caption=Tab Navigation Configuration]
+<Tabs screenOptions={{
+  tabBarActiveTintColor: Colors.light.tint,
+  headerShown: false,
+  tabBarButton: HapticTab,
+  tabBarBackground: TabBarBackground,
+}}>
+  <Tabs.Screen name="index" options={{
+    title: 'Home',
+    tabBarIcon: ({ color, focused }) => (
+      <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+    ),
+  }} />
+  <Tabs.Screen name="cards" options={{
+    title: 'Cards',
+    tabBarIcon: ({ color, focused }) => (
+      <Ionicons name={focused ? 'card' : 'card-outline'} size={24} color={color} />
+    ),
+  }} />
+  <Tabs.Screen name="history" options={{
+    title: 'History',
+    tabBarIcon: ({ color, focused }) => (
+      <Ionicons name={focused ? 'time' : 'time-outline'} size={24} color={color} />
+    ),
+  }} />
+  <Tabs.Screen name="profile" options={{
+    title: 'Profile',
+    tabBarIcon: ({ color, focused }) => (
+      <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+    ),
+  }} />
+</Tabs>
+\end{lstlisting}
+
+\subsubsection{Screen Descriptions}
+
+\paragraph{Home Screen (\texttt{app/(tabs)/index.tsx})}
+\begin{itemize}
+    \item Welcome message and user greeting
+    \item Payment request notifications
+    \item Quick action buttons
+    \item Face registration prompts (conditional)
+    \item Recent transaction summary
+\end{itemize}
+
+\paragraph{Cards Screen (\texttt{app/(tabs)/cards.tsx})}
+\begin{itemize}
+    \item Payment method list display
+    \item Add new payment method functionality
+    \item Default payment method management
+    \item Card deletion capabilities
+    \item Empty state when no cards are present
+\end{itemize}
+
+\paragraph{History Screen (\texttt{app/(tabs)/history.tsx})}
+\begin{itemize}
+    \item Transaction history list
+    \item Transaction filtering and sorting
+    \item Transaction detail navigation
+    \item Payment status indicators
+    \item Infinite scrolling for large datasets
+\end{itemize}
+
+\paragraph{Profile Screen (\texttt{app/(tabs)/profile.tsx})}
+\begin{itemize}
+    \item User profile information display
+    \item Face registration status and management
+    \item Auto-pay settings access
+    \item Security settings (PIN, password)
+    \item App settings and preferences
+    \item Development tools (in debug mode)
+\end{itemize}
+
+\section{API Integration and Data Management}
+
+\subsection{API Service Architecture}
+
+The application uses a centralized API service class for all backend communications:
+
+\subsubsection{Base API Configuration}
+\begin{lstlisting}[language=TypeScript, caption=API Service Configuration]
+class ApiService {
+  private api: AxiosInstance;
+  private isRefreshing: boolean = false;
+  private failedQueue: Array<{
+    resolve: (value?: any) => void;
+    reject: (error?: any) => void;
+  }> = [];
+
+  constructor() {
+    this.api = axios.create({
+      baseURL: API_BASE_URL,
+      timeout: 60000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    this.setupInterceptors();
+  }
+
+  private setupInterceptors() {
+    // Request interceptor for token attachment
+    this.api.interceptors.request.use(async (config) => {
+      const token = await SecureStore.getItemAsync('access_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
+
+    // Response interceptor for error handling and token refresh
+    this.api.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401 && !error.config._retry) {
+          return this.handleTokenRefresh(error);
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+}
+\end{lstlisting}
+
+\subsubsection{API Endpoints Configuration}
+\begin{lstlisting}[language=TypeScript, caption=API Endpoints]
+export const API_ENDPOINTS = {
+  // Authentication
+  REGISTER: '/customer/auth/register-frontend',
+  LOGIN: '/customer/auth/login',
+  REFRESH_TOKEN: '/customer/auth/refresh',
+  LOGOUT: '/customer/auth/logout',
+  
+  // Verification
+  SEND_VERIFICATION: '/customer/verification/send-phone-code',
+  VERIFY_CODE: '/customer/verification/verify-phone-code',
+  
+  // User Management
+  GET_PROFILE: '/customer/users/me',
+  UPDATE_PUSH_TOKEN: '/customer/users/me/push-token',
+  GET_FACE_STATUS: '/customer/users/me/face-status',
+  UPDATE_FACE_STATUS: '/customer/users/me/face-status',
+  
+  // Face Recognition
+  REGISTER_FACE: '/customer/face/register',
+  UPDATE_FACE: '/customer/face/update',
+  DELETE_FACE: '/customer/face/delete',
+  
+  // Payment Methods
+  GET_PAYMENT_METHODS: '/customer/users/me/payment-methods',
+  CREATE_SETUP_INTENT: '/customer/users/me/payment-methods/setup-intent',
+  CONFIRM_SETUP_INTENT: '/customer/users/me/payment-methods/confirm-setup-intent',
+  ADD_PAYMENT_METHOD_SECURE: '/customer/users/me/payment-methods/secure',
+  
+  // Transactions and Payments
+  GET_TRANSACTIONS: '/customer/users/me/transactions',
+  GET_PAYMENT_REQUESTS: '/customer/users/me/payment-requests/',
+  APPROVE_PAYMENT: '/customer/users/me/payments',
+  DECLINE_PAYMENT: '/customer/users/me/payments',
+  
+  // Auto-Pay
+  GET_AUTO_PAY: '/customer/users/me/autopay',
+  ADD_AUTO_PAY: '/customer/users/me/autopay',
+  UPDATE_AUTO_PAY: '/customer/users/me/autopay',
+  DELETE_AUTO_PAY: '/customer/users/me/autopay',
+};
+\end{lstlisting}
+
+\subsection{Data Models and Types}
+
+The application uses comprehensive TypeScript interfaces for type safety:
+
+\subsubsection{Core Data Models}
+\begin{lstlisting}[language=TypeScript, caption=Core Data Models]
+export interface User {
+  id: string;
+  phone_number: string;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  is_verified?: boolean;
+  has_face_registered: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentMethod {
+  id: string;
+  user_id: string;
+  stripe_payment_method_id: string;
+  card_last_four: string;
+  card_brand: string;
+  card_exp_month: number;
+  card_exp_year: number;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Transaction {
+  id: string;
+  user_id: string;
+  merchant_id: string;
+  merchant_name: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  payment_method_id: string;
+  stripe_payment_intent_id?: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentRequest {
+  id: string;
+  user_id: string;
+  merchant_name: string;
+  merchant_id: string;
+  business_name?: string;
+  amount: number;
+  currency: string;
+  description?: string;
+  status: 'pending' | 'approved' | 'declined' | 'expired';
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AutoPay {
+  id: string;
+  user_id: string;
+  merchant_id: string;
+  merchant_name: string;
+  is_enabled: boolean;
+  max_amount?: number;
+  payment_method_id: string;
+  created_at: string;
+  updated_at: string;
+}
+\end{lstlisting}
+
+\section{Development and Build Configuration}
+
+\subsection{Expo Configuration}
+
+The application is configured for multi-platform deployment using Expo:
+
+\subsubsection{App Configuration (\texttt{app.json})}
+\begin{lstlisting}[language=JSON, caption=Expo App Configuration]
+{
+  "expo": {
+    "name": "Facepe",
+    "slug": "facepe",
+    "version": "1.0.2",
+    "orientation": "portrait",
+    "scheme": "facepe",
+    "newArchEnabled": false,
+    "updates": {
+      "enabled": false,
+      "checkAutomatically": "NEVER"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.facepe.app"
+    },
+    "android": {
+      "package": "com.facepe.app",
+      "versionCode": 3,
+      "permissions": [
+        "CAMERA",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-splash-screen",
+      "expo-secure-store",
+      "expo-updates"
+    ]
+  }
+}
+\end{lstlisting}
+
+\subsubsection{EAS Build Configuration (\texttt{eas.json})}
+\begin{lstlisting}[language=JSON, caption=EAS Build Configuration]
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development"
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "channel": "production",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "env": {
+        "EXPO_ENABLE_NEW_ARCHITECTURE": "false",
+        "EXPO_UPDATES_ENABLED": "false"
+      }
+    }
+  }
+}
+\end{lstlisting}
+
+\subsection{Dependencies and Package Management}
+
+\subsubsection{Core Dependencies}
+\begin{lstlisting}[language=JSON, caption=Key Dependencies]
+{
+  "dependencies": {
+    "expo": "53.0.11",
+    "react": "19.0.0",
+    "react-native": "^0.79.3",
+    "expo-router": "~5.1.0",
+    "@stripe/stripe-react-native": "^0.45.0",
+    "axios": "^1.7.9",
+    "expo-secure-store": "~14.2.3",
+    "expo-notifications": "^0.31.3",
+    "expo-camera": "~16.1.10",
+    "expo-image-picker": "^16.1.4",
+    "expo-face-detector": "^13.0.2",
+    "@react-navigation/native": "^7.1.6",
+    "@react-navigation/bottom-tabs": "^7.3.10"
+  }
+}
+\end{lstlisting}
+
+\subsubsection{Build Scripts}
+\begin{lstlisting}[language=JSON, caption=NPM Scripts]
+{
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "lint": "expo lint",
+    "build:production": "node ./scripts/remove-console-production.js && expo build:android",
+    "prepare-production": "node ./scripts/remove-console-production.js"
+  }
+}
+\end{lstlisting}
+
+\section{Security Implementation}
+
+\subsection{Data Security}
+
+\subsubsection{Secure Storage Implementation}
+All sensitive data is stored using Expo SecureStore, which provides encrypted storage:
+\begin{lstlisting}[language=TypeScript, caption=Secure Storage Usage]
+// Store sensitive data
+await SecureStore.setItemAsync('access_token', token);
+await SecureStore.setItemAsync('refresh_token', refreshToken);
+await SecureStore.setItemAsync('user_data', JSON.stringify(userData));
+
+// Retrieve sensitive data
+const token = await SecureStore.getItemAsync('access_token');
+const userData = JSON.parse(await SecureStore.getItemAsync('user_data') || '{}');
+
+// Delete sensitive data on logout
+await SecureStore.deleteItemAsync('access_token');
+await SecureStore.deleteItemAsync('refresh_token');
+await SecureStore.deleteItemAsync('user_data');
+\end{lstlisting}
+
+\subsubsection{Network Security}
+\begin{itemize}
+    \item HTTPS-only communication with backend services
+    \item JWT token-based authentication
+    \item Automatic token refresh on expiration
+    \item Request timeout configuration
+    \item Error handling and retry logic
+\end{itemize}
+
+\subsubsection{Payment Security}
+\begin{itemize}
+    \item PCI-compliant payment processing through Stripe
+    \item No raw card data storage on device or servers
+    \item Secure tokenization of payment methods
+    \item Encrypted transmission of all payment data
+\end{itemize}
+
+\subsection{Authentication Security}
+
+\subsubsection{Phone Verification}
+\begin{itemize}
+    \item SMS and voice call verification options
+    \item Time-limited verification codes
+    \item Rate limiting for verification attempts
+    \item Secure code generation and validation
+\end{itemize}
+
+\subsubsection{Biometric Security}
+\begin{itemize}
+    \item Face recognition data encrypted in transit
+    \item Embedding IDs stored securely
+    \item No raw biometric data stored locally
+    \item Secure API communication for face operations
+\end{itemize}
+
+\section{Testing and Quality Assurance}
+
+\subsection{Testing Strategy}
+
+The application includes comprehensive testing approaches:
+
+\subsubsection{Development Testing Scripts}
+The project includes numerous PowerShell scripts for testing specific functionality:
+\begin{itemize}
+    \item \texttt{test-stripe-security.ps1}: Stripe integration testing
+    \item \texttt{test-face-instruction-modal.ps1}: Face registration UI testing
+    \item \texttt{test-keyboard-scroll-fix.ps1}: Keyboard interaction testing
+    \item \texttt{test-ui-fixes.ps1}: General UI component testing
+    \item \texttt{test-register-fix.ps1}: Registration flow testing
+\end{itemize}
+
+\subsubsection{Build Testing}
+\begin{itemize}
+    \item \texttt{build-stable-apk.ps1}: Production build testing
+    \item \texttt{debug-apk-crash.ps1}: Crash debugging and analysis
+    \item \texttt{build-vanilla-apk.ps1}: Clean build testing
+\end{itemize}
+
+\subsection{Quality Assurance Features}
+
+\subsubsection{Error Handling}
+Comprehensive error handling throughout the application:
+\begin{lstlisting}[language=TypeScript, caption=Error Handling Pattern]
+try {
+  const result = await apiService.performOperation(data);
+  // Handle success
+  setSuccessState(result);
+} catch (error: any) {
+  console.error('Operation failed:', error);
+  
+  if (error instanceof NetworkError) {
+    showAlert('Network Error', 'Please check your connection');
+  } else if (error instanceof ValidationError) {
+    showAlert('Validation Error', error.message);
+  } else {
+    showAlert('Error', 'An unexpected error occurred');
+  }
+  
+  setErrorState(error.message);
+} finally {
+  setLoadingState(false);
+}
+\end{lstlisting}
+
+\subsubsection{Loading States}
+Comprehensive loading state management:
+\begin{itemize}
+    \item Processing animations for long operations
+    \item Skeleton loaders for data fetching
+    \item Button loading states during API calls
+    \item Progress indicators for multi-step processes
+\end{itemize}
+
+\section{Deployment and Distribution}
+
+\subsection{Build Configuration}
+
+\subsubsection{Android Build Configuration}
+The application supports multiple Android build configurations:
+\begin{itemize}
+    \item \textbf{Development}: Internal distribution with debugging enabled
+    \item \textbf{Preview}: Internal testing builds with production-like settings
+    \item \textbf{Production}: Release builds for app store distribution
+    \item \textbf{Standalone}: Independent APK builds for direct distribution
+\end{itemize}
+
+\subsubsection{iOS Build Configuration}
+iOS builds are configured for:
+\begin{itemize}
+    \item Tablet support with adaptive layouts
+    \item App Transport Security compliance
+    \item Bundle identifier configuration
+    \item Production certificate management
+\end{itemize}
+
+\subsection{Update Management}
+
+The application includes an update service for managing app updates:
+
+\subsubsection{Update Service Implementation}
+\begin{lstlisting}[language=TypeScript, caption=Update Service]
+class UpdateService {
+  async checkForUpdates(): Promise<UpdateCheckResult> {
+    if (!Updates.isEnabled) {
+      return { isAvailable: false, reason: 'Updates disabled' };
+    }
+
+    const update = await Updates.checkForUpdateAsync();
+    return {
+      isAvailable: update.isAvailable,
+      manifest: update.manifest,
+    };
+  }
+
+  async downloadAndInstallUpdate(): Promise<void> {
+    const result = await Updates.fetchUpdateAsync();
+    if (result.isNew) {
+      await Updates.reloadAsync();
+    }
+  }
+}
+\end{lstlisting}
+
+\section{Performance Optimization}
+
+\subsection{Application Performance}
+
+\subsubsection{Image Optimization}
+\begin{itemize}
+    \item Optimized asset sizes for different screen densities
+    \item Lazy loading for large image assets
+    \item Image compression for face registration uploads
+    \item Cached image loading for payment card brands
+\end{itemize}
+
+\subsubsection{Network Optimization}
+\begin{itemize}
+    \item Request/response interceptors for caching
+    \item Automatic retry logic for failed requests
+    \item Optimized API call batching
+    \item Background sync for offline scenarios
+\end{itemize}
+
+\subsubsection{Memory Management}
+\begin{itemize}
+    \item Proper cleanup of event listeners
+    \item Component unmounting cleanup
+    \item Image memory management
+    \item Background process optimization
+\end{itemize}
+
+\subsection{Code Optimization}
+
+\subsubsection{Production Build Optimization}
+\begin{lstlisting}[language=JavaScript, caption=Production Console Removal]
+// scripts/remove-console-production.js
+const fs = require('fs');
+const path = require('path');
+
+function removeConsoleStatements(filePath) {
+  let content = fs.readFileSync(filePath, 'utf8');
+  
+  // Remove console.log, console.error, console.warn, etc.
+  content = content.replace(/console\.(log|error|warn|info|debug)\([^;]*\);?/g, '');
+  
+  fs.writeFileSync(filePath, content);
+}
+
+// Process all TypeScript and JavaScript files
+function processDirectory(directory) {
+  const files = fs.readdirSync(directory);
+  
+  files.forEach(file => {
+    const filePath = path.join(directory, file);
+    const stat = fs.statSync(filePath);
+    
+    if (stat.isDirectory() && !['node_modules', '.git'].includes(file)) {
+      processDirectory(filePath);
+    } else if (file.endsWith('.ts') || file.endsWith('.tsx') || file.endsWith('.js')) {
+      removeConsoleStatements(filePath);
+    }
+  });
+}
+\end{lstlisting}
+
+\section{Troubleshooting and Maintenance}
+
+\subsection{Common Issues and Solutions}
+
+\subsubsection{Authentication Issues}
+\begin{itemize}
+    \item \textbf{Token Expiration}: Automatic refresh mechanism handles expired tokens
+    \item \textbf{Network Connectivity}: Retry logic and offline state management
+    \item \textbf{Phone Verification}: Multiple verification methods (SMS/call)
+    \item \textbf{Secure Storage}: Fallback mechanisms for storage failures
+\end{itemize}
+
+\subsubsection{Payment Processing Issues}
+\begin{itemize}
+    \item \textbf{Stripe Integration}: Comprehensive error handling for payment failures
+    \item \textbf{Card Validation}: Real-time validation feedback
+    \item \textbf{Network Timeouts}: Extended timeout configurations for payment operations
+    \item \textbf{PCI Compliance}: Regular security audits and updates
+\end{itemize}
+
+\subsubsection{Face Recognition Issues}
+\begin{itemize}
+    \item \textbf{Camera Permissions}: Graceful permission request handling
+    \item \textbf{Image Quality}: Automatic image optimization and validation
+    \item \textbf{API Connectivity}: Robust error handling and retry mechanisms
+    \item \textbf{Registration Status}: Consistent state management across app restarts
+\end{itemize}
+
+\subsection{Maintenance Procedures}
+
+\subsubsection{Regular Maintenance Tasks}
+\begin{itemize}
+    \item Dependency updates and security patches
+    \item API endpoint monitoring and health checks
+    \item User feedback analysis and bug fixes
+    \item Performance monitoring and optimization
+    \item Security audit and compliance verification
+\end{itemize}
+
+\subsubsection{Monitoring and Analytics}
+\begin{itemize}
+    \item Error tracking and crash reporting
+    \item User engagement analytics
+    \item Payment success/failure rates
+    \item Face registration success rates
+    \item App performance metrics
+\end{itemize}
+
+\section{Future Development Roadmap}
+
+\subsection{Planned Features}
+
+\subsubsection{Enhanced Security Features}
+\begin{itemize}
+    \item Multi-factor authentication options
+    \item Biometric authentication for payments
+    \item Advanced fraud detection
+    \item Enhanced encryption methods
+\end{itemize}
+
+\subsubsection{User Experience Improvements}
+\begin{itemize}
+    \item Dark mode support
+    \item Accessibility enhancements
+    \item Internationalization and localization
+    \item Advanced transaction filtering and search
+\end{itemize}
+
+\subsubsection{Payment System Enhancements}
+\begin{itemize}
+    \item Additional payment method support
+    \item Cryptocurrency integration
+    \item Loyalty program integration
+    \item Advanced auto-pay configurations
+\end{itemize}
+
+\subsection{Technical Improvements}
+
+\subsubsection{Architecture Enhancements}
+\begin{itemize}
+    \item Migration to React Native's New Architecture
+    \item Implementation of advanced state management
+    \item Microservice architecture adoption
+    \item Enhanced caching strategies
+\end{itemize}
+
+\subsubsection{Development Process Improvements}
+\begin{itemize}
+    \item Automated testing implementation
+    \item Continuous integration/deployment
+    \item Code quality automation
+    \item Performance monitoring integration
+\end{itemize}
+
+\section{Conclusion}
+
+PayByFaeAi represents a comprehensive mobile payment solution that successfully integrates advanced technologies including face recognition, secure payment processing, and real-time notifications. The application demonstrates best practices in mobile development, security implementation, and user experience design.
+
+\subsection{Key Strengths}
+
+\subsubsection{Technical Excellence}
+\begin{itemize}
+    \item Modern React Native architecture with Expo
+    \item Comprehensive TypeScript implementation
+    \item Secure authentication and data storage
+    \item PCI-compliant payment processing
+    \item Advanced biometric authentication
+\end{itemize}
+
+\subsubsection{User Experience}
+\begin{itemize}
+    \item Intuitive navigation and interface design
+    \item Comprehensive error handling and feedback
+    \item Smooth onboarding and registration process
+    \item Real-time notifications and updates
+    \item Accessible and responsive design
+\end{itemize}
+
+\subsubsection{Security and Compliance}
+\begin{itemize}
+    \item End-to-end encryption for sensitive data
+    \item PCI DSS compliance for payment processing
+    \item Secure biometric data handling
+    \item Comprehensive authentication mechanisms
+    \item Regular security audits and updates
+\end{itemize}
+
+\subsection{Scalability and Maintainability}
+
+The application architecture supports future growth and maintenance through:
+\begin{itemize}
+    \item Modular component architecture
+    \item Comprehensive documentation and code comments
+    \item Standardized development practices
+    \item Automated testing and deployment processes
+    \item Monitoring and analytics integration
+\end{itemize}
+
+This documentation provides a complete overview of the PayByFaeAi application, serving as a comprehensive guide for new developers joining the project. The application represents a sophisticated mobile payment solution that successfully balances security, functionality, and user experience in the modern fintech landscape.
+
+\end{document}

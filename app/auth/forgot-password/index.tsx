@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,12 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../../../services/api';
+import { useAlert } from '../../../components/ui/AlertModal';
 
 // Country codes configuration
 const COUNTRY_CODES = [
@@ -44,11 +44,24 @@ export default function ForgotPasswordScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]); // Default to US
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   
   const router = useRouter();
+  const { showAlert, AlertComponent } = useAlert();
+  const isScreenFocused = useRef(true);
+
+  // Track screen focus to prevent alerts when user navigates away
+  useFocusEffect(
+    React.useCallback(() => {
+      isScreenFocused.current = true;
+      return () => {
+        isScreenFocused.current = false;
+      };
+    }, [])
+  );
 
   // Format phone number with +1 prefix
   const formatPhoneNumber = (input: string) => {
@@ -101,12 +114,12 @@ export default function ForgotPasswordScreen() {
 
   const handleSendVerification = async () => {
     if (!phoneNumber) {
-      Alert.alert('Error', 'Please enter your mobile number');
+      showAlert('Error', 'Please enter your mobile number', undefined, 'error');
       return;
     }
 
     if (phoneNumber.length !== 10) {
-      Alert.alert('Error', 'Please enter a valid 10-digit mobile number');
+      showAlert('Error', 'Please enter a valid 10-digit mobile number', undefined, 'error');
       return;
     }
 
@@ -116,9 +129,11 @@ export default function ForgotPasswordScreen() {
       await apiService.requestPasswordReset(fullPhoneNumber);
       setStep('verification');
       startCountdown();
-      Alert.alert('Success', `Verification code sent to ${fullPhoneNumber}`);
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.detail || 'Failed to send verification code');
+      // Only show alert if screen is still focused
+      if (isScreenFocused.current) {
+        showAlert('Error', error.response?.data?.detail || 'Failed to send verification code', undefined, 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -126,23 +141,23 @@ export default function ForgotPasswordScreen() {
 
   const handleVerifyAndReset = async () => {
     if (!verificationCode) {
-      Alert.alert('Error', 'Please enter the verification code');
+      showAlert('Error', 'Please enter the verification code', undefined, 'error');
       return;
     }
 
     if (verificationCode.length < 4) {
-      Alert.alert('Error', 'Please enter a valid verification code');
+      showAlert('Error', 'Please enter a valid verification code', undefined, 'error');
       return;
     }
 
     const passwordError = validatePassword(newPassword);
     if (passwordError) {
-      Alert.alert('Error', passwordError);
+      showAlert('Error', passwordError, undefined, 'error');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showAlert('Error', 'Passwords do not match', undefined, 'error');
       return;
     }
 
@@ -155,7 +170,7 @@ export default function ForgotPasswordScreen() {
         new_password: newPassword
       });
       
-      Alert.alert(
+      showAlert(
         'Success', 
         'Your password has been reset successfully. Please login with your new password.',
         [
@@ -163,18 +178,24 @@ export default function ForgotPasswordScreen() {
             text: 'OK',
             onPress: () => router.push('/auth/login')
           }
-        ]
+        ],
+        'success'
       );
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.detail || 'Failed to reset password');
+      showAlert('Error', error.response?.data?.detail || 'Failed to reset password', undefined, 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleResendCode = async () => {
-    if (countdown > 0) return;
-    await handleSendVerification();
+    if (countdown > 0 || isResending) return;
+    setIsResending(true);
+    try {
+      await handleSendVerification();
+    } finally {
+      setIsResending(false);
+    }
   };
 
   return (
@@ -242,8 +263,14 @@ export default function ForgotPasswordScreen() {
                   Resend code in {countdown}s
                 </Text>
               ) : (
-                <TouchableOpacity onPress={handleResendCode}>
-                  <Text style={styles.resendText}>Resend Code</Text>
+                <TouchableOpacity 
+                  onPress={handleResendCode}
+                  disabled={isResending}
+                  style={[isResending && { opacity: 0.5 }]}
+                >
+                  <Text style={styles.resendText}>
+                    {isResending ? 'Sending...' : 'Resend Code'}
+                  </Text>
                 </TouchableOpacity>
               )}
 
@@ -328,6 +355,7 @@ export default function ForgotPasswordScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+      <AlertComponent />
     </SafeAreaView>
   );
 }

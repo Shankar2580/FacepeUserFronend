@@ -1,6 +1,12 @@
 import { StripeProvider, useStripe } from '@stripe/stripe-react-native';
 import { STRIPE_CONFIG, STRIPE_ENDPOINTS } from '../constants/Stripe';
-import { Alert } from 'react-native';
+
+export class StripeServiceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'StripeServiceError';
+  }
+}
 
 export interface PaymentMethod {
   id: string;
@@ -51,7 +57,12 @@ class StripeService {
       throw new Error(errorData.detail || `HTTP ${response.status}`);
     }
 
-    return response.json();
+    try {
+      return await response.json();
+    } catch (e) {
+      // Handle cases where the response is not valid JSON (e.g., 204 No Content)
+      return {};
+    }
   }
 
   async createSetupIntent(): Promise<SetupIntentResponse> {
@@ -71,7 +82,7 @@ class StripeService {
   }
 
   async deletePaymentMethod(paymentMethodId: string): Promise<void> {
-    return this.makeApiCall(`${STRIPE_ENDPOINTS.DELETE_PAYMENT_METHOD}/${paymentMethodId}`, {
+    return this.makeApiCall(`${STRIPE_ENDPOINTS.DELETE_PAYMENT_METHOD}?payment_method_id=${paymentMethodId}`, {
       method: 'DELETE',
     });
   }
@@ -104,18 +115,19 @@ export const useStripePayments = () => {
         const result = await stripeService.confirmSetupIntent(setupIntentResponse.setup_intent_id);
         
         if (result.success) {
-          Alert.alert('Success', 'Payment method added successfully!');
           return result.payment_method;
         } else {
-          throw new Error('Failed to save payment method');
+          throw new StripeServiceError('Failed to save payment method on our server.');
         }
       } else {
-        throw new Error('Setup Intent confirmation failed');
+        throw new StripeServiceError('Card setup failed. Please check your card details.');
       }
     } catch (error) {
       console.error('Error adding payment method:', error);
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to add payment method');
-      throw error;
+      if (error instanceof StripeServiceError) {
+        throw error;
+      }
+      throw new StripeServiceError(error instanceof Error ? error.message : 'An unknown error occurred.');
     }
   };
 
@@ -125,8 +137,7 @@ export const useStripePayments = () => {
       return await stripeService.getPaymentMethods();
     } catch (error) {
       console.error('Error fetching payment methods:', error);
-      Alert.alert('Error', 'Failed to fetch payment methods');
-      throw error;
+      throw new StripeServiceError('Failed to fetch payment methods.');
     }
   };
 
@@ -134,11 +145,9 @@ export const useStripePayments = () => {
     try {
       stripeService.setAuthToken(authToken);
       await stripeService.deletePaymentMethod(paymentMethodId);
-      Alert.alert('Success', 'Payment method removed successfully!');
     } catch (error) {
       console.error('Error removing payment method:', error);
-      Alert.alert('Error', 'Failed to remove payment method');
-      throw error;
+      throw new StripeServiceError('Failed to remove payment method.');
     }
   };
 

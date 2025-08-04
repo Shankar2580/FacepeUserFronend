@@ -1,10 +1,10 @@
 // For development, use localhost when testing on web or simulator
 // Use your computer's IP address when testing on physical device
-const API_BASE_URL = 'http://10.238.184.2:80'; // Updated to Wi-Fi IP for Expo Go
+const API_BASE_URL = 'http://10.227.36.2:8000'; // Updated to Wi-Fi IP for Expo Go
 
 // FACE_API_BASE_URL is no longer directly used as Face API requests also go through Nginx.
 // However, keeping it defined for consistency or if you have other uses for it.
-const FACE_API_BASE_URL = 'http://10.238.184.2';
+const FACE_API_BASE_URL = 'http://10.227.36.2:8000';
 
 export { API_BASE_URL, FACE_API_BASE_URL };
 
@@ -12,11 +12,11 @@ export const API_ENDPOINTS = {
   // Authentication (routed through /customer/)
   REGISTER: '/customer/auth/register-frontend',
   LOGIN: '/customer/auth/login',
-  VERIFY_TOKEN: '/customer/auth/verify-token',
-  REFRESH_TOKEN: '/auth/refresh',
-  LOGOUT: '/auth/logout',
-  FORGOT_PASSWORD_REQUEST: '/auth/forgot-password/request',
-  FORGOT_PASSWORD_VERIFY: '/auth/forgot-password/verify',
+  REFRESH_TOKEN: '/customer/auth/refresh',
+  LOGOUT: '/customer/auth/logout',
+  FORGOT_PASSWORD_REQUEST: '/customer/auth/forgot-password/request',
+  FORGOT_PASSWORD_VERIFY: '/customer/auth/forgot-password/verify',
+  PIN_RESET: '/customer/auth/pin-reset',
   
   // Verification (routed through /customer/)
   SEND_VERIFICATION: '/customer/verification/send-phone-code',
@@ -24,7 +24,6 @@ export const API_ENDPOINTS = {
   
   // Users (routed through /customer/)
   GET_PROFILE: '/customer/users/me',
-  UPDATE_PROFILE: '/customer/users/me',
   UPDATE_PUSH_TOKEN: '/customer/users/me/push-token',
   GET_FACE_STATUS: '/customer/users/me/face-status',
   UPDATE_FACE_STATUS: '/customer/users/me/face-status',
@@ -33,11 +32,12 @@ export const API_ENDPOINTS = {
   // Face Registration (routed through /face/)
   // Note the double '/face/' here is correct based on your Nginx configuration,
   // where Nginx routes /face/ and the face service itself expects a '/face/' prefix.
-  REGISTER_FACE: '/face/register',
+  REGISTER_FACE: '/customer/face/register',
+  UPDATE_FACE: '/customer/face/update',
+  DELETE_FACE: '/customer/face/delete',
   
   // Payment Methods (routed through /customer/)
   GET_PAYMENT_METHODS: '/customer/users/me/payment-methods',
-  ADD_PAYMENT_METHOD: '/customer/users/me/payment-methods',
   UPDATE_PAYMENT_METHOD: '/customer/users/me/payment-methods',
   DELETE_PAYMENT_METHOD: '/customer/users/me/payment-methods',
   SET_DEFAULT_PAYMENT_METHOD: '/customer/users/me/payment-methods',
@@ -55,7 +55,6 @@ export const API_ENDPOINTS = {
   GET_TRANSACTIONS: '/customer/users/me/transactions',
   
   // Payments (routed through /customer/)
-  CREATE_PAYMENT: '/customer/users/me/payments',
   APPROVE_PAYMENT: '/customer/users/me/payments', // /{request_id}/approve
   DECLINE_PAYMENT: '/customer/users/me/payments', // /{request_id}/decline
   

@@ -17,6 +17,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { SafeAreaView } from 'react-native-safe-area-context'; // Changed import
 import { StatusBar } from 'expo-status-bar'; // Added StatusBar
+import { designSystem, spacing, shadows, borderRadius, typography } from '../../constants/DesignSystem';
+import { useAlert } from '../../components/ui/AlertModal';
+import { Colors } from '../../constants/Colors';
+import { useColorScheme } from '../../hooks/useColorScheme';
+import { ProcessingAnimation } from '../../components/ui/ProcessingAnimation';
 
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState(''); // mobile number or email
@@ -26,6 +31,9 @@ export default function LoginScreen() {
   
   const router = useRouter();
   const { login } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const { showAlert, AlertComponent } = useAlert();
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,7 +47,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!identifier || !password) {
-      Alert.alert('Error', 'Please enter your mobile number/email and password');
+      showAlert('Error', 'Please enter your mobile number/email and password', undefined, 'error');
       return;
     }
 
@@ -48,7 +56,7 @@ export default function LoginScreen() {
     const isPhone = validatePhoneNumber(identifier);
 
     if (!isEmail && !isPhone) {
-      Alert.alert('Error', 'Please enter a valid mobile number or email address');
+      showAlert('Error', 'Please enter a valid mobile number or email address', undefined, 'error');
       return;
     }
 
@@ -67,12 +75,23 @@ export default function LoginScreen() {
       router.replace('/(tabs)');
     } catch (error: any) {
       console.error('Login error:', error);
-      Alert.alert('Login Failed', error.response?.data?.message || 'Please check your credentials and try again');
+      showAlert('Login Failed', error.response?.data?.message || 'Please check your credentials and try again', undefined, 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Show processing animation during login
+  if (isLoading) {
+    return (
+      <ProcessingAnimation
+        visible={isLoading}
+        type="generic"
+        title="Signing In"
+        subtitle="Please wait while we authenticate your account"
+      />
+    );
+  }
 
 
   return (
@@ -188,6 +207,9 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      
+      {/* Alert Component */}
+      <AlertComponent />
     </SafeAreaView>
   );
 }
@@ -195,36 +217,37 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: designSystem.colors.appBackground.light,
   },
   keyboardView: {
     flex: 1,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xxl,
     justifyContent: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: spacing.huge,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 8,
+    fontSize: typography.fontSize.huge,
+    fontWeight: typography.fontWeight.bold,
+    color: designSystem.colors.neutral[900],
+    marginBottom: spacing.sm,
+    letterSpacing: typography.letterSpacing.tight,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 32,
+    fontSize: typography.fontSize.md,
+    color: designSystem.colors.neutral[600],
+    marginBottom: spacing.xxxl,
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#E5E7EB',
-    borderRadius: 25,
-    padding: 4,
+    backgroundColor: designSystem.colors.neutral[200],
+    borderRadius: borderRadius.xxxl,
+    padding: spacing.xs,
     width: 200,
   },
   tab: {

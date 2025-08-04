@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Modal,
   TextInput,
@@ -16,11 +15,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiService } from '../services/api';
 import { TransactionDetail, PaymentMethod, CreateAutoPayRequest, AutoPay } from '../constants/types';
+import { useAlert } from '../components/ui/AlertModal';
 
 export default function TransactionDetailScreen() {
   const { transactionId } = useLocalSearchParams<{ transactionId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { showAlert, AlertComponent } = useAlert();
   // This screen is in a stack outside the tab navigator, so there is no bottom tab bar.
   const tabBarHeight = 0;
   
@@ -46,7 +47,7 @@ export default function TransactionDetailScreen() {
       setTransaction(data);
     } catch (error) {
       console.error('Error loading transaction detail:', error);
-      Alert.alert('Error', 'Failed to load transaction details');
+      showAlert('Error', 'Failed to load transaction details', undefined, 'error');
     } finally {
       setLoading(false);
     }
@@ -89,13 +90,13 @@ export default function TransactionDetailScreen() {
 
   const handleSetupAutoPay = async () => {
     if (!transaction || !selectedPaymentMethod || !autoPayLimit) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showAlert('Error', 'Please fill in all fields', undefined, 'error');
       return;
     }
 
     const limitAmount = parseFloat(autoPayLimit);
     if (isNaN(limitAmount) || limitAmount <= 0) {
-      Alert.alert('Error', 'Please enter a valid limit amount');
+      showAlert('Error', 'Please enter a valid limit amount', undefined, 'error');
       return;
     }
 
@@ -113,15 +114,17 @@ export default function TransactionDetailScreen() {
       // Refresh auto pay data
       await loadExistingAutoPay();
       
-      Alert.alert(
+      showAlert(
         'Success',
-        `Auto-pay has been set up for ${transaction.merchant_name} with a limit of $${limitAmount.toFixed(2)}`
+        `Auto-pay has been set up for ${transaction.merchant_name} with a limit of $${limitAmount.toFixed(2)}`,
+        undefined,
+        'success'
       );
       setShowAutoPayModal(false);
       setAutoPayLimit('');
     } catch (error) {
       console.error('Error setting up auto-pay:', error);
-      Alert.alert('Error', 'Failed to set up auto-pay');
+      showAlert('Error', 'Failed to set up auto-pay', undefined, 'error');
     } finally {
       setSettingUpAutoPay(false);
     }
@@ -424,6 +427,8 @@ export default function TransactionDetailScreen() {
             </ScrollView>
           </View>
         </Modal>
+
+        <AlertComponent />
       </ScrollView>
     </SafeAreaView>
   );
@@ -652,6 +657,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
   },
   modalSaveButton: {
     fontSize: 16,

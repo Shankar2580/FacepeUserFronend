@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Switch,
   TextInput,
@@ -16,10 +15,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiService } from '../services/api';
 import { AutoPay, PaymentMethod, CreateAutoPayRequest } from '../constants/types';
+import { useAlert } from '../components/ui/AlertModal';
 
 export default function AutoPaySettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { showAlert, AlertComponent } = useAlert();
   
   const [autoPays, setAutoPays] = useState<AutoPay[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -43,7 +44,7 @@ export default function AutoPaySettingsScreen() {
       setPaymentMethods(paymentMethodData);
     } catch (error) {
       console.error('Error loading AutoPay data:', error);
-      Alert.alert('Error', 'Failed to load AutoPay settings');
+      showAlert('Error', 'Failed to load AutoPay settings', undefined, 'error');
     } finally {
       setLoading(false);
     }
@@ -55,12 +56,12 @@ export default function AutoPaySettingsScreen() {
       await loadData(); // Refresh data
     } catch (error) {
       console.error('Error toggling AutoPay:', error);
-      Alert.alert('Error', 'Failed to update AutoPay setting');
+      showAlert('Error', 'Failed to update AutoPay setting', undefined, 'error');
     }
   };
 
   const deleteAutoPay = async (autoPayId: string, merchantName: string) => {
-    Alert.alert(
+    showAlert(
       'Delete AutoPay',
       `Are you sure you want to delete AutoPay for ${merchantName}?`,
       [
@@ -72,10 +73,10 @@ export default function AutoPaySettingsScreen() {
             try {
               await apiService.deleteAutoPay(autoPayId);
               await loadData(); // Refresh data
-              Alert.alert('Success', 'AutoPay setting deleted successfully');
+              showAlert('Success', 'AutoPay setting deleted successfully', undefined, 'success');
             } catch (error) {
               console.error('Error deleting AutoPay:', error);
-              Alert.alert('Error', 'Failed to delete AutoPay setting');
+              showAlert('Error', 'Failed to delete AutoPay setting', undefined, 'error');
             }
           },
         },
@@ -94,7 +95,7 @@ export default function AutoPaySettingsScreen() {
     
     const amount = parseFloat(editAmount);
     if (isNaN(amount) || amount <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+      showAlert('Error', 'Please enter a valid amount', undefined, 'error');
       return;
     }
 
@@ -106,10 +107,10 @@ export default function AutoPaySettingsScreen() {
       setShowEditModal(false);
       setEditingAutoPayId(null);
       setEditAmount('');
-      Alert.alert('Success', 'AutoPay limit updated successfully');
+      showAlert('Success', 'AutoPay limit updated successfully', undefined, 'success');
     } catch (error) {
       console.error('Error updating AutoPay amount:', error);
-      Alert.alert('Error', 'Failed to update AutoPay limit');
+      showAlert('Error', 'Failed to update AutoPay limit', undefined, 'error');
     }
   };
 
@@ -269,6 +270,9 @@ export default function AutoPaySettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Alert Component */}
+      <AlertComponent />
     </View>
   );
 }

@@ -17,6 +17,11 @@ import { apiService } from '../../services/api';
 import { PaymentMethod } from '../../constants/types';
 import { useAuth } from '../../hooks/useAuth';
 import { PaymentCard } from '../../components/ui/PaymentCard';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { useAlert } from '../../components/ui/AlertModal';
+import { designSystem, spacing, shadows, borderRadius, typography } from '../../constants/DesignSystem';
+import { Colors } from '../../constants/Colors';
+import { useColorScheme } from '../../hooks/useColorScheme';
 
 export default function CardsScreen() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -26,6 +31,9 @@ export default function CardsScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { showAlert, AlertComponent } = useAlert();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
 
   // Load cards function
   const loadCards = useCallback(async () => {
@@ -35,7 +43,7 @@ export default function CardsScreen() {
     } catch (error: any) {
       console.error('Failed to load cards:', error);
       if (error?.response?.status !== 401) {
-        Alert.alert('Oops', 'Unable to load your payment methods right now. Please try again later.');
+        showAlert('Oops', 'Unable to load your payment methods right now. Please try again later.', undefined, 'error');
       }
     } finally {
       setIsLoading(false);
@@ -64,14 +72,14 @@ export default function CardsScreen() {
     try {
       await apiService.setDefaultPaymentMethod(cardId);
       await loadCards(); // Refresh the list
-      Alert.alert('Success', 'Default card updated successfully');
+      showAlert('Success', 'Default card updated successfully', undefined, 'success');
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to set default card');
+      showAlert('Error', error.response?.data?.message || 'Failed to set default card', undefined, 'error');
     }
   };
 
   const handleDeleteCard = async (cardId: string) => {
-    Alert.alert(
+    showAlert(
       'Delete Card',
       'Are you sure you want to delete this card?',
       [
@@ -83,13 +91,14 @@ export default function CardsScreen() {
             try {
               await apiService.deletePaymentMethod(cardId);
               await loadCards();
-              Alert.alert('Success', 'Card deleted successfully');
+              showAlert('Success', 'Card deleted successfully', undefined, 'success');
             } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.message || 'Failed to delete card');
+              showAlert('Error', error.response?.data?.message || 'Failed to delete card', undefined, 'error');
             }
           },
         },
-      ]
+      ],
+      'warning'
     );
   };
 
@@ -140,21 +149,15 @@ export default function CardsScreen() {
             ))}
           </View>
         ) : (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="card-outline" size={64} color="#9CA3AF" />
-            </View>
-            <Text style={styles.emptyTitle}>No Cards Added</Text>
-            <Text style={styles.emptySubtitle}>
-              Add your first payment method to get started with secure payments
-            </Text>
-            <TouchableOpacity 
-              style={styles.addCardButton}
-              onPress={() => router.push('/add-card')}
-            >
-              <Text style={styles.addCardButtonText}>Add Your First Card</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            icon="card-outline"
+            title="No Cards Added"
+            subtitle="Add your first payment method to get started with secure payments"
+            actionText="Add Your First Card"
+            onAction={() => router.push('/add-card')}
+            variant="cards"
+            animated={true}
+          />
         )}
 
         {/* Add Card Button */}
@@ -193,6 +196,9 @@ export default function CardsScreen() {
           </View>
         </View>
       </ScrollView>
+      
+      {/* Alert Component */}
+      <AlertComponent />
     </View>
   );
 }
@@ -200,7 +206,7 @@ export default function CardsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F8F7FF',
   },
   header: {
     flexDirection: 'row',

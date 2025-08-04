@@ -21,6 +21,7 @@ import { useUpdates } from '../../hooks/useUpdates';
 import { apiService } from '../../services/api';
 import { AutoPay, PaymentMethod } from '../../constants/types';
 import * as Haptics from 'expo-haptics';
+import { useAlert } from '../../components/ui/AlertModal';
 
 const { width } = Dimensions.get('window');
 
@@ -34,9 +35,10 @@ export default function ProfileScreen() {
   const [slideAnim] = useState(new Animated.Value(50));
   
   const { user, logout, refreshUser } = useAuth();
-  const { isCheckingForUpdates, checkForUpdates, currentUpdateInfo } = useUpdates();
+  const { isCheckingForUpdates, checkForUpdates, currentUpdateInfo, AlertComponent: UpdateAlertComponent } = useUpdates();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { showAlert, AlertComponent } = useAlert();
 
   useEffect(() => {
     console.log('Profile: User state changed:', {
@@ -110,7 +112,7 @@ export default function ProfileScreen() {
   };
 
   const handleToggleAccountStatus = async () => {
-    Alert.alert(
+    showAlert(
       isAccountActive ? 'Deactivate Account' : 'Activate Account',
       isAccountActive 
         ? 'This will temporarily disable all payment features. You can reactivate anytime.'
@@ -124,18 +126,63 @@ export default function ProfileScreen() {
             try {
               // TODO: Implement account status toggle API
               setIsAccountActive(!isAccountActive);
-              Alert.alert('Success', `Account ${isAccountActive ? 'deactivated' : 'activated'} successfully`);
+              showAlert('Success', `Account ${isAccountActive ? 'deactivated' : 'activated'} successfully`, undefined, 'success');
             } catch (error: any) {
-              Alert.alert('Error', 'Failed to update account status');
+              showAlert('Error', 'Failed to update account status', undefined, 'error');
             }
           },
         },
-      ]
+      ],
+      isAccountActive ? 'warning' : 'info'
     );
   };
 
   const handleFaceRegistration = () => {
-    router.push('/face-registration');
+    if (user?.has_face_registered) {
+      router.push('/update-face' as any);
+    } else {
+      router.push('/face-registration');
+    }
+  };
+
+  const handleDeleteFace = () => {
+    showAlert(
+      'Delete Face Data',
+      'Are you sure you want to delete your facial recognition data? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setRefreshing(true);
+              console.log('Deleting face data...');
+              
+              // Call the delete face API
+              await apiService.deleteFace();
+              
+              // Update the user's face status in the backend
+              await apiService.updateUserFaceStatus(false);
+              
+              // Refresh user data
+              await refreshUser();
+              
+              showAlert('Success', 'Face data deleted successfully', undefined, 'success');
+              
+              // Refresh the profile data
+              await loadData();
+            } catch (error: any) {
+              console.error('Failed to delete face:', error);
+              showAlert('Error', error.message || 'Failed to delete face data', undefined, 'error');
+            } finally {
+              setRefreshing(false);
+            }
+          },
+        },
+      ],
+      'warning'
+    );
   };
 
   const handleCheckForUpdates = async () => {
@@ -143,7 +190,7 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
+    showAlert(
       'Logout',
       'Are you sure you want to logout?',
       [
@@ -156,39 +203,19 @@ export default function ProfileScreen() {
             router.replace('/auth/login');
           },
         },
-      ]
+      ],
+      'warning'
     );
   };
 
   const profileSections = [
     {
-      title: 'Account Settings',
-      items: [
-        {
-          icon: 'person-outline',
-          title: 'Edit Profile',
-          subtitle: 'Update personal information',
-          action: 'navigate',
-          chevron: true,
-          onPress: undefined,
-        },
-        {
-          icon: 'key-outline',
-          title: 'Change Password',
-          subtitle: 'Update security credentials',
-          action: 'navigate',
-          chevron: true,
-          onPress: undefined,
-        },
-      ],
-    },
-    {
       title: 'Payment & Security',
       items: [
         {
           icon: 'scan',
-          title: 'Facial Data Re-enrollment',
-          subtitle: 'Update biometric data',
+          title: user?.has_face_registered ? 'Update Face Data' : 'Facial Data Re-enrollment',
+          subtitle: user?.has_face_registered ? 'Update your biometric data' : 'Setup biometric data',
           action: 'setup',
           onPress: handleFaceRegistration,
           rightElement: user?.has_face_registered ? (
@@ -202,21 +229,36 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           ),
         },
+        ...(user?.has_face_registered ? [{
+          icon: 'trash-outline',
+          title: 'Delete Face Data',
+          subtitle: 'Remove biometric data',
+          action: 'delete',
+          onPress: handleDeleteFace,
+          rightElement: (
+            <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteFace}>
+              <Ionicons name="trash-outline" size={16} color="#EF4444" />
+            </TouchableOpacity>
+          ),
+        }] : []),
         {
-          icon: 'card-outline',
-          title: 'Manage Saved Cards',
-          subtitle: 'Payment methods & billing',
+          icon: 'key-outline',
+          title: 'Change Password',
+          subtitle: 'Update security credentials',
           action: 'navigate',
-          onPress: () => router.push('/(tabs)/cards'),
           chevron: true,
+          onPress: () => {
+            console.log('Navigating to change-password...');
+            router.push('/change-password');
+          },
         },
         {
-          icon: 'shield-checkmark-outline',
-          title: 'Security Settings',
-          subtitle: 'Privacy & authentication',
+          icon: 'keypad-outline',
+          title: 'Reset PIN',
+          subtitle: 'Change your 4-digit security PIN',
           action: 'navigate',
+          onPress: () => router.push('/pin-reset' as any),
           chevron: true,
-          onPress: undefined,
         },
       ],
     },
@@ -234,14 +276,6 @@ export default function ProfileScreen() {
           ) : (
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           ),
-        },
-        {
-          icon: 'help-circle-outline',
-          title: 'Help & Support',
-          subtitle: 'Get assistance',
-          action: 'navigate',
-          chevron: true,
-          onPress: undefined,
         },
         {
           icon: 'information-circle-outline',
@@ -282,10 +316,7 @@ export default function ProfileScreen() {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity style={styles.menuButton}>
-            <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
+          {/* Removed the Profile header text */}
         </View>
       </LinearGradient>
 
@@ -416,6 +447,10 @@ export default function ProfileScreen() {
           </View>
         </Animated.View>
       </ScrollView>
+      
+      {/* Alert Component */}
+      <AlertComponent />
+      <UpdateAlertComponent />
     </View>
   );
 }
@@ -423,17 +458,17 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F8F7FF',
   },
   gradientHeader: {
-    height: 120,
+    height: 100,
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
@@ -441,13 +476,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  menuButton: {
-    padding: 8,
-  },
   profileCard: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 24,
-    marginTop: -30,
+    marginTop: -75,
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
@@ -612,6 +644,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   logoutButton: {
     flexDirection: 'row',

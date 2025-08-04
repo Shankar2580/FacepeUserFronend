@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import UpdateService, { UpdateInfo } from '../services/updateService';
+import { updateService, UpdateInfo, UpdateError } from '../services/updateService';
+import { useAlert } from '../components/ui/AlertModal';
 
 export interface UseUpdatesReturn {
   isCheckingForUpdates: boolean;
@@ -12,6 +13,7 @@ export interface UseUpdatesReturn {
     channel?: string;
     runtimeVersion?: string;
   } | null;
+  AlertComponent: () => React.JSX.Element | null;
 }
 
 export const useUpdates = (): UseUpdatesReturn => {
@@ -23,34 +25,75 @@ export const useUpdates = (): UseUpdatesReturn => {
     channel?: string;
     runtimeVersion?: string;
   } | null>(null);
+  const { showAlert, AlertComponent } = useAlert();
 
   // Get current update info on mount
   useEffect(() => {
     const getCurrentInfo = async () => {
       try {
-        const info = await UpdateService.getCurrentUpdateInfo();
+        const info = await updateService.getCurrentUpdateInfo();
         setCurrentUpdateInfo(info);
       } catch (error) {
         console.error('Error getting current update info:', error);
       }
     };
 
-    getCurrentInfo();
-  }, []);
+    const showUpdateComplete = async () => {
+      const justUpdated = await updateService.checkIfRecentlyUpdated();
+      if (justUpdated) {
+        showAlert(
+          '🎉 Update Complete',
+          'Your app has been successfully updated with the latest features and improvements!',
+          [{ text: 'Awesome!' }],
+          'success'
+        );
+      }
+    };
 
-  // Check for updates
-  const checkForUpdates = useCallback(async () => {
+    getCurrentInfo();
+    showUpdateComplete();
+  }, [showAlert]);
+
+  const handleManualUpdateCheck = useCallback(async () => {
     if (isCheckingForUpdates) return;
-    
+
     try {
       setIsCheckingForUpdates(true);
-      await UpdateService.manualUpdateCheck();
+      showAlert('Checking for Updates', 'Please wait...', [], 'info');
+      const updateInfo = await updateService.manualUpdateCheck();
+
+      if (updateInfo.isAvailable) {
+        showAlert(
+          '🆕 Update Available',
+          'A new version is available! Would you like to download and install it now?',
+          [
+            { text: 'Not Now', style: 'cancel' },
+            {
+              text: 'Update',
+              onPress: async () => {
+                await downloadAndInstallUpdate();
+              },
+            },
+          ]
+        );
+      } else {
+        showAlert(
+          '✅ Up to Date',
+          'You are already using the latest version of the app!',
+          [{ text: 'OK' }],
+          'success'
+        );
+      }
     } catch (error) {
-      console.error('Error checking for updates:', error);
+      if (error instanceof UpdateError) {
+        showAlert('Update Failed', error.message, undefined, 'error');
+      } else {
+        console.error('Error checking for updates:', error);
+      }
     } finally {
       setIsCheckingForUpdates(false);
     }
-  }, [isCheckingForUpdates]);
+  }, [isCheckingForUpdates, showAlert]);
 
   // Download and install update
   const downloadAndInstallUpdate = useCallback(async () => {
@@ -58,19 +101,25 @@ export const useUpdates = (): UseUpdatesReturn => {
     
     try {
       setIsUpdating(true);
-      await UpdateService.downloadAndInstallUpdate();
+      showAlert('Downloading Update', 'Please wait while we download the latest version...', [], 'info');
+      await updateService.downloadAndInstallUpdate();
     } catch (error) {
-      console.error('Error updating:', error);
+      if (error instanceof UpdateError) {
+        showAlert('Update Failed', error.message, undefined, 'error');
+      } else {
+        console.error('Error updating:', error);
+      }
     } finally {
       setIsUpdating(false);
     }
-  }, [isUpdating]);
+  }, [isUpdating, showAlert]);
 
   return {
     isCheckingForUpdates,
     isUpdating,
-    checkForUpdates,
+    checkForUpdates: handleManualUpdateCheck,
     downloadAndInstallUpdate,
-    currentUpdateInfo
+    currentUpdateInfo,
+    AlertComponent,
   };
 }; 

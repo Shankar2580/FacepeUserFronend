@@ -15,6 +15,8 @@ import {
   RegisterRequest,
   LoginRequest,
   CreateAutoPayRequest,
+  PinResetRequest,
+  PinResetResponse,
 } from '../constants/types';
 
 class ApiService {
@@ -394,6 +396,115 @@ class ApiService {
     }
   }
 
+  async updateFace(userId: string, name: string, imageUri: string): Promise<any> {
+    console.log('API Service - Starting face update...');
+    console.log('API Service - Updating face via backend proxy:', `${API_BASE_URL}${API_ENDPOINTS.UPDATE_FACE}`);
+    
+    try {
+      // Create FormData for React Native
+      const formData = new FormData();
+      
+      // Add text fields
+      formData.append('user_id', userId);
+      formData.append('name', name);
+      
+      // Add file - React Native specific format
+      const uriParts = imageUri.split('.');
+      const fileType = uriParts[uriParts.length - 1];
+      
+      // Fix: Use proper React Native FormData format
+      formData.append('file', {
+        uri: imageUri,
+        name: `photo.${fileType}`,
+        type: `image/${fileType}`,
+      } as any);
+
+      // Get authorization header
+      const authHeader = await this.getAuthHeader();
+      
+      console.log('API Service - Request details:', {
+        url: `${API_BASE_URL}${API_ENDPOINTS.UPDATE_FACE}`,
+        user_id: userId,
+        name: name,
+        imageUri: imageUri,
+        hasAuth: !!authHeader
+      });
+
+      // Use axios instead of fetch for better FormData handling
+      const response = await axios({
+        method: 'PUT',
+        url: `${API_BASE_URL}${API_ENDPOINTS.UPDATE_FACE}`,
+        data: formData,
+        headers: {
+          ...(authHeader ? { 'Authorization': authHeader } : {}),
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 60000,
+      });
+
+      console.log('API Service - Response status:', response.status);
+      console.log('API Service - Face update successful:', response.data);
+      return response.data;
+      
+    } catch (error: any) {
+      console.error('API Service - Face update failed:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: `${API_BASE_URL}${API_ENDPOINTS.UPDATE_FACE}`,
+      });
+      
+      // Re-throw with better error handling
+      if (error.response?.status === 422) {
+        throw new Error(`HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`);
+      }
+      throw error;
+    }
+  }
+
+  async deleteFace(): Promise<any> {
+    console.log('API Service - Starting face deletion...');
+    console.log('API Service - Deleting face via backend proxy:', `${API_BASE_URL}${API_ENDPOINTS.DELETE_FACE}`);
+    
+    try {
+      // Get authorization header
+      const authHeader = await this.getAuthHeader();
+      
+      console.log('API Service - Request details:', {
+        url: `${API_BASE_URL}${API_ENDPOINTS.DELETE_FACE}`,
+        hasAuth: !!authHeader
+      });
+
+      // Use axios for DELETE request
+      const response = await axios({
+        method: 'DELETE',
+        url: `${API_BASE_URL}${API_ENDPOINTS.DELETE_FACE}`,
+        headers: {
+          ...(authHeader ? { 'Authorization': authHeader } : {}),
+        },
+        timeout: 60000,
+      });
+
+      console.log('API Service - Response status:', response.status);
+      console.log('API Service - Face deletion successful:', response.data);
+      return response.data;
+      
+    } catch (error: any) {
+      console.error('API Service - Face deletion failed:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: `${API_BASE_URL}${API_ENDPOINTS.DELETE_FACE}`,
+      });
+      
+      // Re-throw with better error handling
+      if (error.response?.status === 422) {
+        throw new Error(`HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`);
+      }
+      throw error;
+    }
+  }
+
   private async getAuthHeader(): Promise<string | null> {
     const token = await SecureStore.getItemAsync('access_token');
     return token ? `Bearer ${token}` : null;
@@ -472,7 +583,7 @@ class ApiService {
 
   async deletePaymentMethod(paymentMethodId: string): Promise<ApiResponse<any>> {
     const response = await this.api.delete<ApiResponse<any>>(
-      `${API_ENDPOINTS.DELETE_PAYMENT_METHOD}/${paymentMethodId}`
+      `${API_ENDPOINTS.DELETE_PAYMENT_METHOD}?payment_method_id=${paymentMethodId}`
     );
     return response.data;
   }
@@ -556,6 +667,12 @@ class ApiService {
   }): Promise<ApiResponse<any>> {
     console.log('API Service - Verifying password reset for:', data.phone_number);
     const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.FORGOT_PASSWORD_VERIFY, data);
+    return response.data;
+  }
+
+  async resetPin(data: PinResetRequest): Promise<PinResetResponse> {
+    console.log('API Service - Resetting PIN for:', data.phone_number);
+    const response = await this.api.post<PinResetResponse>(API_ENDPOINTS.PIN_RESET, data);
     return response.data;
   }
 }

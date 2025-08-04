@@ -5,21 +5,35 @@ import { apiService } from '../services/api';
 import { useAuth } from './useAuth';
 
 export const useNotifications = () => {
-  // Use a try-catch to safely access useAuth - if we're not in an AuthProvider yet, just return early
-  let isAuthenticated = false;
-  let user = null;
-  
-  try {
-    const authContext = useAuth();
-    isAuthenticated = authContext.isAuthenticated;
-    user = authContext.user;
-  } catch (error) {
-    // useAuth is not available yet - component is being called before AuthProvider is initialized
-    console.log('useNotifications: AuthProvider not available yet, skipping notifications setup');
-  }
+  const { user, isAuthenticated } = useAuth();
   const intervalRef = useRef<any>(null);
   const lastCheckTimeRef = useRef<number>(0);
   const previousPaymentRequestIds = useRef<string[]>([]);
+
+  const getDisplayName = (request: any) => {
+    // Prioritize business_name if available
+    if (request.business_name && request.business_name.trim()) {
+      return request.business_name;
+    }
+    
+    // Clean up merchant_name if it contains the merchant ID pattern
+    if (request.merchant_name) {
+      // If merchant_name contains "(acct_...)" pattern, extract just the business name part
+      const match = request.merchant_name.match(/^(.+?)\s*\(acct_[^)]+\)$/);
+      if (match) {
+        return match[1].trim();
+      }
+      
+      // If it's just "Merchant (acct_...)", try to use a fallback
+      if (request.merchant_name.startsWith('Merchant (acct_')) {
+        return 'Business'; // Generic fallback
+      }
+      
+      return request.merchant_name;
+    }
+    
+    return 'Unknown Merchant';
+  };
 
   const checkForNewPaymentRequests = async () => {
     if (!isAuthenticated || !user) return;
@@ -45,7 +59,7 @@ export const useNotifications = () => {
       for (const request of newRequests) {
         const isAutoPayMerchant = autoPaySettings.some(
           autoPay => 
-            autoPay.merchant_name.toLowerCase() === request.merchant_name.toLowerCase() && 
+            autoPay.merchant_name.toLowerCase() === getDisplayName(request).toLowerCase() && 
             autoPay.is_enabled &&
             (autoPay.max_amount ? autoPay.max_amount >= request.amount : false)
         );
@@ -55,7 +69,7 @@ export const useNotifications = () => {
             // Auto-approve the payment
             await apiService.approvePayment(request.id);
             await notificationService.notifyAutoPaymentProcessed({
-              merchantName: request.merchant_name,
+              merchantName: getDisplayName(request),
               amount: request.amount,
               paymentId: request.id,
             });
@@ -63,7 +77,7 @@ export const useNotifications = () => {
             console.error('Auto-payment failed:', autoPayError);
             // Fallback to manual request notification
             await notificationService.notifyPaymentRequest({
-              merchantName: request.merchant_name,
+              merchantName: getDisplayName(request),
               amount: request.amount,
               requestId: request.id,
               paymentId: request.id,
@@ -73,7 +87,7 @@ export const useNotifications = () => {
         } else {
           // Send notification for manual approval
           await notificationService.notifyPaymentRequest({
-            merchantName: request.merchant_name,
+            merchantName: getDisplayName(request),
             amount: request.amount,
             requestId: request.id,
             paymentId: request.id,

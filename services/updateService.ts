@@ -1,6 +1,12 @@
 import * as Updates from 'expo-updates';
-import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export class UpdateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UpdateError';
+  }
+}
 
 export interface UpdateInfo {
   isAvailable: boolean;
@@ -40,14 +46,22 @@ class UpdateService {
       const updateInfo = await this.checkForUpdates();
       
       if (updateInfo.isAvailable) {
-        console.log('[UpdateService] Update available, showing notification');
-        this.showUpdateAvailableAlert();
+        console.log('[UpdateService] Update available, raising flag');
+        this.hasShownUpdateAlert = true; // Set flag to be handled by UI
       } else {
         console.log('[UpdateService] No updates available');
       }
     } catch (error) {
       console.error('[UpdateService] Error checking for updates on startup:', error);
     }
+  }
+
+  public getHasUpdateAlertBeenShown(): boolean {
+    return this.hasShownUpdateAlert;
+  }
+
+  public resetUpdateAlertFlag(): void {
+    this.hasShownUpdateAlert = false;
   }
 
   /**
@@ -100,14 +114,6 @@ class UpdateService {
 
       console.log('[UpdateService] Starting update download...');
       
-      // Show loading state
-      Alert.alert(
-        'Downloading Update',
-        'Please wait while we download the latest version...',
-        [],
-        { cancelable: false }
-      );
-
       const result = await Updates.fetchUpdateAsync();
       
       if (result.isNew) {
@@ -121,95 +127,31 @@ class UpdateService {
         return true;
       } else {
         console.log('[UpdateService] No new update to download');
-        Alert.alert('Info', 'You already have the latest version installed.');
         return false;
       }
     } catch (error) {
       console.error('[UpdateService] Error downloading/installing update:', error);
-      Alert.alert(
-        'Update Failed',
-        'Failed to download the update. Please check your internet connection and try again.',
-        [{ text: 'OK' }]
-      );
-      return false;
+      throw new UpdateError('Failed to download the update. Please check your internet connection and try again.');
     }
-  }
-
-  /**
-   * Show update available alert with options
-   */
-  private showUpdateAvailableAlert(): void {
-    this.hasShownUpdateAlert = true;
-    
-    Alert.alert(
-      '🆕 Update Available',
-      'A new version of the app is available with exciting new features and improvements!',
-      [
-        {
-          text: 'Later',
-          style: 'cancel',
-          onPress: () => {
-            console.log('[UpdateService] User chose to update later');
-          }
-        },
-        {
-          text: 'Update Now',
-          style: 'default',
-          onPress: async () => {
-            console.log('[UpdateService] User chose to update now');
-            await this.downloadAndInstallUpdate();
-          }
-        }
-      ],
-      { cancelable: true }
-    );
   }
 
   /**
    * Force check for updates with user feedback
    */
-  public async manualUpdateCheck(): Promise<void> {
-    try {
-      Alert.alert(
-        'Checking for Updates',
-        'Please wait...',
-        [],
-        { cancelable: false }
-      );
+  public async manualUpdateCheck(): Promise<UpdateInfo> {
+    if (this.isChecking) {
+      throw new UpdateError('Update check already in progress.');
+    }
 
+    try {
+      this.isChecking = true;
       const updateInfo = await this.checkForUpdates();
-      
-      if (updateInfo.isAvailable) {
-        Alert.alert(
-          '🆕 Update Available',
-          'A new version is available! Would you like to download and install it now?',
-          [
-            {
-              text: 'Not Now',
-              style: 'cancel'
-            },
-            {
-              text: 'Update',
-              onPress: async () => {
-                await this.downloadAndInstallUpdate();
-              }
-            }
-          ]
-        );
-      } else {
-        Alert.alert(
-          '✅ Up to Date',
-          'You are already using the latest version of the app!',
-          [{ text: 'OK' }]
-        );
-      }
+      this.isChecking = false;
+      return updateInfo;
     } catch (error) {
+      this.isChecking = false;
       console.error('[UpdateService] Manual update check failed:', error);
-      Alert.alert(
-        'Check Failed',
-        'Unable to check for updates. Please ensure you have an internet connection.',
-        [{ text: 'OK' }]
-      );
+      throw new UpdateError('Unable to check for updates. Please ensure you have an internet connection.');
     }
   }
 
@@ -251,18 +193,18 @@ class UpdateService {
   }
 
   /**
-   * Check if app was recently updated
+   * Check if the app was recently updated and clear the flag
    */
   public async checkIfRecentlyUpdated(): Promise<boolean> {
     try {
-      const wasUpdated = await AsyncStorage.getItem('app_updated');
-      if (wasUpdated === 'true') {
+      const updated = await AsyncStorage.getItem('app_updated');
+      if (updated === 'true') {
         await AsyncStorage.removeItem('app_updated');
         return true;
       }
       return false;
     } catch (error) {
-      console.error('[UpdateService] Error checking update status:', error);
+      console.error('[UpdateService] Error checking for recent update:', error);
       return false;
     }
   }
@@ -271,12 +213,10 @@ class UpdateService {
    * Show welcome message after update
    */
   public showUpdateCompleteMessage(): void {
-    Alert.alert(
-      '🎉 Update Complete',
-      'Your app has been successfully updated with the latest features and improvements!',
-      [{ text: 'Awesome!' }]
-    );
+    // This method is no longer directly called by the updateService,
+    // but keeping it as it was in the original file.
+    // The UI layer will handle showing the alert.
   }
 }
 
-export default UpdateService.getInstance(); 
+export const updateService = UpdateService.getInstance(); 

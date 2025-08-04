@@ -1,82 +1,117 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Enhanced Colors system with comprehensive light/dark mode support
+ * Integrated with the new DesignSystem for professional fintech app theming
+ * Based on modern design principles with accessibility considerations
  */
 
-const tintColorLight = '#6B46C1'; // Primary purple
-const tintColorDark = '#9333EA'; // Light purple for dark mode
+import { designSystem } from './DesignSystem';
+
+const tintColorLight = designSystem.colors.primary[500]; // Primary purple
+const tintColorDark = designSystem.colors.primary[400]; // Light purple for dark mode
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: designSystem.colors.neutral[900],
+    background: designSystem.colors.appBackground.light,
+    surface: designSystem.colors.neutral[50],
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: designSystem.colors.neutral[500],
+    tabIconDefault: designSystem.colors.neutral[500],
     tabIconSelected: tintColorLight,
-    // Additional app colors
-    primary: '#6B46C1',
-    primaryLight: '#8B5CF6',
-    secondary: '#06B6D4',
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
-    gray: {
-      50: '#F9FAFB',
-      100: '#F3F4F6',
-      200: '#E5E7EB',
-      300: '#D1D5DB',
-      400: '#9CA3AF',
-      500: '#6B7280',
-      600: '#4B5563',
-      700: '#374151',
-      800: '#1F2937',
-      900: '#111827',
-    },
-    // Gradient colors
-    gradients: {
-      primary: ['#6B46C1', '#8B5CF6'],
-      secondary: ['#06B6D4', '#0EA5E9'],
-      success: ['#10B981', '#34D399'],
-      warning: ['#F59E0B', '#FCD34D'],
-      error: ['#EF4444', '#F87171'],
-      profileHeader: ['#6B46C1', '#8B5CF6', '#06B6D4'],
-    },
+    border: designSystem.colors.neutral[200],
+    
+    // Enhanced semantic colors
+    primary: designSystem.colors.primary[500],
+    primaryLight: designSystem.colors.primary[400],
+    primaryDark: designSystem.colors.primary[600],
+    secondary: designSystem.colors.secondary[500],
+    secondaryLight: designSystem.colors.secondary[400],
+    success: designSystem.colors.success[500],
+    successLight: designSystem.colors.success[100],
+    warning: designSystem.colors.warning[500],
+    warningLight: designSystem.colors.warning[100],
+    error: designSystem.colors.error[500],
+    errorLight: designSystem.colors.error[100],
+    
+    // Text variants
+    textPrimary: designSystem.colors.neutral[900],
+    textSecondary: designSystem.colors.neutral[600],
+    textTertiary: designSystem.colors.neutral[400],
+    textInverse: designSystem.colors.white,
+    
+    // Background variants
+    backgroundPrimary: designSystem.colors.white,
+    backgroundSecondary: designSystem.colors.neutral[50],
+    backgroundTertiary: designSystem.colors.neutral[100],
+    
+    // Legacy gray scale (maintained for backward compatibility)
+    gray: designSystem.colors.neutral,
+    
+    // Enhanced gradient colors
+    gradients: designSystem.gradients,
   },
+  
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: designSystem.colors.neutral[50],
+    background: designSystem.colors.appBackground.dark,
+    surface: designSystem.colors.neutral[800],
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: designSystem.colors.neutral[400],
+    tabIconDefault: designSystem.colors.neutral[400],
     tabIconSelected: tintColorDark,
-    // Additional app colors for dark mode
-    primary: '#9333EA',
-    primaryLight: '#A855F7',
-    secondary: '#0EA5E9',
-    success: '#34D399',
-    warning: '#FCD34D',
-    error: '#F87171',
+    border: designSystem.colors.neutral[700],
+    
+    // Enhanced semantic colors for dark mode
+    primary: designSystem.colors.primary[400],
+    primaryLight: designSystem.colors.primary[300],
+    primaryDark: designSystem.colors.primary[500],
+    secondary: designSystem.colors.secondary[400],
+    secondaryLight: designSystem.colors.secondary[300],
+    success: designSystem.colors.success[500],
+    successLight: designSystem.colors.success[100],
+    warning: designSystem.colors.warning[500],
+    warningLight: designSystem.colors.warning[100],
+    error: designSystem.colors.error[500],
+    errorLight: designSystem.colors.error[100],
+    
+    // Text variants for dark mode
+    textPrimary: designSystem.colors.neutral[50],
+    textSecondary: designSystem.colors.neutral[400],
+    textTertiary: designSystem.colors.neutral[600],
+    textInverse: designSystem.colors.neutral[900],
+    
+    // Background variants for dark mode
+    backgroundPrimary: designSystem.colors.neutral[900],
+    backgroundSecondary: designSystem.colors.neutral[800],
+    backgroundTertiary: designSystem.colors.neutral[700],
+    
+    // Legacy gray scale (inverted for dark mode)
     gray: {
-      50: '#18181B',
-      100: '#27272A',
-      200: '#3F3F46',
-      300: '#52525B',
-      400: '#71717A',
-      500: '#A1A1AA',
-      600: '#D4D4D8',
-      700: '#E4E4E7',
-      800: '#F4F4F5',
-      900: '#FAFAFA',
+      50: designSystem.colors.neutral[900],
+      100: designSystem.colors.neutral[800],
+      200: designSystem.colors.neutral[700],
+      300: designSystem.colors.neutral[600],
+      400: designSystem.colors.neutral[500],
+      500: designSystem.colors.neutral[400],
+      600: designSystem.colors.neutral[300],
+      700: designSystem.colors.neutral[200],
+      800: designSystem.colors.neutral[100],
+      900: designSystem.colors.neutral[50],
     },
-    // Gradient colors for dark mode
+    
+    // Dark mode gradients
     gradients: {
-      primary: ['#9333EA', '#A855F7'],
-      secondary: ['#0EA5E9', '#06B6D4'],
-      success: ['#34D399', '#10B981'],
-      warning: ['#FCD34D', '#F59E0B'],
-      error: ['#F87171', '#EF4444'],
-      profileHeader: ['#9333EA', '#A855F7', '#0EA5E9'],
+      primary: [designSystem.colors.primary[400], designSystem.colors.primary[300]],
+      secondary: [designSystem.colors.secondary[400], designSystem.colors.secondary[300]],
+      success: [designSystem.colors.success[500], designSystem.colors.success[400]],
+      warning: [designSystem.colors.warning[500], designSystem.colors.warning[400]],
+      error: [designSystem.colors.error[500], designSystem.colors.error[400]],
+      profileHeader: [designSystem.colors.primary[400], designSystem.colors.primary[300], designSystem.colors.secondary[400]],
+      cardVisa: ['#2D3A8C', '#1A1F71'],
+      cardMastercard: ['#FF5F00', '#EB001B'],
+      cardAmex: ['#0099CC', '#006FCF'],
+      cardDiscover: ['#FF8C00', '#FF6000'],
+      cardDefault: [designSystem.colors.primary[400], designSystem.colors.primary[300]],
     },
   },
 };

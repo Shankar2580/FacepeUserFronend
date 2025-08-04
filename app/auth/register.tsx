@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,13 +11,15 @@ import {
   ScrollView,
   StatusBar as NativeStatusBar, // Renamed for clarity
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../../services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { PasswordStrengthIndicator } from '../../components/ui/PasswordStrengthIndicator';
+import { ProcessingAnimation } from '../../components/ui/ProcessingAnimation';
+import { useAlert } from '../../components/ui/AlertModal';
 
 // Custom OTP Input Component
 const OTPInput = ({
@@ -97,13 +99,29 @@ export default function RegisterScreen() {
   const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [loadingType, setLoadingType] = useState<'verification' | 'verify' | 'register'>('verification');
   
   const router = useRouter();
+  const { showAlert, AlertComponent } = useAlert();
+  const isScreenFocused = useRef(true);
+
+  // Track screen focus to prevent alerts when user navigates away
+  useFocusEffect(
+    React.useCallback(() => {
+      isScreenFocused.current = true;
+      return () => {
+        isScreenFocused.current = false;
+      };
+    }, [])
+  );
 
   const formatPhoneNumberForDisplay = (digits: string) => {
     if (!digits) return '';
@@ -155,17 +173,18 @@ export default function RegisterScreen() {
 
   const handleSendVerification = async () => {
     if (!rawPhoneNumber) {
-      Alert.alert('Error', 'Please enter your mobile number');
+      showAlert('Error', 'Please enter your mobile number', undefined, 'error');
       return;
     }
 
     if (rawPhoneNumber.length !== 10) {
-      Alert.alert('Error', 'Please enter a valid 10-digit mobile number');
+      showAlert('Error', 'Please enter a valid 10-digit mobile number', undefined, 'error');
       return;
     }
 
     const fullPhoneNumber = getFullPhoneNumber();
     setIsLoading(true);
+    setLoadingType('verification');
     try {
       await apiService.sendVerification({ 
         phone_number: fullPhoneNumber, 
@@ -173,9 +192,11 @@ export default function RegisterScreen() {
       });
       setStep('verification');
       startCountdown();
-      Alert.alert('Success', `Verification code sent to ${fullPhoneNumber}`);
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to send verification code');
+      // Only show alert if screen is still focused
+      if (isScreenFocused.current) {
+        showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -183,34 +204,40 @@ export default function RegisterScreen() {
 
   const handleVerifyCode = async () => {
     if (!verificationCode) {
-      Alert.alert('Error', 'Please enter the verification code');
+      showAlert('Error', 'Please enter the verification code', undefined, 'error');
       return;
     }
 
     if (verificationCode.length !== 6) {
-      Alert.alert('Error', 'Please enter a valid 6-digit verification code');
+      showAlert('Error', 'Please enter a valid 6-digit verification code', undefined, 'error');
       return;
     }
 
     const fullPhoneNumber = getFullPhoneNumber();
     setIsLoading(true);
+    setLoadingType('verify');
     try {
       await apiService.verifyCode({
         phone_number: fullPhoneNumber,
         code: verificationCode
       });
       setStep('details');
-      Alert.alert('Success', 'Mobile number verified! Please complete your registration');
+      showAlert('Success', 'Mobile number verified! Please complete your registration', undefined, 'success');
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Invalid verification code');
+      showAlert('Error', error.response?.data?.message || 'Invalid verification code', undefined, 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleResendCode = async () => {
-    if (countdown > 0) return;
-    await handleSendVerification();
+    if (countdown > 0 || isResending) return;
+    setIsResending(true);
+    try {
+      await handleSendVerification();
+    } finally {
+      setIsResending(false);
+    }
   };
 
   const validateEmail = (email: string) => {
@@ -219,33 +246,49 @@ export default function RegisterScreen() {
   };
 
   const handleRegister = async () => {
-    if (!email || !firstName || !lastName || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+    if (!email || !firstName || !lastName || !password || !confirmPassword || !pin || !confirmPin) {
+      showAlert('Error', 'Please fill in all fields', undefined, 'error');
       return;
     }
 
     if (!validateEmail(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      showAlert('Error', 'Please enter a valid email address', undefined, 'error');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showAlert('Error', 'Passwords do not match', undefined, 'error');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      showAlert('Error', 'Password must be at least 6 characters', undefined, 'error');
+      return;
+    }
+
+    if (pin.length !== 4) {
+      showAlert('Error', 'PIN must be exactly 4 digits', undefined, 'error');
+      return;
+    }
+
+    if (!/^\d{4}$/.test(pin)) {
+      showAlert('Error', 'PIN must contain only digits', undefined, 'error');
+      return;
+    }
+
+    if (pin !== confirmPin) {
+      showAlert('Error', 'PINs do not match', undefined, 'error');
       return;
     }
 
     if (!termsAccepted) {
-      Alert.alert('Error', 'Please accept the Terms & Conditions');
+      showAlert('Error', 'Please accept the Terms & Conditions', undefined, 'error');
       return;
     }
 
     const fullPhoneNumber = getFullPhoneNumber();
     setIsLoading(true);
+    setLoadingType('register');
     try {
       await apiService.register({
         phone_number: fullPhoneNumber,
@@ -253,10 +296,11 @@ export default function RegisterScreen() {
         first_name: firstName,
         last_name: lastName,
         password: password,
+        pin: pin,
         verification_code: verificationCode
       });
       
-      Alert.alert(
+      showAlert(
         'Registration Successful', 
         'Your account has been created successfully. Please login to continue.',
         [
@@ -264,10 +308,11 @@ export default function RegisterScreen() {
             text: 'OK',
             onPress: () => router.push('/auth/login')
           }
-        ]
+        ],
+        'success'
       );
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.response?.data?.message || 'Please try again');
+      showAlert('Registration Failed', error.response?.data?.message || 'Please try again', undefined, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -290,6 +335,44 @@ export default function RegisterScreen() {
       default: return '';
     }
   };
+
+  // Show processing animation during loading states
+  if (isLoading) {
+    const getLoadingProps = () => {
+      switch (loadingType) {
+        case 'verification':
+          return {
+            title: 'Sending Verification',
+            subtitle: 'Please wait while we send a verification code to your mobile number'
+          };
+        case 'verify':
+          return {
+            title: 'Verifying Code',
+            subtitle: 'Please wait while we verify your mobile number'
+          };
+        case 'register':
+          return {
+            title: 'Creating Account',
+            subtitle: 'Please wait while we set up your new account'
+          };
+        default:
+          return {
+            title: 'Processing',
+            subtitle: 'Please wait...'
+          };
+      }
+    };
+
+    const loadingProps = getLoadingProps();
+    return (
+      <ProcessingAnimation
+        visible={isLoading}
+        type="generic"
+        title={loadingProps.title}
+        subtitle={loadingProps.subtitle}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
@@ -425,12 +508,12 @@ export default function RegisterScreen() {
                   </TouchableOpacity>
 
                   <TouchableOpacity 
-                    style={[styles.secondaryButton, countdown > 0 && styles.disabledButton]}
+                    style={[styles.secondaryButton, (countdown > 0 || isResending) && styles.disabledButton]}
                     onPress={handleResendCode}
-                    disabled={countdown > 0}
+                    disabled={countdown > 0 || isResending}
                   >
                     <Text style={styles.secondaryButtonText}>
-                      {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
+                      {isResending ? 'Sending...' : countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
                     </Text>
                   </TouchableOpacity>
 
@@ -532,6 +615,36 @@ export default function RegisterScreen() {
                     </TouchableOpacity>
                   </View>
 
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="keypad-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="4-Digit PIN"
+                      placeholderTextColor="#999"
+                      value={pin}
+                      onChangeText={setPin}
+                      secureTextEntry={true}
+                      keyboardType="numeric"
+                      maxLength={4}
+                      autoCapitalize="none"
+                    />
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="keypad-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Confirm PIN"
+                      placeholderTextColor="#999"
+                      value={confirmPin}
+                      onChangeText={setConfirmPin}
+                      secureTextEntry={true}
+                      keyboardType="numeric"
+                      maxLength={4}
+                      autoCapitalize="none"
+                    />
+                  </View>
+
                   {/* Terms and Conditions */}
                   <TouchableOpacity 
                     style={styles.termsContainer}
@@ -587,6 +700,9 @@ export default function RegisterScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      
+      {/* Alert Component */}
+      <AlertComponent />
     </SafeAreaView>
   );
 }
@@ -594,7 +710,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F8F7FF',
   },
   keyboardView: {
     flex: 1,

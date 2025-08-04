@@ -1,0 +1,2093 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+
+% Page setup
+\geometry{left=2.5cm,right=2.5cm,top=3cm,bottom=3cm}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{PayByFaeAi - Part 2: UI/UX \& Frontend}
+\lhead{\leftmark}
+\cfoot{\thepage}
+
+% Code listing setup
+\lstset{
+    backgroundcolor=\color{gray!10},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    commentstyle=\color{green!60!black},
+    deletekeywords={...},
+    escapeinside={\%*}{*)},
+    extendedchars=true,
+    frame=single,
+    keepspaces=true,
+    keywordstyle=\color{blue},
+    language=JavaScript,
+    morekeywords={*,...},
+    numbers=left,
+    numbersep=5pt,
+    numberstyle=\tiny\color{gray},
+    rulecolor=\color{black},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    stepnumber=1,
+    stringstyle=\color{orange},
+    tabsize=2,
+    title=\lstname
+}
+
+% Hyperlink setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    pdftitle={PayByFaeAi Part 2: UI/UX and Frontend Implementation},
+    pdfauthor={Development Team}
+}
+
+% Title formatting
+\titleformat{\section}{\Large\bfseries\color{blue}}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\color{blue!80}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{blue!60}}{\thesubsubsection}{1em}{}
+
+\title{
+    \Huge\textbf{PayByFaeAi}\\
+    \Large Part 2: UI/UX \& Frontend Implementation\\
+    \large Complete User Interface \& Experience Guide
+}
+\author{Development Team}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\newpage
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+This document is the second part of the comprehensive PayByFaeAi documentation series, focusing specifically on the user interface, user experience design, frontend components, and visual implementation. This guide provides detailed insights into the design system, component architecture, animations, and user interaction patterns.
+
+\subsection{Document Series Context}
+This is Part 2 of the three-part documentation series:
+\begin{itemize}
+    \item \textbf{Part 1}: Architecture \& Core Systems
+    \item \textbf{Part 2}: UI/UX \& Frontend Implementation (this document)
+    \item \textbf{Part 3}: Security, Deployment \& Development Guide
+\end{itemize}
+
+\subsection{What You'll Learn in This Document}
+\begin{itemize}
+    \item Comprehensive design system and visual guidelines
+    \item Screen-by-screen UI implementation details
+    \item Component architecture and reusable UI patterns
+    \item Animation systems and micro-interactions
+    \item Accessibility features and inclusive design
+    \item Navigation patterns and user flows
+    \item Advanced UI components and modals
+    \item Responsive design and platform adaptations
+\end{itemize}
+
+\section{Design System Architecture}
+
+\subsection{Design Philosophy}
+
+PayByFaeAi implements a comprehensive design system based on modern fintech application standards, emphasizing clarity, trust, and accessibility. The design follows Material Design principles while maintaining a unique brand identity.
+
+\subsubsection{Core Design Principles}
+\begin{itemize}
+    \item \textbf{Clarity}: Clear visual hierarchy and intuitive navigation
+    \item \textbf{Consistency}: Unified design language across all screens
+    \item \textbf{Accessibility}: Inclusive design for all users
+    \item \textbf{Trust}: Professional appearance for financial security
+    \item \textbf{Efficiency}: Streamlined user flows and minimal friction
+\end{itemize}
+
+\subsection{Design Tokens and System}
+
+\subsubsection{Spacing System}
+The application uses an 8px grid system for consistent spacing:
+
+\begin{lstlisting}[language=TypeScript, caption=Spacing Scale Implementation]
+// Spacing Scale - Based on 8px grid system
+export const spacing = {
+  xs: 4,      // 0.25rem - Minimal spacing
+  sm: 8,      // 0.5rem  - Small spacing
+  md: 12,     // 0.75rem - Medium spacing
+  lg: 16,     // 1rem    - Large spacing
+  xl: 20,     // 1.25rem - Extra large spacing
+  xxl: 24,    // 1.5rem  - Double extra large
+  xxxl: 32,   // 2rem    - Triple extra large
+  huge: 40,   // 2.5rem  - Huge spacing
+  massive: 48, // 3rem    - Massive spacing
+} as const;
+
+// Usage examples in components
+const styles = StyleSheet.create({
+  container: {
+    padding: spacing.lg,           // 16px padding
+    marginBottom: spacing.xxl,     // 24px margin
+  },
+  buttonSpacing: {
+    marginTop: spacing.xl,         // 20px margin
+    paddingHorizontal: spacing.xxxl, // 32px horizontal padding
+  },
+});
+\end{lstlisting}
+
+\subsubsection{Typography System}
+Professional typography hierarchy for fintech applications:
+
+\begin{lstlisting}[language=TypeScript, caption=Typography Scale and Hierarchy]
+// Typography Scale - Professional hierarchy
+export const typography = {
+  // Font sizes following modular scale
+  fontSize: {
+    xs: 12,     // Caption text, fine print
+    sm: 14,     // Body text, secondary information
+    md: 16,     // Primary body text, form inputs
+    lg: 18,     // Subheadings, important text
+    xl: 20,     // Section headings
+    xxl: 24,    // Page titles
+    xxxl: 28,   // Major headings
+    huge: 32,   // Hero text
+    massive: 36, // Display text
+  },
+  
+  // Font weights for emphasis and hierarchy
+  fontWeight: {
+    light: '300' as const,      // Light text, captions
+    regular: '400' as const,    // Body text
+    medium: '500' as const,     // Emphasized text
+    semiBold: '600' as const,   // Subheadings
+    bold: '700' as const,       // Headings, important text
+  },
+  
+  // Line heights for readability
+  lineHeight: {
+    tight: 1.1,    // Headings, compact text
+    normal: 1.4,   // Body text
+    relaxed: 1.6,  // Long-form content
+  },
+} as const;
+
+// Typography component implementations
+const TextStyles = {
+  h1: {
+    fontSize: typography.fontSize.xxxl,
+    fontWeight: typography.fontWeight.bold,
+    lineHeight: typography.lineHeight.tight,
+  },
+  h2: {
+    fontSize: typography.fontSize.xxl,
+    fontWeight: typography.fontWeight.semiBold,
+    lineHeight: typography.lineHeight.tight,
+  },
+  body: {
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.regular,
+    lineHeight: typography.lineHeight.normal,
+  },
+  caption: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.regular,
+    lineHeight: typography.lineHeight.normal,
+  },
+};
+\end{lstlisting}
+
+\subsubsection{Color System}
+Comprehensive color palette with semantic color assignments:
+
+\begin{lstlisting}[language=TypeScript, caption=Color System Implementation]
+// Primary color scale (Blue theme for trust and professionalism)
+export const colors = {
+  primary: {
+    50: '#f0f9ff',   // Very light blue - backgrounds
+    100: '#e0f2fe',  // Light blue - subtle backgrounds
+    200: '#bae6fd',  // Light blue - hover states
+    300: '#7dd3fc',  // Medium light blue - borders
+    400: '#38bdf8',  // Medium blue - secondary actions
+    500: '#0ea5e9',  // Primary blue - main brand color
+    600: '#0284c7',  // Dark blue - primary actions
+    700: '#0369a1',  // Darker blue - pressed states
+    800: '#075985',  // Very dark blue - text on light
+    900: '#0c4a6e',  // Darkest blue - high contrast text
+  },
+  
+  // Semantic color assignments
+  semantic: {
+    success: '#10b981',    // Green for success states
+    warning: '#f59e0b',    // Amber for warnings
+    error: '#ef4444',      // Red for errors
+    info: '#3b82f6',       // Blue for information
+  },
+  
+  // Neutral grays for text and backgrounds
+  neutral: {
+    50: '#f9fafb',    // Lightest gray - page backgrounds
+    100: '#f3f4f6',   // Very light gray - card backgrounds
+    200: '#e5e7eb',   // Light gray - borders
+    300: '#d1d5db',   // Medium light gray - disabled states
+    400: '#9ca3af',   // Medium gray - placeholder text
+    500: '#6b7280',   // Medium dark gray - secondary text
+    600: '#4b5563',   // Dark gray - primary text
+    700: '#374151',   // Darker gray - headings
+    800: '#1f2937',   // Very dark gray - high contrast
+    900: '#111827',   // Darkest gray - maximum contrast
+  },
+} as const;
+
+// Theme-based color assignments
+export const lightTheme = {
+  // Background colors
+  background: colors.neutral[50],
+  backgroundSecondary: colors.neutral[100],
+  backgroundTertiary: colors.neutral[200],
+  
+  // Text colors
+  text: colors.neutral[800],
+  textSecondary: colors.neutral[600],
+  textTertiary: colors.neutral[500],
+  
+  // Interactive colors
+  primary: colors.primary[600],
+  primaryHover: colors.primary[700],
+  primaryPressed: colors.primary[800],
+  
+  // Border colors
+  border: colors.neutral[200],
+  borderHover: colors.neutral[300],
+  
+  // Status colors
+  success: colors.semantic.success,
+  warning: colors.semantic.warning,
+  error: colors.semantic.error,
+  info: colors.semantic.info,
+} as const;
+\end{lstlisting}
+
+\subsubsection{Animation Timings and Easing}
+
+\begin{lstlisting}[language=TypeScript, caption=Animation System Configuration]
+// Animation timings for consistent motion design
+export const animations = {
+  // Duration values in milliseconds
+  fast: 150,      // Quick transitions, hover effects
+  normal: 250,    // Standard transitions, modal appearances
+  slow: 350,      // Complex animations, page transitions
+  slower: 500,    // Dramatic effects, success animations
+  
+  // Easing curves for natural motion
+  easing: {
+    easeInOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    easeOut: 'cubic-bezier(0, 0, 0.2, 1)',
+    easeIn: 'cubic-bezier(0.4, 0, 1, 1)',
+    bounce: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+  },
+} as const;
+
+// Animation presets for common UI patterns
+export const animationPresets = {
+  fadeIn: {
+    from: { opacity: 0 },
+    to: { opacity: 1 },
+    duration: animations.normal,
+  },
+  slideUp: {
+    from: { opacity: 0, translateY: 20 },
+    to: { opacity: 1, translateY: 0 },
+    duration: animations.normal,
+  },
+  scaleIn: {
+    from: { opacity: 0, scale: 0.95 },
+    to: { opacity: 1, scale: 1 },
+    duration: animations.normal,
+  },
+};
+\end{lstlisting}
+
+\subsection{Accessibility Standards}
+
+\subsubsection{Accessibility Guidelines}
+The design system implements WCAG 2.1 AA compliance standards:
+
+\begin{lstlisting}[language=TypeScript, caption=Accessibility Standards Implementation]
+// Accessibility helpers and standards
+export const accessibility = {
+  // Minimum touch target size (44x44 points on iOS)
+  minimumTouchSize: 44,
+  
+  // Color contrast ratios for WCAG compliance
+  contrastRatio: {
+    normal: 4.5,    // Normal text contrast ratio
+    large: 3.0,     // Large text contrast ratio (18pt+ or 14pt+ bold)
+  },
+  
+  // Focus indicators
+  focusRing: {
+    width: 2,
+    color: colors.primary[500],
+    style: 'solid',
+  },
+  
+  // Screen reader labels
+  labels: {
+    required: 'Required field',
+    loading: 'Loading',
+    error: 'Error',
+    success: 'Success',
+  },
+} as const;
+
+// Accessibility helper functions
+export const a11yHelpers = {
+  // Generate accessible button props
+  accessibleButton: (label: string, hint?: string) => ({
+    accessibilityRole: 'button' as const,
+    accessibilityLabel: label,
+    accessibilityHint: hint,
+  }),
+  
+  // Generate accessible text input props
+  accessibleTextInput: (label: string, required = false) => ({
+    accessibilityLabel: label,
+    accessibilityHint: required ? 
+      `${label}, ${accessibility.labels.required}` : undefined,
+  }),
+};
+\end{lstlisting}
+
+\section{Navigation and Screen Architecture}
+
+\subsection{Navigation Structure}
+
+The application uses Expo Router's file-based routing with a tab-based main navigation:
+
+\begin{lstlisting}[language=TypeScript, caption=Tab Navigation Implementation]
+// Main tab navigation configuration
+export default function TabLayout() {
+  const theme = 'light'; // Always use light theme
+
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: Colors[theme].tint,
+        headerShown: false,
+        tabBarButton: HapticTab, // Custom haptic feedback component
+        tabBarBackground: TabBarBackground,
+        tabBarStyle: Platform.select({
+          ios: {
+            position: 'absolute', // Blur effect on iOS
+          },
+          default: {},
+        }),
+      }}>
+      
+      {/* Home Tab */}
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? 'home' : 'home-outline'} 
+              size={24} 
+              color={color}
+              accessibilityLabel="Home tab"
+              accessibilityHint="Navigate to home screen"
+            />
+          ),
+        }}
+      />
+      
+      {/* Cards Tab */}
+      <Tabs.Screen
+        name="cards"
+        options={{
+          title: 'Cards',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? 'card' : 'card-outline'} 
+              size={24} 
+              color={color}
+              accessibilityLabel="Cards tab"
+              accessibilityHint="Navigate to payment cards screen"
+            />
+          ),
+        }}
+      />
+      
+      {/* History Tab */}
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: 'History',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? 'time' : 'time-outline'} 
+              size={24} 
+              color={color}
+              accessibilityLabel="History tab"
+              accessibilityHint="Navigate to transaction history screen"
+            />
+          ),
+        }}
+      />
+      
+      {/* Profile Tab */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? 'person' : 'person-outline'} 
+              size={24} 
+              color={color}
+            />
+          ),
+        }}
+      />
+    </Tabs>
+  );
+}
+\end{lstlisting}
+
+\subsection{Screen Implementations}
+
+\subsubsection{Home Screen (index.tsx)}
+The home screen serves as the main dashboard with payment requests and quick actions:
+
+\begin{lstlisting}[language=TypeScript, caption=Home Screen Key Features]
+export default function HomeScreen() {
+  const { user } = useAuth();
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Key UI elements implemented:
+  
+  // 1. Welcome header with user greeting
+  const WelcomeHeader = () => (
+    <View style={styles.welcomeContainer}>
+      <Text style={styles.welcomeText}>
+        Welcome back, {user?.first_name}!
+      </Text>
+      <Text style={styles.welcomeSubtext}>
+        Manage your payments securely
+      </Text>
+    </View>
+  );
+
+  // 2. Conditional face registration prompt
+  const FaceRegistrationPrompt = () => {
+    if (user && !user.has_face_registered) {
+      return (
+        <TouchableOpacity
+          style={styles.facePromptCard}
+          onPress={() => router.push('/face-registration')}
+          accessibilityLabel="Register your face for secure payments"
+        >
+          <View style={styles.facePromptContent}>
+            <Ionicons name="face-detection" size={24} color={colors.primary[600]} />
+            <Text style={styles.facePromptTitle}>Register Your Face</Text>
+            <Text style={styles.facePromptSubtitle}>
+              Enable biometric authentication for secure payments
+            </Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+    return null;
+  };
+
+  // 3. Payment requests list with real-time updates
+  const PaymentRequestsList = () => (
+    <View style={styles.requestsContainer}>
+      <Text style={styles.sectionTitle}>Payment Requests</Text>
+      {paymentRequests.length > 0 ? (
+        paymentRequests.map((request) => (
+          <PaymentRequestCard
+            key={request.id}
+            request={request}
+            onApprove={handleApprovePayment}
+            onDecline={handleDeclinePayment}
+          />
+        ))
+      ) : (
+        <EmptyState
+          icon="notifications-outline"
+          title="No Payment Requests"
+          subtitle="You'll see payment requests from merchants here"
+          variant="notifications"
+        />
+      )}
+    </View>
+  );
+
+  // 4. Quick actions section
+  const QuickActions = () => (
+    <View style={styles.quickActionsContainer}>
+      <Text style={styles.sectionTitle}>Quick Actions</Text>
+      <View style={styles.quickActionsGrid}>
+        <QuickActionButton
+          icon="card-outline"
+          title="Add Card"
+          onPress={() => router.push('/add-card')}
+        />
+        <QuickActionButton
+          icon="time-outline"
+          title="History"
+          onPress={() => router.push('/(tabs)/history')}
+        />
+        <QuickActionButton
+          icon="settings-outline"
+          title="Auto-Pay"
+          onPress={() => router.push('/autopay-settings')}
+        />
+      </View>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <WelcomeHeader />
+        <FaceRegistrationPrompt />
+        <PaymentRequestsList />
+        <QuickActions />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+\end{lstlisting}
+
+\subsubsection{Cards Screen (cards.tsx)}
+Payment methods management with comprehensive card display:
+
+\begin{lstlisting}[language=TypeScript, caption=Cards Screen Implementation]
+export default function CardsScreen() {
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Payment method card component
+  const PaymentMethodCard = ({ method }: { method: PaymentMethod }) => (
+    <View style={styles.cardContainer}>
+      {/* Card brand and visual design */}
+      <View style={styles.cardHeader}>
+        <View style={styles.cardBrandContainer}>
+          <Image
+            source={getCardBrandImage(method.card_brand)}
+            style={styles.cardBrandImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.cardBrand}>
+            {method.card_brand.toUpperCase()}
+          </Text>
+        </View>
+        
+        {method.is_default && (
+          <View style={styles.defaultBadge}>
+            <Text style={styles.defaultBadgeText}>Default</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Masked card number */}
+      <Text style={styles.cardNumber}>
+        •••• •••• •••• {method.card_last_four}
+      </Text>
+
+      {/* Expiration date */}
+      <Text style={styles.cardExpiry}>
+        Expires {method.card_exp_month.toString().padStart(2, '0')}/
+        {method.card_exp_year.toString().slice(-2)}
+      </Text>
+
+      {/* Card actions */}
+      <View style={styles.cardActions}>
+        {!method.is_default && (
+          <TouchableOpacity
+            style={styles.setDefaultButton}
+            onPress={() => handleSetDefault(method.id)}
+          >
+            <Text style={styles.setDefaultButtonText}>Set Default</Text>
+          </TouchableOpacity>
+        )}
+        
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteCard(method.id)}
+        >
+          <Ionicons name="trash-outline" size={20} color={colors.error} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // Empty state for no cards
+  const EmptyCardsState = () => (
+    <EmptyState
+      icon="card-outline"
+      title="No Payment Methods"
+      subtitle="Add a payment method to start making secure payments"
+      actionText="Add Your First Card"
+      onAction={() => setShowAddModal(true)}
+      variant="cards"
+    />
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Payment Methods</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => setShowAddModal(true)}
+        >
+          <Ionicons name="add" size={24} color={colors.primary[600]} />
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary[600]} />
+        </View>
+      ) : (
+        <ScrollView style={styles.scrollView}>
+          {paymentMethods.length > 0 ? (
+            paymentMethods.map((method) => (
+              <PaymentMethodCard key={method.id} method={method} />
+            ))
+          ) : (
+            <EmptyCardsState />
+          )}
+        </ScrollView>
+      )}
+
+      {/* Add payment method modal */}
+      <AddPaymentMethodModal
+        visible={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onPaymentMethodAdded={handlePaymentMethodAdded}
+        authToken={authToken}
+      />
+    </SafeAreaView>
+  );
+}
+\end{lstlisting}
+
+\subsubsection{History Screen (history.tsx)}
+Transaction history with filtering and detailed views:
+
+\begin{lstlisting}[language=TypeScript, caption=History Screen Features]
+export default function HistoryScreen() {
+  const [transactions, setTransactions] = useState<TransactionDetail[]>([]);
+  const [filteredTransactions, setFilteredTransactions] = useState<TransactionDetail[]>([]);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  // Transaction item component with status indicators
+  const TransactionItem = ({ transaction }: { transaction: TransactionDetail }) => (
+    <TouchableOpacity
+      style={styles.transactionItem}
+      onPress={() => router.push({
+        pathname: '/transaction-detail',
+        params: { transactionId: transaction.id }
+      })}
+      accessibilityLabel={`Transaction to ${transaction.merchant_name} for $${transaction.amount}`}
+    >
+      <View style={styles.transactionHeader}>
+        <View style={styles.merchantInfo}>
+          <Text style={styles.merchantName}>{transaction.merchant_name}</Text>
+          <Text style={styles.transactionDate}>
+            {formatDate(transaction.created_at)}
+          </Text>
+        </View>
+        
+        <View style={styles.amountContainer}>
+          <Text style={styles.amount}>
+            ${transaction.amount.toFixed(2)}
+          </Text>
+          <StatusBadge status={transaction.status} />
+        </View>
+      </View>
+
+      {/* Payment method info */}
+      {transaction.payment_method && (
+        <View style={styles.paymentMethodInfo}>
+          <Ionicons name="card-outline" size={16} color={colors.neutral[500]} />
+          <Text style={styles.paymentMethodText}>
+            {transaction.payment_method.card_brand} ••••{transaction.payment_method.card_last_four}
+          </Text>
+        </View>
+      )}
+
+      {/* Auto-pay indicator */}
+      {transaction.is_auto_paid && (
+        <View style={styles.autoPayIndicator}>
+          <Ionicons name="flash" size={14} color={colors.primary[600]} />
+          <Text style={styles.autoPayText}>Auto-paid</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+
+  // Status filter component
+  const StatusFilter = () => (
+    <View style={styles.filterContainer}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {['all', 'completed', 'pending', 'failed'].map((status) => (
+          <TouchableOpacity
+            key={status}
+            style={[
+              styles.filterButton,
+              filterStatus === status && styles.filterButtonActive
+            ]}
+            onPress={() => setFilterStatus(status)}
+          >
+            <Text style={[
+              styles.filterButtonText,
+              filterStatus === status && styles.filterButtonTextActive
+            ]}>
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Transaction History</Text>
+      </View>
+
+      <StatusFilter />
+
+      {filteredTransactions.length > 0 ? (
+        <FlatList
+          data={filteredTransactions}
+          renderItem={({ item }) => <TransactionItem transaction={item} />}
+          keyExtractor={(item) => item.id}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <EmptyState
+          icon="time-outline"
+          title="No Transactions"
+          subtitle="Your transaction history will appear here"
+          variant="transactions"
+        />
+      )}
+    </SafeAreaView>
+  );
+}
+\end{lstlisting}
+
+\subsubsection{Profile Screen (profile.tsx)}
+User profile with settings and face registration status:
+
+\begin{lstlisting}[language=TypeScript, caption=Profile Screen Implementation]
+export default function ProfileScreen() {
+  const { user, logout } = useAuth();
+  const [faceRegistrationStatus, setFaceRegistrationStatus] = useState<string>('checking');
+
+  // Animated profile header
+  const ProfileHeader = () => {
+    const slideAnim = useRef(new Animated.Value(50)).current;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: animations.normal,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: animations.normal,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, []);
+
+    return (
+      <Animated.View 
+        style={[
+          styles.profileHeader,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {user?.first_name?.[0]}{user?.last_name?.[0]}
+            </Text>
+          </View>
+        </View>
+        
+        <Text style={styles.userName}>
+          {user?.first_name} {user?.last_name}
+        </Text>
+        <Text style={styles.userPhone}>{user?.phone_number}</Text>
+        
+        {/* Face registration status */}
+        <View style={styles.faceStatusContainer}>
+          <View style={styles.faceStatusRow}>
+            <Ionicons 
+              name="face-detection" 
+              size={20} 
+              color={user?.has_face_registered ? colors.semantic.success : colors.neutral[400]} 
+            />
+            <Text style={styles.faceStatusText}>
+              Face Recognition: {user?.has_face_registered ? 'Registered' : 'Not registered'}
+            </Text>
+          </View>
+          
+          {user?.has_face_registered && (
+            <View style={styles.activeBadge}>
+              <Ionicons name="checkmark-circle" size={16} color={colors.semantic.success} />
+              <Text style={styles.activeText}>Active</Text>
+            </View>
+          )}
+        </View>
+      </Animated.View>
+    );
+  };
+
+  // Profile sections with haptic feedback
+  const ProfileSection = ({ section }: { section: ProfileSectionType }) => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
+      <View style={styles.sectionItems}>
+        {section.items.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.sectionItem,
+              index === section.items.length - 1 && styles.lastSectionItem
+            ]}
+            onPress={() => {
+              if (item.onPress) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                item.onPress();
+              }
+            }}
+            disabled={!item.onPress}
+            activeOpacity={0.7}
+          >
+            <View style={styles.itemLeft}>
+              <View style={styles.itemIcon}>
+                <Ionicons name={item.icon as any} size={22} color={colors.primary[600]} />
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.itemRight}>
+              {item.badge && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{item.badge}</Text>
+                </View>
+              )}
+              <Ionicons name="chevron-forward" size={20} color={colors.neutral[400]} />
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ProfileHeader />
+      
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {profileSections.map((section, index) => (
+          <ProfileSection key={index} section={section} />
+        ))}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+\end{lstlisting}
+
+\section{Advanced UI Components}
+
+\subsection{Modal Components}
+
+\subsubsection{Add Payment Method Modal}
+Secure payment method addition with Stripe integration:
+
+\begin{lstlisting}[language=TypeScript, caption=Add Payment Method Modal Implementation]
+export const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
+  visible,
+  onClose,
+  onPaymentMethodAdded,
+  authToken,
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [cardComplete, setCardComplete] = useState(false);
+  const { createPaymentMethod } = useStripe();
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAddPaymentMethod = async () => {
+    if (!cardComplete) {
+      setError('Please enter complete card details');
+      return;
+    }
+    
+    setError(null);
+    setLoading(true);
+    
+    try {
+      // Step 1: Create PaymentMethod with Stripe (secure tokenization)
+      const { paymentMethod, error: stripeError } = await createPaymentMethod({
+        paymentMethodType: 'Card',
+      });
+
+      if (stripeError) {
+        throw new Error(stripeError.message || 'Failed to process card details');
+      }
+
+      if (!paymentMethod?.id) {
+        throw new Error('Failed to create payment method');
+      }
+
+      // Step 2: Send only the PaymentMethod ID to backend
+      await apiService.addPaymentMethodSecure({
+        stripe_payment_method_id: paymentMethod.id,
+        is_default: true,
+      });
+
+      await onPaymentMethodAdded();
+      onClose();
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to add payment method');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <SafeAreaView style={styles.modalContainer}>
+        {/* Modal header */}
+        <View style={styles.modalHeader}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color={colors.neutral[600]} />
+          </TouchableOpacity>
+          <Text style={styles.modalTitle}>Add Payment Method</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <ScrollView style={styles.modalContent}>
+          {/* Security notice */}
+          <View style={styles.securityNotice}>
+            <Ionicons name="shield-checkmark" size={24} color={colors.semantic.success} />
+            <Text style={styles.securityText}>
+              Your card information is encrypted and secure
+            </Text>
+          </View>
+
+          {/* Stripe CardField */}
+          <View style={styles.cardFieldContainer}>
+            <Text style={styles.fieldLabel}>Card Information</Text>
+            <CardField
+              postalCodeEnabled={true}
+              placeholders={{
+                number: '4242 4242 4242 4242',
+                expiry: 'MM/YY',
+                cvc: 'CVC',
+                postalCode: '12345',
+              }}
+              cardStyle={styles.cardFieldStyle}
+              style={styles.cardField}
+              onCardChange={(cardDetails) => {
+                setCardComplete(cardDetails.complete);
+                if (cardDetails.error) {
+                  setError(cardDetails.error.message);
+                } else {
+                  setError(null);
+                }
+              }}
+            />
+          </View>
+
+          {/* Error display */}
+          {error && (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={20} color={colors.semantic.error} />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+
+          {/* Terms and conditions */}
+          <Text style={styles.termsText}>
+            By adding this payment method, you agree to our Terms of Service and Privacy Policy.
+          </Text>
+        </ScrollView>
+
+        {/* Add button */}
+        <View style={styles.modalFooter}>
+          <TouchableOpacity
+            style={[
+              styles.addButton,
+              (!cardComplete || loading) && styles.addButtonDisabled
+            ]}
+            onPress={handleAddPaymentMethod}
+            disabled={!cardComplete || loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.addButtonText}>Add Payment Method</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </Modal>
+  );
+};
+\end{lstlisting}
+
+\subsubsection{Face Success Modal with Animations}
+Celebratory modal with complex animations for face registration success:
+
+\begin{lstlisting}[language=TypeScript, caption=Face Success Modal with Animations]
+export const FaceSuccessModal: React.FC<FaceSuccessModalProps> = ({
+  visible,
+  onClose,
+  userName,
+  isUpdate = false,
+}) => {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (visible) {
+      // Complex animation sequence for success celebration
+      Animated.sequence([
+        // Scale in the success icon
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        // Fade in the content
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        // Bounce effect for celebration
+        Animated.sequence([
+          Animated.timing(bounceAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bounceAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+
+      // Continuous pulse animation for the face icon
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      // Reset animations when modal is hidden
+      scaleAnim.setValue(0);
+      fadeAnim.setValue(0);
+      bounceAnim.setValue(0);
+      pulseAnim.setValue(1);
+    }
+  }, [visible]);
+
+  const title = isUpdate ? 'Face Updated Successfully!' : 'Face Registration Complete!';
+  const subtitle = isUpdate 
+    ? 'Your facial recognition has been updated and is ready to use'
+    : 'Your face has been registered successfully. You can now use face recognition for secure payments.';
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          {/* Animated success icon */}
+          <Animated.View
+            style={[
+              styles.iconContainer,
+              {
+                transform: [
+                  { scale: scaleAnim },
+                  { 
+                    translateY: bounceAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -10],
+                    })
+                  }
+                ],
+              },
+            ]}
+          >
+            <View style={styles.successIconBackground}>
+              <Ionicons 
+                name="checkmark-circle" 
+                size={60} 
+                color={colors.semantic.success} 
+              />
+            </View>
+          </Animated.View>
+
+          {/* Animated face icon with pulse */}
+          <Animated.View
+            style={[
+              styles.faceIconContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: pulseAnim }],
+              },
+            ]}
+          >
+            <Ionicons 
+              name="face-detection" 
+              size={40} 
+              color={colors.primary[600]} 
+            />
+          </Animated.View>
+
+          {/* Content with fade animation */}
+          <Animated.View
+            style={[
+              styles.contentContainer,
+              { opacity: fadeAnim },
+            ]}
+          >
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
+            
+            <View style={styles.userContainer}>
+              <Text style={styles.userLabel}>Registered for:</Text>
+              <Text style={styles.userName}>{userName}</Text>
+            </View>
+          </Animated.View>
+
+          {/* Action button */}
+          <Animated.View
+            style={[
+              styles.buttonContainer,
+              { opacity: fadeAnim },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.continueButton}
+              onPress={onClose}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.continueButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+\end{lstlisting}
+
+\subsection{Processing Animation Component}
+
+\begin{lstlisting}[language=TypeScript, caption=Processing Animation with Multiple Effects]
+export const ProcessingAnimation: React.FC<ProcessingAnimationProps> = ({
+  visible,
+  type,
+  title,
+  subtitle,
+}) => {
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const dotsAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      // Fade in animation
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+
+      // Scale in animation
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 100,
+        friction: 8,
+        useNativeDriver: true,
+      }).start();
+
+      // Continuous spin animation
+      Animated.loop(
+        Animated.timing(spinAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        })
+      ).start();
+
+      // Continuous pulse animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+
+      // Dots animation for loading text
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(dotsAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dotsAnim, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      // Reset all animations
+      fadeAnim.setValue(0);
+      scaleAnim.setValue(0.8);
+      spinAnim.setValue(0);
+      pulseAnim.setValue(1);
+      dotsAnim.setValue(0);
+    }
+  }, [visible]);
+
+  const spin = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="none"
+    >
+      <View style={styles.overlay}>
+        <Animated.View
+          style={[
+            styles.container,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          {/* Spinning loader */}
+          <Animated.View
+            style={[
+              styles.spinnerContainer,
+              {
+                transform: [
+                  { rotate: spin },
+                  { scale: pulseAnim },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.spinner}>
+              <Ionicons 
+                name={getIconForType(type)} 
+                size={40} 
+                color={colors.primary[600]} 
+              />
+            </View>
+          </Animated.View>
+
+          {/* Title with animation */}
+          <Text style={styles.title}>{title}</Text>
+          
+          {/* Subtitle with dots animation */}
+          {subtitle && (
+            <View style={styles.subtitleContainer}>
+              <Text style={styles.subtitle}>{subtitle}</Text>
+              <Animated.Text
+                style={[
+                  styles.dots,
+                  {
+                    opacity: dotsAnim,
+                  },
+                ]}
+              >
+                ...
+              </Animated.Text>
+            </View>
+          )}
+
+          {/* Progress indicator */}
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <Animated.View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: pulseAnim.interpolate({
+                      inputRange: [1, 1.2],
+                      outputRange: ['30%', '70%'],
+                    }),
+                  },
+                ]}
+              />
+            </View>
+          </View>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+};
+
+// Helper function for type-specific icons
+const getIconForType = (type: ProcessingType): string => {
+  switch (type) {
+    case 'face-registration':
+      return 'face-detection';
+    case 'payment':
+      return 'card';
+    case 'loading':
+    default:
+      return 'refresh';
+  }
+};
+\end{lstlisting}
+
+\subsection{Empty State Component}
+
+\begin{lstlisting}[language=TypeScript, caption=Empty State with Variants and Animations]
+export function EmptyState({
+  icon,
+  title,
+  subtitle,
+  actionText,
+  onAction,
+  variant = 'default',
+  animated = true,
+}: EmptyStateProps) {
+  const scaleAnim = React.useRef(new Animated.Value(0)).current;
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (animated) {
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      scaleAnim.setValue(1);
+      fadeAnim.setValue(1);
+    }
+  }, [animated]);
+
+  const getVariantStyles = () => {
+    switch (variant) {
+      case 'cards':
+        return {
+          iconColor: colors.primary[600],
+          gradientColors: [colors.primary[50], colors.primary[100]],
+        };
+      case 'transactions':
+        return {
+          iconColor: colors.neutral[500],
+          gradientColors: [colors.neutral[50], colors.neutral[100]],
+        };
+      case 'notifications':
+        return {
+          iconColor: colors.semantic.warning,
+          gradientColors: [colors.semantic.warning + '20', colors.semantic.success + '20'],
+        };
+      default:
+        return {
+          iconColor: colors.neutral[400],
+          gradientColors: [colors.neutral[50], colors.neutral[100]],
+        };
+    }
+  };
+
+  const variantStyles = getVariantStyles();
+
+  return (
+    <View style={styles.container}>
+      <Animated.View
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+      >
+        {/* Icon with gradient background */}
+        <LinearGradient
+          colors={variantStyles.gradientColors}
+          style={styles.iconContainer}
+        >
+          <Ionicons 
+            name={icon} 
+            size={48} 
+            color={variantStyles.iconColor} 
+          />
+        </LinearGradient>
+
+        {/* Title and subtitle */}
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
+
+        {/* Action button */}
+        {actionText && onAction && (
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              { backgroundColor: variantStyles.iconColor },
+            ]}
+            onPress={onAction}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.actionButtonText}>{actionText}</Text>
+          </TouchableOpacity>
+        )}
+      </Animated.View>
+    </View>
+  );
+}
+\end{lstlisting}
+
+\section{Haptic Feedback and Micro-Interactions}
+
+\subsection{Haptic Feedback Implementation}
+
+The application implements comprehensive haptic feedback for enhanced user experience:
+
+\begin{lstlisting}[language=TypeScript, caption=Haptic Feedback System]
+// HapticTab component for tab navigation
+export function HapticTab(props: BottomTabBarButtonProps) {
+  return (
+    <PlatformPressable
+      {...props}
+      onPressIn={(ev) => {
+        if (process.env.EXPO_OS === 'ios') {
+          // Add soft haptic feedback when pressing tabs
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+        props.onPressIn?.(ev);
+      }}
+    />
+  );
+}
+
+// Profile screen haptic feedback implementation
+const handleProfileItemPress = (onPress: () => void) => {
+  // Light haptic feedback for profile interactions
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  onPress();
+};
+
+// Payment action haptic feedback
+const handlePaymentAction = async (action: 'approve' | 'decline') => {
+  if (action === 'approve') {
+    // Success haptic for approvals
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  } else {
+    // Warning haptic for declines
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+  }
+  
+  await processPaymentAction(action);
+};
+
+// Face registration haptic feedback
+const handleFaceRegistrationSuccess = () => {
+  // Heavy impact for successful face registration
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+};
+\end{lstlisting}
+
+\subsection{Animation System}
+
+\subsubsection{Hello Wave Animation}
+Welcoming animation using React Native Reanimated:
+
+\begin{lstlisting}[language=TypeScript, caption=Hello Wave Animation Implementation]
+export function HelloWave() {
+  const rotationAnimation = useSharedValue(0);
+
+  useEffect(() => {
+    rotationAnimation.value = withRepeat(
+      withSequence(
+        withTiming(25, { duration: 150 }),
+        withTiming(0, { duration: 150 })
+      ),
+      4 // Run the animation 4 times
+    );
+  }, [rotationAnimation]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotationAnimation.value}deg` }],
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <ThemedText style={styles.text}>👋</ThemedText>
+    </Animated.View>
+  );
+}
+\end{lstlisting}
+
+\subsubsection{Face Detection Visual Feedback}
+Real-time visual feedback during face detection:
+
+\begin{lstlisting}[language=TypeScript, caption=Face Detection Animation System]
+// Face detection simulation with visual feedback
+React.useEffect(() => {
+  let faceDetectionTimer: ReturnType<typeof setTimeout>;
+  let faceDetectionInterval: ReturnType<typeof setInterval>;
+  
+  if (isRegistering) {
+    // Start simulated face detection after 2 seconds
+    faceDetectionTimer = setTimeout(() => {
+      setIsDetecting(true);
+      
+      // Simulate continuous face detection every 200ms
+      faceDetectionInterval = setInterval(() => {
+        // Randomly simulate face presence/absence (70% chance detected)
+        const faceDetected = Math.random() > 0.3;
+        setHasFace(faceDetected);
+        
+        // Visual feedback for face detection
+        if (faceDetected) {
+          // Green overlay for face detected
+          setDetectionOverlayColor('rgba(16, 185, 129, 0.3)');
+        } else {
+          // Red overlay for no face detected
+          setDetectionOverlayColor('rgba(239, 68, 68, 0.3)');
+        }
+      }, 200);
+    }, 2000);
+  } else {
+    // Reset states when not registering
+    setIsDetecting(false);
+    setHasFace(false);
+    setDetectionOverlayColor('transparent');
+  }
+
+  return () => {
+    if (faceDetectionTimer) clearTimeout(faceDetectionTimer);
+    if (faceDetectionInterval) clearInterval(faceDetectionInterval);
+  };
+}, [isRegistering]);
+
+// Face detection overlay component
+const FaceDetectionOverlay = () => (
+  <Animated.View
+    style={[
+      styles.detectionOverlay,
+      {
+        backgroundColor: detectionOverlayColor,
+        opacity: isDetecting ? 1 : 0,
+      },
+    ]}
+  >
+    {hasFace && (
+      <View style={styles.faceDetectedIndicator}>
+        <Ionicons name="checkmark-circle" size={30} color="white" />
+        <Text style={styles.faceDetectedText}>Face Detected</Text>
+      </View>
+    )}
+  </Animated.View>
+);
+\end{lstlisting}
+
+\section{Accessibility Implementation}
+
+\subsection{Accessibility Features}
+
+The application implements comprehensive accessibility features following WCAG 2.1 AA guidelines:
+
+\subsubsection{Screen Reader Support}
+\begin{lstlisting}[language=TypeScript, caption=Screen Reader Implementation]
+// Tab navigation accessibility
+<Tabs.Screen
+  name="index"
+  options={{
+    title: 'Home',
+    tabBarIcon: ({ color, focused }) => (
+      <Ionicons 
+        name={focused ? 'home' : 'home-outline'} 
+        size={24} 
+        color={color}
+        accessibilityLabel="Home tab"
+        accessibilityHint="Navigate to home screen"
+      />
+    ),
+  }}
+/>
+
+// Payment card accessibility
+<TouchableOpacity
+  style={styles.paymentCard}
+  accessibilityRole="button"
+  accessibilityLabel={`${card.card_brand} card ending in ${card.card_last_four}`}
+  accessibilityHint="Double tap to view card details"
+  onPress={() => handleCardPress(card.id)}
+>
+  <PaymentCardContent card={card} />
+</TouchableOpacity>
+
+// Transaction item accessibility
+<TouchableOpacity
+  style={styles.transactionItem}
+  accessibilityRole="button"
+  accessibilityLabel={`Transaction to ${transaction.merchant_name} for $${transaction.amount}, status ${transaction.status}`}
+  accessibilityHint="Double tap to view transaction details"
+  onPress={() => handleTransactionPress(transaction.id)}
+>
+  <TransactionContent transaction={transaction} />
+</TouchableOpacity>
+\end{lstlisting}
+
+\subsubsection{Color Contrast and Visual Accessibility}
+\begin{lstlisting}[language=TypeScript, caption=Accessibility Color Standards]
+// High contrast color implementations
+const accessibleColors = {
+  // Text colors meeting WCAG AA standards
+  primaryText: colors.neutral[800],    // 4.5:1 contrast ratio
+  secondaryText: colors.neutral[600],  // 4.5:1 contrast ratio
+  
+  // Interactive element colors
+  focusRing: {
+    color: colors.primary[600],
+    width: 2,
+    style: 'solid',
+  },
+  
+  // Status colors with sufficient contrast
+  success: '#065f46',  // Dark green for better contrast
+  error: '#dc2626',    // Dark red for better contrast
+  warning: '#d97706',  // Dark amber for better contrast
+};
+
+// Focus indicator implementation
+const FocusableButton = ({ children, onPress, ...props }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  
+  return (
+    <TouchableOpacity
+      {...props}
+      style={[
+        styles.button,
+        isFocused && styles.buttonFocused,
+      ]}
+      onPress={onPress}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      accessibilityRole="button"
+    >
+      {children}
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  button: {
+    minHeight: accessibility.minimumTouchSize, // 44px minimum
+    minWidth: accessibility.minimumTouchSize,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonFocused: {
+    borderWidth: accessibility.focusRing.width,
+    borderColor: accessibility.focusRing.color,
+  },
+});
+\end{lstlisting}
+
+\subsection{Touch Target Optimization}
+
+\begin{lstlisting}[language=TypeScript, caption=Touch Target Accessibility]
+// Minimum touch target implementation
+const AccessibleTouchTarget = ({ children, onPress, accessibilityLabel }) => (
+  <TouchableOpacity
+    style={[
+      styles.touchTarget,
+      {
+        minHeight: accessibility.minimumTouchSize,
+        minWidth: accessibility.minimumTouchSize,
+      },
+    ]}
+    onPress={onPress}
+    accessibilityLabel={accessibilityLabel}
+    accessibilityRole="button"
+  >
+    {children}
+  </TouchableOpacity>
+);
+
+// Icon button with proper touch targets
+const IconButton = ({ icon, onPress, accessibilityLabel }) => (
+  <AccessibleTouchTarget
+    onPress={onPress}
+    accessibilityLabel={accessibilityLabel}
+  >
+    <View style={styles.iconButtonContent}>
+      <Ionicons name={icon} size={24} color={colors.primary[600]} />
+    </View>
+  </AccessibleTouchTarget>
+);
+\end{lstlisting}
+
+\section{Responsive Design and Platform Adaptations}
+
+\subsection{Platform-Specific Optimizations}
+
+\subsubsection{iOS Adaptations}
+\begin{lstlisting}[language=TypeScript, caption=iOS-Specific UI Adaptations]
+// Tab bar styling for iOS blur effect
+tabBarStyle: Platform.select({
+  ios: {
+    position: 'absolute',
+    backgroundColor: 'transparent',
+  },
+  default: {
+    backgroundColor: colors.neutral[50],
+  },
+}),
+
+// Safe area handling for iOS
+<SafeAreaView style={styles.container}>
+  <View style={[
+    styles.content,
+    {
+      paddingTop: Platform.OS === 'ios' ? insets.top : 0,
+      paddingBottom: Platform.OS === 'ios' ? insets.bottom : 0,
+    },
+  ]}>
+    {children}
+  </View>
+</SafeAreaView>
+
+// iOS-specific haptic feedback
+if (Platform.OS === 'ios') {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+}
+\end{lstlisting}
+
+\subsubsection{Android Adaptations}
+\begin{lstlisting}[language=TypeScript, caption=Android-Specific UI Adaptations]
+// Android notification channels
+if (Platform.OS === 'android') {
+  Notifications.setNotificationChannelAsync('payment-notifications', {
+    name: 'Payment Notifications',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: colors.primary[600],
+  });
+}
+
+// Android edge-to-edge display
+// Configured in app.json
+"android": {
+  "edgeToEdgeEnabled": true,
+  "softwareKeyboardLayoutMode": "pan"
+}
+
+// Android-specific elevation shadows
+const androidShadow = Platform.select({
+  android: {
+    elevation: 4,
+  },
+  ios: {
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+});
+\end{lstlisting}
+
+\subsection{Responsive Layout System}
+
+\subsubsection{Screen Size Adaptations}
+\begin{lstlisting}[language=TypeScript, caption=Responsive Layout Implementation]
+const { width, height } = Dimensions.get('window');
+
+// Responsive breakpoints
+const breakpoints = {
+  small: 375,   // iPhone SE
+  medium: 414,  // iPhone Pro
+  large: 768,   // iPad mini
+  xlarge: 1024, // iPad
+};
+
+// Responsive spacing function
+const getResponsiveSpacing = (baseSpacing: number): number => {
+  if (width >= breakpoints.large) {
+    return baseSpacing * 1.5; // Increase spacing on tablets
+  } else if (width <= breakpoints.small) {
+    return baseSpacing * 0.8; // Decrease spacing on small phones
+  }
+  return baseSpacing;
+};
+
+// Responsive font sizes
+const getResponsiveFontSize = (baseFontSize: number): number => {
+  const scale = width / 375; // Base scale from iPhone SE
+  return Math.round(baseFontSize * Math.max(scale, 0.85));
+};
+
+// Responsive grid system
+const getGridColumns = (): number => {
+  if (width >= breakpoints.large) {
+    return 3; // 3 columns on tablets
+  } else if (width >= breakpoints.medium) {
+    return 2; // 2 columns on larger phones
+  }
+  return 1; // 1 column on small phones
+};
+
+// Responsive component implementation
+const ResponsiveGrid = ({ children }) => {
+  const columns = getGridColumns();
+  const itemWidth = (width - getResponsiveSpacing(spacing.lg) * (columns + 1)) / columns;
+  
+  return (
+    <View style={styles.gridContainer}>
+      {React.Children.map(children, (child, index) => (
+        <View
+          key={index}
+          style={[
+            styles.gridItem,
+            {
+              width: itemWidth,
+              marginLeft: index % columns === 0 ? 0 : getResponsiveSpacing(spacing.md),
+            },
+          ]}
+        >
+          {child}
+        </View>
+      ))}
+    </View>
+  );
+};
+\end{lstlisting}
+
+\section{Performance Optimization}
+
+\subsection{Image and Asset Optimization}
+
+\begin{lstlisting}[language=TypeScript, caption=Image Optimization Strategies]
+// Optimized image loading with caching
+const OptimizedImage = ({ source, style, ...props }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  
+  return (
+    <View style={[style, styles.imageContainer]}>
+      {!imageLoaded && (
+        <View style={styles.imagePlaceholder}>
+          <ActivityIndicator size="small" color={colors.neutral[400]} />
+        </View>
+      )}
+      <Image
+        {...props}
+        source={source}
+        style={[
+          style,
+          { opacity: imageLoaded ? 1 : 0 },
+        ]}
+        onLoad={() => setImageLoaded(true)}
+        resizeMode="contain"
+      />
+    </View>
+  );
+};
+
+// Card brand image optimization
+const getCardBrandImage = (brand: string) => {
+  const brandImages = {
+    visa: require('../assets/images/Visa.png'),
+    mastercard: require('../assets/images/mastercard.png'),
+    amex: require('../assets/images/AMX.png'),
+    discover: require('../assets/images/discover.png'),
+  };
+  
+  return brandImages[brand.toLowerCase()] || brandImages.visa;
+};
+
+// Lazy loading for large lists
+const LazyTransactionItem = React.memo(({ transaction }) => {
+  return <TransactionItem transaction={transaction} />;
+});
+\end{lstlisting}
+
+\subsection{List Performance Optimization}
+
+\begin{lstlisting}[language=TypeScript, caption=FlatList Performance Optimization]
+// Optimized FlatList implementation
+const OptimizedTransactionList = ({ transactions }) => {
+  const renderItem = useCallback(({ item }) => (
+    <LazyTransactionItem transaction={item} />
+  ), []);
+
+  const keyExtractor = useCallback((item) => item.id, []);
+
+  const getItemLayout = useCallback((data, index) => ({
+    length: 80, // Fixed item height
+    offset: 80 * index,
+    index,
+  }), []);
+
+  return (
+    <FlatList
+      data={transactions}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      getItemLayout={getItemLayout}
+      removeClippedSubviews={true}
+      maxToRenderPerBatch={10}
+      windowSize={10}
+      initialNumToRender={15}
+      updateCellsBatchingPeriod={50}
+      showsVerticalScrollIndicator={false}
+    />
+  );
+};
+\end{lstlisting}
+
+\section{Conclusion}
+
+This document has provided a comprehensive overview of the PayByFaeAi application's UI/UX implementation and frontend architecture. The key areas covered include:
+
+\subsection{Key UI/UX Features Implemented}
+\begin{itemize}
+    \item \textbf{Comprehensive Design System}: Professional design tokens, typography, and color systems
+    \item \textbf{Advanced Animations}: Complex animation sequences with React Native Reanimated
+    \item \textbf{Haptic Feedback}: Platform-specific haptic feedback for enhanced user experience
+    \item \textbf{Accessibility}: WCAG 2.1 AA compliant accessibility features
+    \item \textbf{Responsive Design}: Adaptive layouts for different screen sizes and platforms
+    \item \textbf{Performance Optimization}: Optimized rendering and asset loading
+\end{itemize}
+
+\subsection{Design Principles Followed}
+\begin{itemize}
+    \item \textbf{User-Centered Design}: Intuitive navigation and clear visual hierarchy
+    \item \textbf{Consistency}: Unified design language across all screens and components
+    \item \textbf{Accessibility First}: Inclusive design for all users
+    \item \textbf{Performance Focus}: Smooth animations and responsive interactions
+    \item \textbf{Platform Adaptation}: Native feel on both iOS and Android
+\end{itemize}
+
+\subsection{Next Steps}
+
+To complete your understanding of the PayByFaeAi application, proceed to:
+\begin{itemize}
+    \item \textbf{Part 3}: Security, Deployment \& Development Guide - Security implementation details, deployment processes, testing strategies, and development workflows
+\end{itemize}
+
+This UI/UX implementation provides a solid foundation for building modern, accessible, and performant mobile applications in the fintech space.
+
+\end{document}

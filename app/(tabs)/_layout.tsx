@@ -34,7 +34,9 @@ export default function TabLayout() {
             <Ionicons 
               name={focused ? 'home' : 'home-outline'} 
               size={24} 
-              color={color} 
+              color={color}
+              accessibilityLabel="Home tab"
+              accessibilityHint="Navigate to home screen"
             />
           ),
         }}
@@ -47,7 +49,9 @@ export default function TabLayout() {
             <Ionicons 
               name={focused ? 'card' : 'card-outline'} 
               size={24} 
-              color={color} 
+              color={color}
+              accessibilityLabel="Cards tab"
+              accessibilityHint="Navigate to payment cards screen"
             />
           ),
         }}
@@ -60,7 +64,9 @@ export default function TabLayout() {
             <Ionicons 
               name={focused ? 'time' : 'time-outline'} 
               size={24} 
-              color={color} 
+              color={color}
+              accessibilityLabel="History tab"
+              accessibilityHint="Navigate to transaction history screen"
             />
           ),
         }}
