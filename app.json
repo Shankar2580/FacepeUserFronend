@@ -4,10 +4,9 @@
     "slug": "facepe",
     "version": "1.0.2",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "facepe",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
     "updates": {
       "enabled": false,
       "checkAutomatically": "NEVER",
@@ -16,6 +15,7 @@
     },
     "runtimeVersion": "1.0.0",
     "ios": {
+      "icon": "./assets/images/logo.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.facepe.app",
       "infoPlist": {
@@ -26,8 +26,10 @@
       }
     },
     "android": {
+      "icon": "./assets/images/logo.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/logo.png",
+        "monochromeImage": "./assets/images/logo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -52,22 +54,35 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
       ],
       "expo-secure-store",
-      "expo-updates"
+      "expo-updates",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
       "router": {},
+      "API_BASE_URL": "https://api.dev.facepe.ai",
+      "FACE_API_BASE_URL": "https://api.dev.facepe.ai",
+      "STRIPE_PUBLISHABLE_KEY": "pk_test_51RV2FNPSTCb7l9BW9VZanPBOOHxbtKkhrxp2iJNQhRa49RpBCKhkKdKTpU65LfG6yDyPad3IxsaCUwxwX5OI87W500aAed39G4",
+      "STRIPE_MERCHANT_DISPLAY_NAME": "PayByFaeAi",
+      "STRIPE_COUNTRY_CODE": "US",
+      "STRIPE_CURRENCY": "usd",
+      "APP_ENV": "development",
+      "APP_VERSION": "1.0.2",
+      "ENABLE_FACE_RECOGNITION": "true",
+      "ENABLE_AUTO_PAY": "true",
+      "ENABLE_PUSH_NOTIFICATIONS": "true",
+      "ENABLE_DEBUG_LOGS": "true",
       "eas": {
-        "projectId": "9e1f0d76-0db2-4b5e-b263-3fb11c9e737b"
+        "projectId": "527eaa60-4742-4cca-800a-b61d4e7d0f70"
       }
     }
   }

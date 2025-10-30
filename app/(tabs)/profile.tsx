@@ -1,27 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  RefreshControl,
-  Switch,
   ActivityIndicator,
   Animated,
   Dimensions,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '../../hooks/useAuth';
-import { useUpdates } from '../../hooks/useUpdates';
-import { apiService } from '../../services/api';
-import { AutoPay, PaymentMethod } from '../../constants/types';
-import * as Haptics from 'expo-haptics';
-import { useAlert } from '../../components/ui/AlertModal';
+import { useAlert } from '../../src/components/ui/AlertModal';
+import { PrivacyPolicyModal } from '../../src/components/ui/PrivacyPolicyModal';
+import { TermsModal } from '../../src/components/ui/TermsModal';
+import { AutoPay, PaymentMethod } from '../../src/constants/types';
+import { useAuth } from '../../src/hooks/useAuth';
+import { useUpdates } from '../../src/hooks/useUpdates';
+import { apiService } from '../../src/services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -33,6 +33,8 @@ export default function ProfileScreen() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   
   const { user, logout, refreshUser } = useAuth();
   const { isCheckingForUpdates, checkForUpdates, currentUpdateInfo, AlertComponent: UpdateAlertComponent } = useUpdates();
@@ -41,13 +43,7 @@ export default function ProfileScreen() {
   const { showAlert, AlertComponent } = useAlert();
 
   useEffect(() => {
-    console.log('Profile: User state changed:', {
-      hasUser: !!user,
-      userName: user ? `${user.first_name} ${user.last_name}` : 'None',
-      userEmail: user?.email,
-      hasFaceRegistered: user?.has_face_registered,
-      isActive: user?.is_active
-    });
+    // console.log removed for production
     
     if (user) {
       loadData();
@@ -78,7 +74,7 @@ export default function ProfileScreen() {
 
   const loadData = async () => {
     try {
-      console.log('Profile: Loading data...');
+      // console.log removed for production
       const [autoPayData, paymentMethodsData] = await Promise.all([
         apiService.getAutoPay(),
         apiService.getPaymentMethods()
@@ -86,12 +82,9 @@ export default function ProfileScreen() {
       
       setAutoPay(autoPayData || []);
       setPaymentMethods(paymentMethodsData || []);
-      console.log('Profile: Data loaded successfully', {
-        autopay: autoPayData?.length || 0,
-        paymentMethods: paymentMethodsData?.length || 0
-      });
+      // console.log removed for production
     } catch (error) {
-      console.error('Failed to load profile data:', error);
+      // console.error removed for production
       // Don't clear existing data on error - keep what we have
     } finally {
       setInitialLoad(false);
@@ -99,13 +92,13 @@ export default function ProfileScreen() {
   };
 
   const onRefresh = async () => {
-    console.log('Profile: Starting refresh...');
+    // console.log removed for production
     setRefreshing(true);
     try {
       await Promise.all([loadData(), refreshUser()]);
-      console.log('Profile: Refresh completed successfully');
+      // console.log removed for production
     } catch (error) {
-      console.error('Profile: Refresh failed:', error);
+      // console.error removed for production
     } finally {
       setRefreshing(false);
     }
@@ -157,7 +150,7 @@ export default function ProfileScreen() {
           onPress: async () => {
             try {
               setRefreshing(true);
-              console.log('Deleting face data...');
+              // console.log removed for production
               
               // Call the delete face API
               await apiService.deleteFace();
@@ -173,7 +166,7 @@ export default function ProfileScreen() {
               // Refresh the profile data
               await loadData();
             } catch (error: any) {
-              console.error('Failed to delete face:', error);
+              // console.error removed for production
               showAlert('Error', error.message || 'Failed to delete face data', undefined, 'error');
             } finally {
               setRefreshing(false);
@@ -214,8 +207,8 @@ export default function ProfileScreen() {
       items: [
         {
           icon: 'scan',
-          title: user?.has_face_registered ? 'Update Face Data' : 'Facial Data Re-enrollment',
-          subtitle: user?.has_face_registered ? 'Update your biometric data' : 'Setup biometric data',
+          title: user?.has_face_registered ? 'Update Face Data' : 'Register Your Face',
+          subtitle: user?.has_face_registered ? 'Update your biometric data' : 'Setup biometric authentication',
           action: 'setup',
           onPress: handleFaceRegistration,
           rightElement: user?.has_face_registered ? (
@@ -248,7 +241,7 @@ export default function ProfileScreen() {
           action: 'navigate',
           chevron: true,
           onPress: () => {
-            console.log('Navigating to change-password...');
+            // console.log removed for production
             router.push('/change-password');
           },
         },
@@ -446,11 +439,33 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </Animated.View>
+        {/* Legal Links Footer (outside logout button) */}
+        <View style={styles.legalLinksFooter}>
+          <View style={styles.legalLinksContainer}>
+            <TouchableOpacity onPress={() => setShowTerms(true)}>
+              <Text style={styles.legalLinkText}>Terms & Conditions</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalSeparator}> • </Text>
+            <TouchableOpacity onPress={() => setShowPrivacy(true)}>
+              <Text style={styles.legalLinkText}>Privacy Policy</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
       
       {/* Alert Component */}
       <AlertComponent />
       <UpdateAlertComponent />
+      <PrivacyPolicyModal
+        visible={showPrivacy}
+        onAccept={() => setShowPrivacy(false)}
+        onDecline={() => setShowPrivacy(false)}
+      />
+      <TermsModal
+        visible={showTerms}
+        onAccept={() => setShowTerms(false)}
+        onDecline={() => setShowTerms(false)}
+      />
     </View>
   );
 }
@@ -664,6 +679,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#EF4444',
+  },
+  legalLinksContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 12,
+  },
+  legalLinksFooter: {
+    marginTop: 25,
+    
+  },
+  legalLinkText: {
+    fontSize: 12,
+    color: '#6B7280',
+    textDecorationLine: 'underline',
+  },
+  legalSeparator: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginHorizontal: 6,
   },
   loadingContainer: {
     justifyContent: 'center',

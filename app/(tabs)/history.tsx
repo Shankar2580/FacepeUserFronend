@@ -12,10 +12,10 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { apiService } from '../../services/api';
-import { Transaction, AutoPay, PaymentMethod } from '../../constants/types';
+import { apiService } from '../../src/services/api';
+import { Transaction, AutoPay, PaymentMethod } from '../../src/constants/types';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { useAlert } from '../../components/ui/AlertModal';
+import { useAlert } from '../../src/components/ui/AlertModal';
 
 export default function HistoryScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -51,7 +51,7 @@ export default function HistoryScreen() {
       setAutoPay(autoPayData);
       setPaymentMethods(paymentMethodsData);
     } catch (error) {
-      console.error('Failed to load data:', error);
+      // console.error removed for production
       showAlert('Error', 'Failed to load transaction history', undefined, 'error');
     } finally {
       setIsLoading(false);

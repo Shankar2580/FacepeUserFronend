@@ -13,15 +13,15 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { apiService } from '../../services/api';
-import { PaymentMethod } from '../../constants/types';
-import { useAuth } from '../../hooks/useAuth';
-import { PaymentCard } from '../../components/ui/PaymentCard';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { useAlert } from '../../components/ui/AlertModal';
-import { designSystem, spacing, shadows, borderRadius, typography } from '../../constants/DesignSystem';
-import { Colors } from '../../constants/Colors';
-import { useColorScheme } from '../../hooks/useColorScheme';
+import { apiService } from '../../src/services/api';
+import { PaymentMethod } from '../../src/constants/types';
+import { useAuth } from '../../src/hooks/useAuth';
+import { PaymentCard } from '../../src/components/ui/PaymentCard';
+import { EmptyState } from '../../src/components/ui/EmptyState';
+import { useAlert } from '../../src/components/ui/AlertModal';
+import { designSystem, spacing, shadows, borderRadius, typography } from '../../src/constants/DesignSystem';
+import { Colors } from '../../src/constants/Colors';
+// Removed useColorScheme - using light theme by default
 
 export default function CardsScreen() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -32,7 +32,7 @@ export default function CardsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { showAlert, AlertComponent } = useAlert();
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = 'light'; // Using light theme by default
   const theme = Colors[colorScheme];
 
   // Load cards function
@@ -41,7 +41,7 @@ export default function CardsScreen() {
       const cards = await apiService.getPaymentMethods();
       setPaymentMethods(cards);
     } catch (error: any) {
-      console.error('Failed to load cards:', error);
+      // console.error removed for production
       if (error?.response?.status !== 401) {
         showAlert('Oops', 'Unable to load your payment methods right now. Please try again later.', undefined, 'error');
       }

@@ -12,8 +12,8 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { apiService } from '../../../services/api';
-import { useAlert } from '../../../components/ui/AlertModal';
+import { apiService } from '../../../src/services/api';
+import { useAlert } from '../../../src/components/ui/AlertModal';
 
 // Country codes configuration
 const COUNTRY_CODES = [
@@ -167,7 +167,9 @@ export default function ForgotPasswordScreen() {
       await apiService.verifyPasswordReset({
         phone_number: fullPhoneNumber,
         verification_code: verificationCode,
-        new_password: newPassword
+        password_reset: {
+          new_password: newPassword
+        }
       });
       
       showAlert(

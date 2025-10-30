@@ -15,6 +15,15 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Build outputs (not needed for EAS Build)
+android/
+ios/
+*.apk
+*.ipa
+*.aab
+apk-builds/
+build/
+
 # Native
 .kotlin/
 *.orig.*
@@ -38,6 +47,10 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+
+# Environment variables (keep .env.example for reference)
+!.env.example
 
 # typescript
 *.tsbuildinfo

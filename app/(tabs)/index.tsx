@@ -1,24 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  RefreshControl,
-  Platform,
-} from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '../../hooks/useAuth';
-import { apiService } from '../../services/api';
-import { PaymentMethod, Transaction, PaymentRequest } from '../../constants/types';
-import { notificationService } from '../../services/notificationService';
-import { PaymentCard } from '../../components/ui/PaymentCard';
-import { useAlert } from '../../components/ui/AlertModal';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAlert } from '../../src/components/ui/AlertModal';
+import { PaymentCard } from '../../src/components/ui/PaymentCard';
+import { PaymentMethod, PaymentRequest } from '../../src/constants/types';
+import { useAuth } from '../../src/hooks/useAuth';
+import { apiService } from '../../src/services/api';
+import { notificationService } from '../../src/services/notificationService';
 // SafeAreaView no longer needed - using View with paddingTop: insets.top
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
@@ -67,11 +65,11 @@ export default function HomeScreen() {
         const requests = await apiService.getPaymentRequests();
         setPaymentRequests(requests.filter(request => request.status === 'pending'));
       } catch (requestError) {
-        console.log('Payment requests API not available yet, showing empty state');
+        // console.log removed for production
         setPaymentRequests([]);
       }
     } catch (error: any) {
-      console.error('Failed to load payment methods or transactions:', error);
+      // console.error removed for production
       // If the user is not authenticated (401), silently ignore to avoid panic
       if (error?.response?.status !== 401) {
         showAlert('Oops', 'Something went wrong while loading your data. Please try again later.', undefined, 'error');
@@ -172,7 +170,7 @@ export default function HomeScreen() {
       setPaymentRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
       loadData(); // Refresh other data if necessary
     } catch (error) {
-      console.error('Failed to approve payment:', error);
+      // console.error removed for production
       showAlert('Error', 'Failed to approve payment request', undefined, 'error');
     }
   };
@@ -200,7 +198,7 @@ export default function HomeScreen() {
       setPaymentRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
       loadData(); // Refresh other data if necessary
     } catch (error) {
-      console.error('Failed to decline payment:', error);
+      // console.error removed for production
       showAlert('Error', 'Failed to decline payment request', undefined, 'error');
     }
   };
@@ -333,39 +331,39 @@ export default function HomeScreen() {
             <View style={styles.transactionList}>
               {paymentRequests.slice(0, 3).map((request) => (
                 <View key={request.id} style={styles.transactionItem}>
-                  <View style={styles.transactionLeft}>
-                    <View style={styles.transactionIcon}>
-                      <Text style={styles.transactionEmoji}>
-                        {getMerchantIcon(getDisplayName(request))}
-                      </Text>
+                  <View style={styles.transactionTopRow}>
+                    <View style={styles.transactionLeft}>
+                      <View style={styles.transactionIcon}>
+                        <Text style={styles.transactionEmoji}>
+                          {getMerchantIcon(getDisplayName(request))}
+                        </Text>
+                      </View>
+                      <View style={styles.transactionInfo}>
+                        <Text style={styles.transactionMerchant}>
+                          {getDisplayName(request)}
+                        </Text>
+                        <Text style={styles.transactionDate}>
+                          {formatDate(request.created_at)} • {getTimeRemaining(request.expires_at)}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={styles.transactionInfo}>
-                      <Text style={styles.transactionMerchant}>
-                        {getDisplayName(request)}
-                      </Text>
-                      <Text style={styles.transactionDate}>
-                        {formatDate(request.created_at)} • {getTimeRemaining(request.expires_at)}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.requestRight}>
                     <Text style={styles.requestAmount}>
                       {formatAmount(request.amount)}
                     </Text>
-                    <View style={styles.requestActions}>
-                      <TouchableOpacity 
-                        style={styles.declineButton}
-                        onPress={() => handleDeclinePayment(request.id)}
-                      >
-                        <Text style={styles.declineButtonText}>Decline</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={styles.approveButton}
-                        onPress={() => handleApprovePayment(request.id)}
-                      >
-                        <Text style={styles.approveButtonText}>Approve</Text>
-                      </TouchableOpacity>
-                    </View>
+                  </View>
+                  <View style={styles.requestActions}>
+                    <TouchableOpacity 
+                      style={[styles.declineButton, styles.requestButton]}
+                      onPress={() => handleDeclinePayment(request.id)}
+                    >
+                      <Text style={styles.declineButtonText}>Decline</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.approveButton, styles.requestButtonPrimary]}
+                      onPress={() => handleApprovePayment(request.id)}
+                    >
+                      <Text style={styles.approveButtonText}>Approve</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               ))}
@@ -542,14 +540,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     overflow: 'hidden',
+    padding: 8,
   },
   transactionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'stretch',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+    gap: 12,
+  },
+  transactionTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   transactionLeft: {
     flexDirection: 'row',
@@ -581,24 +585,28 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 2,
   },
-  requestRight: {
-    alignItems: 'flex-end',
-  },
   requestAmount: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1F2937',
-    marginBottom: 8,
+    marginBottom: 0,
   },
   requestActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
+    alignItems: 'center',
+  },
+  requestButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
   },
   declineButton: {
     backgroundColor: '#FEE2E2',
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   declineButtonText: {
     color: '#DC2626',
@@ -606,9 +614,13 @@ const styles = StyleSheet.create({
   },
   approveButton: {
     backgroundColor: '#6B46C1',
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 10,
+  },
+  requestButtonPrimary: {
+    flex: 1,
+    alignItems: 'center',
   },
   approveButtonText: {
     color: '#FFFFFF',

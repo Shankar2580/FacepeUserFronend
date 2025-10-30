@@ -12,11 +12,11 @@ import {
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { apiService } from '../services/api';
+import { apiService } from '../src/services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { useAuth } from '../hooks/useAuth';
-import { useAlert } from '../components/ui/AlertModal';
+import { useAuth } from '../src/hooks/useAuth';
+import { useAlert } from '../src/components/ui/AlertModal';
 
 // Custom OTP Input Component
 const OTPInput = ({
@@ -205,7 +205,7 @@ export default function PinResetScreen() {
       });
       startCountdown();
       // Don't show success alert for manual send to prevent popup spam
-      console.log('Manual verification code sent to:', phoneNumber);
+      // console.log removed for production
     } catch (error: any) {
       showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'error');
     } finally {
@@ -227,7 +227,7 @@ export default function PinResetScreen() {
           });
           startCountdown();
           // Don't show success alert for auto-send to prevent popup spam
-          console.log('Auto-sent verification code to:', phone);
+          // console.log removed for production
         } catch (error: any) {
           showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'error');
         } finally {
@@ -348,7 +348,12 @@ export default function PinResetScreen() {
 
       {/* Back Button */}
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        <LinearGradient
+          colors={['#FFFFFF', '#F8F7FF']}
+          style={styles.backButtonGradient}
+        >
+          <Ionicons name="arrow-back" size={24} color="#6B46C1" />
+        </LinearGradient>
       </TouchableOpacity>
       
       <KeyboardAvoidingView
@@ -514,12 +519,27 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 60, // Adjust this value based on your status bar height
+    top: 60,
     left: 16,
     zIndex: 10,
-    padding: 8,
-    borderRadius: 100, // Make it a circle
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 22,
+    shadowColor: '#6B46C1',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  backButtonGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(107, 70, 193, 0.1)',
   },
   keyboardAvoidingView: {
     flex: 1,

@@ -1,25 +1,26 @@
-import React, { useState, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useRef, useState } from 'react';
 import {
-  View,
+  KeyboardAvoidingView, // Renamed for clarity
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  ScrollView,
-  StatusBar as NativeStatusBar, // Renamed for clarity
+  View
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { apiService } from '../../services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { PasswordStrengthIndicator } from '../../components/ui/PasswordStrengthIndicator';
-import { ProcessingAnimation } from '../../components/ui/ProcessingAnimation';
-import { useAlert } from '../../components/ui/AlertModal';
+import { useAlert } from '../../src/components/ui/AlertModal';
+import { PasswordStrengthIndicator } from '../../src/components/ui/PasswordStrengthIndicator';
+import { PrivacyPolicyModal } from '../../src/components/ui/PrivacyPolicyModal';
+import { ProcessingAnimation } from '../../src/components/ui/ProcessingAnimation';
+import { TermsModal } from '../../src/components/ui/TermsModal';
+import { apiService } from '../../src/services/api';
 
 // Custom OTP Input Component
 const OTPInput = ({
@@ -34,26 +35,26 @@ const OTPInput = ({
   const inputs = React.useRef<TextInput[]>([]);
 
   const handleTextChange = (text: string, index: number) => {
-    if (text.length > 1) {
-      // If pasting, distribute to all fields
-      if (text.length === 6) {
-        const newCode = text.split('');
-        setCode(newCode.join(''));
+    // Filter to only digits
+    const digitsOnly = text.replace(/\D/g, '');
+
+    if (digitsOnly.length > 1) {
+      // If pasting multiple digits
+      if (digitsOnly.length >= 6) {
+        setCode(digitsOnly.slice(0, 6));
         inputs.current[5].focus();
-        // Removed auto-submit to avoid premature verification. User must press Verify button.
       }
       return;
     }
 
-    const newCode = [...code];
-    newCode[index] = text;
+    const newCode = code.split('');
+    newCode[index] = digitsOnly;
     setCode(newCode.join(''));
 
     // Move to next input
-    if (text && index < 5) {
+    if (digitsOnly && index < 5) {
       inputs.current[index + 1].focus();
     }
-    // Removed auto-submit when all digits are entered. Verification will occur when user presses button.
   };
 
   const handleKeyPress = (
@@ -67,7 +68,7 @@ const OTPInput = ({
 
   return (
     <View style={styles.otpContainer}>
-      {Array(6)
+      {Array(3)
         .fill(0)
         .map((_, index) => (
           <TextInput
@@ -83,6 +84,25 @@ const OTPInput = ({
             onChangeText={(text) => handleTextChange(text, index)}
             onKeyPress={(e) => handleKeyPress(e, index)}
             value={code[index] || ''}
+          />
+        ))}
+      <Text style={styles.otpSeparator}>-</Text>
+      {Array(3)
+        .fill(0)
+        .map((_, index) => (
+          <TextInput
+            key={index + 3}
+            ref={(el) => {
+              if (el) {
+                inputs.current[index + 3] = el;
+              }
+            }}
+            style={styles.otpInput}
+            keyboardType="numeric"
+            maxLength={1}
+            onChangeText={(text) => handleTextChange(text, index + 3)}
+            onKeyPress={(e) => handleKeyPress(e, index + 3)}
+            value={code[index + 3] || ''}
           />
         ))}
     </View>
@@ -106,8 +126,12 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [loadingType, setLoadingType] = useState<'verification' | 'verify' | 'register'>('verification');
+  const [loadingType, setLoadingType] = useState<'verification' | 'verify' | 'register' | 'auto-login'>('verification');
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [registrationData, setRegistrationData] = useState<any>(null);
   
   const router = useRouter();
   const { showAlert, AlertComponent } = useAlert();
@@ -213,6 +237,12 @@ export default function RegisterScreen() {
       return;
     }
 
+    // Frontend validation: Check if code contains only digits
+    if (!/^\d{6}$/.test(verificationCode)) {
+      showAlert('Error', 'Verification code must contain only numbers', undefined, 'error');
+      return;
+    }
+
     const fullPhoneNumber = getFullPhoneNumber();
     setIsLoading(true);
     setLoadingType('verify');
@@ -224,6 +254,7 @@ export default function RegisterScreen() {
       setStep('details');
       showAlert('Success', 'Mobile number verified! Please complete your registration', undefined, 'success');
     } catch (error: any) {
+      // API error - show the message from backend
       showAlert('Error', error.response?.data?.message || 'Invalid verification code', undefined, 'error');
     } finally {
       setIsLoading(false);
@@ -286,10 +317,18 @@ export default function RegisterScreen() {
       return;
     }
 
+    if (!privacyAccepted) {
+      showAlert('Error', 'Please accept the Privacy Policy', undefined, 'error');
+      return;
+    }
+
+    // Both checkboxes are checked, proceed with registration
     const fullPhoneNumber = getFullPhoneNumber();
     setIsLoading(true);
     setLoadingType('register');
+    
     try {
+      // Create the account directly since both policies are accepted via checkboxes
       await apiService.register({
         phone_number: fullPhoneNumber,
         email: email,
@@ -300,22 +339,67 @@ export default function RegisterScreen() {
         verification_code: verificationCode
       });
       
-      showAlert(
-        'Registration Successful', 
-        'Your account has been created successfully. Please login to continue.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.push('/auth/login')
-          }
-        ],
-        'success'
-      );
+      // Account created successfully, now auto-login
+      setLoadingType('auto-login');
+      
+      try {
+        await apiService.login({
+          username: email,
+          password: password
+        });
+        
+        // Success - user will be redirected by auth system
+        // console.log removed for production
+        
+      } catch (loginError: any) {
+        // console.log removed for production
+        // If auto-login fails, redirect to login page as fallback
+        showAlert(
+          'Registration Successful', 
+          'Your account has been created successfully. Please login to continue.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.push('/auth/login')
+            }
+          ],
+          'success'
+        );
+      }
+      
     } catch (error: any) {
       showAlert('Registration Failed', error.response?.data?.message || 'Please try again', undefined, 'error');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handlePrivacyAccept = () => {
+    setShowPrivacyModal(false);
+    setPrivacyAccepted(true); // Auto-check the privacy policy checkbox when user reads and accepts
+  };
+
+  const handlePrivacyDecline = () => {
+    setShowPrivacyModal(false);
+    // Just close the modal - user can still check the checkbox manually if they want
+  };
+
+  const handleTermsPress = () => {
+    setShowTermsModal(true);
+  };
+
+  const handlePrivacyPress = () => {
+    setShowPrivacyModal(true);
+  };
+
+  const handleTermsAccept = () => {
+    setShowTermsModal(false);
+    setTermsAccepted(true); // Auto-check the terms checkbox when user reads and accepts
+  };
+
+  const handleTermsDecline = () => {
+    setShowTermsModal(false);
+    // Just close the modal - user can still check the checkbox manually if they want
   };
 
   const getStepTitle = () => {
@@ -354,6 +438,11 @@ export default function RegisterScreen() {
           return {
             title: 'Creating Account',
             subtitle: 'Please wait while we set up your new account'
+          };
+        case 'auto-login':
+          return {
+            title: 'Logging You In',
+            subtitle: 'Please wait while we log you into your new account'
           };
         default:
           return {
@@ -457,7 +546,7 @@ export default function RegisterScreen() {
                       <Text style={styles.phonePrefix}>+1</Text>
                       <TextInput
                         style={styles.phoneInput}
-                        placeholder="(555) 123-4567"
+                        placeholder="Enter Mobile Number"
                         placeholderTextColor="#999"
                         value={phoneNumber}
                         onChangeText={handlePhoneNumberChange}
@@ -603,16 +692,21 @@ export default function RegisterScreen() {
                       secureTextEntry={!showConfirmPassword}
                       autoCapitalize="none"
                     />
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.eyeButton}
                       onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
-                      <Ionicons 
-                        name={showConfirmPassword ? 'eye-off' : 'eye'} 
-                        size={20} 
-                        color="#999" 
+                      <Ionicons
+                        name={showConfirmPassword ? 'eye-off' : 'eye'}
+                        size={20}
+                        color="#999"
                       />
                     </TouchableOpacity>
+                    {password && confirmPassword && password === confirmPassword && (
+                      <View style={styles.checkMark}>
+                        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                      </View>
+                    )}
                   </View>
 
                   <View style={styles.inputContainer}>
@@ -643,22 +737,62 @@ export default function RegisterScreen() {
                       maxLength={4}
                       autoCapitalize="none"
                     />
+                    {pin && confirmPin && pin === confirmPin && (
+                      <View style={styles.checkMark}>
+                        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                      </View>
+                    )}
                   </View>
 
                   {/* Terms and Conditions */}
-                  <TouchableOpacity 
-                    style={styles.termsContainer}
-                    onPress={() => setTermsAccepted(!termsAccepted)}
-                  >
-                    <View style={[styles.checkbox, termsAccepted && styles.checkedBox]}>
-                      {termsAccepted && (
-                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                      )}
+                  <View style={styles.termsContainer}>
+                    <TouchableOpacity 
+                      style={styles.checkboxContainer}
+                      onPress={() => setTermsAccepted(!termsAccepted)}
+                    >
+                      <View style={[styles.checkbox, termsAccepted && styles.checkedBox]}>
+                        {termsAccepted && (
+                          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                    <View style={styles.termsTextContainer}>
+                      <Text style={styles.termsText}>
+                        I agree to the{' '}
+                        <Text 
+                          style={styles.linkText}
+                          onPress={handleTermsPress}
+                        >
+                          Terms & Conditions
+                        </Text>
+                      </Text>
                     </View>
-                    <Text style={styles.termsText}>
-                      I agree to the <Text style={styles.linkText}>Terms & Conditions</Text>
-                    </Text>
-                  </TouchableOpacity>
+                  </View>
+
+                  {/* Privacy Policy */}
+                  <View style={styles.termsContainer}>
+                    <TouchableOpacity 
+                      style={styles.checkboxContainer}
+                      onPress={() => setPrivacyAccepted(!privacyAccepted)}
+                    >
+                      <View style={[styles.checkbox, privacyAccepted && styles.checkedBox]}>
+                        {privacyAccepted && (
+                          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                    <View style={styles.termsTextContainer}>
+                      <Text style={styles.termsText}>
+                        I agree to the{' '}
+                        <Text 
+                          style={styles.linkText}
+                          onPress={handlePrivacyPress}
+                        >
+                          Privacy Policy
+                        </Text>
+                      </Text>
+                    </View>
+                  </View>
 
                   <TouchableOpacity 
                     style={[styles.primaryButton, isLoading && styles.disabledButton]}
@@ -700,6 +834,20 @@ export default function RegisterScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      
+      {/* Privacy Policy Modal */}
+      <PrivacyPolicyModal
+        visible={showPrivacyModal}
+        onAccept={handlePrivacyAccept}
+        onDecline={handlePrivacyDecline}
+      />
+      
+      {/* Terms & Conditions Modal */}
+      <TermsModal
+        visible={showTermsModal}
+        onAccept={handleTermsAccept}
+        onDecline={handleTermsDecline}
+      />
       
       {/* Alert Component */}
       <AlertComponent />
@@ -816,6 +964,9 @@ const styles = StyleSheet.create({
   eyeButton: {
     padding: 4,
   },
+  checkMark: {
+    padding: 4,
+  },
   primaryButton: {
     borderRadius: 12,
     overflow: 'hidden',
@@ -870,6 +1021,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
+  checkboxContainer: {
+    marginRight: 12,
+  },
+  termsTextContainer: {
+    flex: 1,
+  },
   checkbox: {
     width: 20,
     height: 20,
@@ -878,7 +1035,6 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
   checkedBox: {
     backgroundColor: '#6B46C1',
@@ -921,9 +1077,11 @@ const styles = StyleSheet.create({
   },
   otpContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    alignItems: 'center',
     width: '100%',
     marginBottom: 24,
+    gap: 8,
   },
   otpInput: {
     width: 48,
@@ -936,5 +1094,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1F2937',
     backgroundColor: '#FFFFFF',
+  },
+  otpSeparator: {
+    marginHorizontal: 8,
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#6B7280',
   },
 }); 

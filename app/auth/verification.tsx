@@ -8,9 +8,9 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../hooks/useAuth';
-import { apiService } from '../../services/api';
-import { useAlert } from '../../components/ui/AlertModal';
+import { useAuth } from '../../src/hooks/useAuth';
+import { apiService } from '../../src/services/api';
+import { useAlert } from '../../src/components/ui/AlertModal';
 
 export default function VerificationScreen() {
   const [code, setCode] = useState(['', '', '', '', '', '']);
@@ -160,9 +160,26 @@ export default function VerificationScreen() {
           <Text style={styles.codeLabel}>Enter verification code</Text>
           <View style={styles.codeInputsContainer}>
             <View style={styles.codeInputs}>
-              {code.map((digit, index) => (
+              {code.slice(0, 3).map((digit, index) => (
                 <TouchableOpacity
                   key={index}
+                  style={[
+                    styles.codeInput,
+                    digit ? styles.codeInputFilled : null
+                  ]}
+                  onPress={() => {
+                    // In production, you'd focus the TextInput here
+                  }}
+                >
+                  <Text style={styles.codeInputText}>{digit}</Text>
+                </TouchableOpacity>
+              ))}
+              <View style={styles.separator}>
+                <Text style={styles.separatorText}>-</Text>
+              </View>
+              {code.slice(3, 6).map((digit, index) => (
+                <TouchableOpacity
+                  key={index + 3}
                   style={[
                     styles.codeInput,
                     digit ? styles.codeInputFilled : null
@@ -177,8 +194,6 @@ export default function VerificationScreen() {
             </View>
           </View>
         </View>
-
-        {/* Simple number pad */}
         <View style={styles.numberPad}>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, 'delete'].map((num, index) => (
             <TouchableOpacity
@@ -255,13 +270,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
+    borderWidth: 1,
+    borderColor: 'rgba(107, 70, 193, 0.1)',
+    shadowColor: '#6B46C1',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    marginBottom: 20,
     shadowRadius: 4,
     elevation: 3,
   },
@@ -313,6 +332,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  separator: {
+    marginHorizontal: 8,
+  },
+  separatorText: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#6B7280',
   },
   codeInput: {
     width: 48,

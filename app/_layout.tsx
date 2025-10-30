@@ -6,12 +6,13 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthContext, useAuthProvider } from '../hooks/useAuth';
+import { AuthContext, useAuthProvider } from '../src/hooks/useAuth';
 import Toast from 'react-native-toast-message';
 import { StripeProvider } from '@stripe/stripe-react-native';
-import { STRIPE_CONFIG } from '../constants/Stripe';
-import { notificationService } from '../services/notificationService';
-import UpdateService from '../services/updateService';
+import { STRIPE_CONFIG } from '../src/constants/Stripe';
+import { notificationService } from '../src/services/notificationService';
+import UpdateService from '../src/services/updateService';
+// ErrorBoundary temporarily disabled due to TypeScript config issues
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -36,9 +37,9 @@ export default function RootLayout() {
     const initializeNotifications = async () => {
       try {
         await notificationService.initialize();
-        console.log('✅ Notification service initialized successfully');
+        // console.log removed for production
       } catch (error) {
-        console.error('❌ Failed to initialize notification service:', error);
+        // console.error removed for production
       }
     };
 
@@ -51,7 +52,7 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeUpdates = async () => {
       try {
-        console.log('🔄 Initializing update service...');
+        // console.log removed for production
         
         // Check if app was recently updated
         const wasUpdated = await UpdateService.checkIfRecentlyUpdated();
@@ -67,9 +68,9 @@ export default function RootLayout() {
           await UpdateService.checkForUpdatesOnStartup();
         }, 3000);
 
-        console.log('✅ Update service initialized successfully');
+        // console.log removed for production
       } catch (error) {
-        console.error('❌ Failed to initialize update service:', error);
+        // console.error removed for production
       }
     };
 
@@ -85,37 +86,29 @@ export default function RootLayout() {
     const inAuthGroup = segments[0] === 'auth';
     const isAuthenticatedScreen = !inAuthGroup;
     
-    console.log('Root layout - Navigation check:', {
-      loaded,
-      isLoading: authProps.isLoading,
-      isAuthenticated: authProps.isAuthenticated,
-      hasUser: !!authProps.user,
-      inAuthGroup,
-      segments: segments.join('/'),
-      currentRoute: segments.length > 0 ? segments[segments.length - 1] : 'root'
-    });
+    // Navigation debugging removed for production
 
     // Wait for auth to finish loading before making navigation decisions
     if (authProps.isLoading) {
-      console.log('Auth still loading, waiting...');
+      // console.log removed for production
       return;
     }
 
     try {
       if (!authProps.isAuthenticated && isAuthenticatedScreen) {
         // User is not authenticated but trying to access protected screens
-        console.log('Redirecting unauthenticated user to login');
+        // console.log removed for production
         router.replace('/auth/login');
       } else if (authProps.isAuthenticated && inAuthGroup) {
         // User is authenticated but in auth group
-        console.log('Redirecting authenticated user to main app');
+        // console.log removed for production
         router.replace('/(tabs)');
       } else if (authProps.isAuthenticated && isAuthenticatedScreen) {
         // User is authenticated and accessing protected screens - this is fine
-        console.log('Authenticated user accessing protected screen - OK');
+        // console.log removed for production
       }
     } catch (error) {
-      console.error('Navigation error:', error);
+      // console.error removed for production
     }
   }, [authProps.isAuthenticated, authProps.isLoading, authProps.user, loaded, segments, router]);
 

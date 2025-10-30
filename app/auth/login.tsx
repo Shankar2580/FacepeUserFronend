@@ -14,14 +14,14 @@ import {
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../src/hooks/useAuth';
 import { SafeAreaView } from 'react-native-safe-area-context'; // Changed import
 import { StatusBar } from 'expo-status-bar'; // Added StatusBar
-import { designSystem, spacing, shadows, borderRadius, typography } from '../../constants/DesignSystem';
-import { useAlert } from '../../components/ui/AlertModal';
-import { Colors } from '../../constants/Colors';
-import { useColorScheme } from '../../hooks/useColorScheme';
-import { ProcessingAnimation } from '../../components/ui/ProcessingAnimation';
+import { designSystem, spacing, shadows, borderRadius, typography } from '../../src/constants/DesignSystem';
+import { useAlert } from '../../src/components/ui/AlertModal';
+import { Colors } from '../../src/constants/Colors';
+// Removed useColorScheme - using light theme by default
+import { ProcessingAnimation } from '../../src/components/ui/ProcessingAnimation';
 
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState(''); // mobile number or email
@@ -31,7 +31,7 @@ export default function LoginScreen() {
   
   const router = useRouter();
   const { login } = useAuth();
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = 'light'; // Using light theme by default
   const theme = Colors[colorScheme];
   const { showAlert, AlertComponent } = useAlert();
 
@@ -53,7 +53,21 @@ export default function LoginScreen() {
 
     // Determine if identifier is email or phone number
     const isEmail = validateEmail(identifier);
-    const isPhone = validatePhoneNumber(identifier);
+    let processedIdentifier = identifier.trim();
+    
+    // If it's not an email and looks like a phone number (only digits), add +1
+    if (!isEmail) {
+      // Remove any spaces or dashes
+      const cleanedNumber = processedIdentifier.replace(/[\s-]/g, '');
+      
+      // Check if it's only digits (no + prefix)
+      if (/^\d+$/.test(cleanedNumber)) {
+        // Add +1 prefix for US numbers
+        processedIdentifier = `+1${cleanedNumber}`;
+      }
+    }
+    
+    const isPhone = validatePhoneNumber(processedIdentifier);
 
     if (!isEmail && !isPhone) {
       showAlert('Error', 'Please enter a valid mobile number or email address', undefined, 'error');
@@ -64,17 +78,17 @@ export default function LoginScreen() {
     try {
       // Backend expects 'username' field for both email and phone number
       const loginData = { 
-        username: identifier, 
+        username: processedIdentifier, 
         password 
       };
       
-      console.log('Attempting login with:', { username: identifier });
+      // console.log removed for production
       await login(loginData);
-      console.log('Login successful, navigating to home...');
+      // console.log removed for production
       
       router.replace('/(tabs)');
     } catch (error: any) {
-      console.error('Login error:', error);
+      // console.error removed for production
       showAlert('Login Failed', error.response?.data?.message || 'Please check your credentials and try again', undefined, 'error');
     } finally {
       setIsLoading(false);

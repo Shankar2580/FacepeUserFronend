@@ -19,13 +19,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { apiService } from '../services/api';
-import { useAuth } from '../hooks/useAuth';
-import { FaceRegistrationInstructionModal } from '../components/ui/FaceRegistrationInstructionModal';
+import { apiService } from '../src/services/api';
+import { useAuth } from '../src/hooks/useAuth';
+import { FaceRegistrationInstructionModal } from '../src/components/ui/FaceRegistrationInstructionModal';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { FaceSuccessModal } from '../components/ui/FaceSuccessModal';
-import { ProcessingAnimation } from '../components/ui/ProcessingAnimation';
-import { useAlert } from '../components/ui/AlertModal';
+import { FaceSuccessModal } from '../src/components/ui/FaceSuccessModal';
+import { ProcessingAnimation } from '../src/components/ui/ProcessingAnimation';
+import { useAlert } from '../src/components/ui/AlertModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -100,7 +100,7 @@ export default function UpdateFaceScreen() {
         setUserName(`${user.first_name} ${user.last_name}`);
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
+      // console.error removed for production
     }
   };
 
@@ -123,15 +123,15 @@ export default function UpdateFaceScreen() {
     setShowProcessingAnimation(true);
     setIsLoading(true);
     try {
-      console.log('Starting face update via external Face API...');
-      console.log('User ID:', userId);
-      console.log('User Name:', userName.trim());
-      console.log('Image URI:', imageUri);
+      // console.log removed for production
+      // console.log removed for production
+      // console.log removed for production);
+      // console.log removed for production
       
       // Call the external Face Update API (port 8443)
       const faceApiResponse = await apiService.updateFace(userId, userName.trim(), imageUri);
       
-      console.log('Face API update response:', faceApiResponse);
+      // console.log removed for production
       
       // Check for embedding_id in the nested data structure
       const embeddingId = faceApiResponse.data?.embedding_id || faceApiResponse.embedding_id;
@@ -139,36 +139,27 @@ export default function UpdateFaceScreen() {
         throw new Error('Face update failed - no embedding ID returned');
       }
       
-      console.log('Face update successful! Embedding ID:', embeddingId);
+      // console.log removed for production
       
       // Update the main backend database with face registration status
-      console.log('Updating main backend with face registration status...');
+      // console.log removed for production
       await apiService.updateUserFaceStatus(true);
       
       // The backend has already updated the user's face status in the database
       // Refresh the user context to get the updated data from the backend
-      console.log('Refreshing user context to get updated face status from backend...');
+      // console.log removed for production
       await refreshUser();
       
       // Verify the update worked
       const updatedUser = await apiService.getStoredUser();
-      console.log('Updated user data after backend update:', {
-        name: `${updatedUser?.first_name} ${updatedUser?.last_name}`,
-        face_registered: updatedUser?.has_face_registered,
-        user_id: updatedUser?.id
-      });
+      // console.log removed for production
       
       // Hide processing animation and show success modal
       setShowProcessingAnimation(false);
       setShowSuccessModal(true);
       
     } catch (error: any) {
-      console.error('Face update error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        config: error.config
-      });
+      // console.error removed for production
       
       let errorMessage = 'Failed to update face';
       
@@ -213,39 +204,56 @@ export default function UpdateFaceScreen() {
 
   const takeSquarePicture = async () => {
     if (!cameraRef.current) return null;
-    
+
     try {
       // 1. Capture the full-resolution photo
-      const photo = await cameraRef.current.takePictureAsync({ 
-        skipProcessing: true,
-        quality: 0.8 
+      const photo = await cameraRef.current.takePictureAsync({
+        skipProcessing: Platform.OS === 'ios',
+        quality: 0.8,
       });
-      
-      // 2. Compute a centered square crop
-      const size = Math.min(photo.width, photo.height);
+
+      const photoWidth = photo.width ?? 0;
+      const photoHeight = photo.height ?? 0;
+
+      if (!photoWidth || !photoHeight) {
+        throw new Error('Unable to determine captured image dimensions.');
+      }
+
+      // 2. Compute a centered square crop and clamp to image bounds
+      const targetSize = Math.min(photoWidth, photoHeight);
+      const cropWidth = Math.floor(targetSize);
+      const cropHeight = Math.floor(targetSize);
+      const originX = Math.max(0, Math.floor((photoWidth - cropWidth) / 2));
+      const originY = Math.max(0, Math.floor((photoHeight - cropHeight) / 2));
+      const availableWidth = Math.max(0, photoWidth - originX);
+      const availableHeight = Math.max(0, photoHeight - originY);
       const crop = {
-        originX: (photo.width - size) / 2,
-        originY: (photo.height - size) / 2,
-        width: size,
-        height: size,
+        originX,
+        originY,
+        width: Math.min(cropWidth, availableWidth),
+        height: Math.min(cropHeight, availableHeight),
       };
-      
+
+      if (crop.width <= 0 || crop.height <= 0) {
+        throw new Error('Calculated crop dimensions are invalid for the captured image.');
+      }
+
       // 3. Crop to square and resize to optimal size for face recognition
       const square = await ImageManipulator.manipulateAsync(
         photo.uri,
         [
-          { crop }, 
-          { resize: { width: 640, height: 640 } }
+          { crop },
+          { resize: { width: 640, height: 640 } },
         ],
-        { 
-          compress: 0.9, 
-          format: ImageManipulator.SaveFormat.JPEG 
+        {
+          compress: 0.9,
+          format: ImageManipulator.SaveFormat.JPEG,
         }
       );
-      
+
       return square.uri;
     } catch (error) {
-      console.error('Error taking square picture:', error);
+      // console.error removed for production
       throw error;
     }
   };
@@ -265,7 +273,7 @@ export default function UpdateFaceScreen() {
               style={styles.cameraBackButton}
               onPress={() => setIsUpdating(false)}
             >
-              <Ionicons name="close" size={24} color="#FFFFFF" />
+              <Ionicons name="close" size={24} color="#6B46C1" />
             </TouchableOpacity>
             <View style={styles.cameraHeaderContent}>
               <Text style={styles.cameraHeaderTitle}>Update Face</Text>
@@ -329,7 +337,7 @@ export default function UpdateFaceScreen() {
                     setIsUpdating(false);
                   }
                 } catch (error) {
-                  console.error('Capture error:', error);
+                  // console.error removed for production
                   showAlert('Error', 'Failed to capture image', undefined, 'error');
                 } finally {
                   setIsLoading(false);
@@ -365,7 +373,7 @@ export default function UpdateFaceScreen() {
               style={styles.backButton}
               onPress={() => router.back()}
             >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={24} color="#6B46C1" />
             </TouchableOpacity>
             <View style={styles.headerContent}>
               <Text style={styles.headerTitle}>Update Face</Text>
@@ -453,7 +461,7 @@ export default function UpdateFaceScreen() {
         visible={showSuccessModal}
         onClose={() => {
           setShowSuccessModal(false);
-          console.log('Face update complete, navigating back');
+          // console.log removed for production
           router.back();
         }}
         userName={userName}
@@ -502,9 +510,19 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(107, 70, 193, 0.2)',
+    shadowColor: '#6B46C1',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   headerContent: {
     flex: 1,
@@ -681,9 +699,19 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   cameraHeaderContent: {
     flex: 1,

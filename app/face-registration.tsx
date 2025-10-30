@@ -1,31 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  Platform,
-  Modal,
-  Dimensions,
-  Image,
-  TextInput,
-  KeyboardAvoidingView,
-  ScrollView,
-} from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { apiService } from '../services/api';
-import { useAuth } from '../hooks/useAuth';
-import { FaceRegistrationInstructionModal } from '../components/ui/FaceRegistrationInstructionModal';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { FaceSuccessModal } from '../components/ui/FaceSuccessModal';
-import { ProcessingAnimation } from '../components/ui/ProcessingAnimation';
-import { useAlert } from '../components/ui/AlertModal';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAlert } from '../src/components/ui/AlertModal';
+import { FaceRegistrationInstructionModal } from '../src/components/ui/FaceRegistrationInstructionModal';
+import { FaceSuccessModal } from '../src/components/ui/FaceSuccessModal';
+import { ProcessingAnimation } from '../src/components/ui/ProcessingAnimation';
+import { useAuth } from '../src/hooks/useAuth';
+import { apiService } from '../src/services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -100,7 +95,7 @@ export default function FaceRegistrationScreen() {
         setUserName(`${user.first_name} ${user.last_name}`);
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
+      // console.error removed for production
     }
   };
 
@@ -123,15 +118,15 @@ export default function FaceRegistrationScreen() {
     setShowProcessingAnimation(true);
     setIsLoading(true);
     try {
-      console.log('Starting face registration via external Face API...');
-      console.log('User ID:', userId);
-      console.log('User Name:', userName.trim());
-      console.log('Image URI:', imageUri);
+      // console.log removed for production
+      // console.log removed for production
+      // console.log removed for production);
+      // console.log removed for production
       
       // Call the external Face Registration API (port 8443)
       const faceApiResponse = await apiService.registerFace(userId, userName.trim(), imageUri);
       
-      console.log('Face API registration response:', faceApiResponse);
+      // console.log removed for production
       
       // Check for embedding_id in the nested data structure
       const embeddingId = faceApiResponse.data?.embedding_id || faceApiResponse.embedding_id;
@@ -139,36 +134,27 @@ export default function FaceRegistrationScreen() {
         throw new Error('Face registration failed - no embedding ID returned');
       }
       
-      console.log('Face registration successful! Embedding ID:', embeddingId);
+      // console.log removed for production
       
       // Update the main backend database with face registration status
-      console.log('Updating main backend with face registration status...');
+      // console.log removed for production
       await apiService.updateUserFaceStatus(true);
       
       // The backend has already updated the user's face status in the database
       // Refresh the user context to get the updated data from the backend
-      console.log('Refreshing user context to get updated face status from backend...');
+      // console.log removed for production
       await refreshUser();
       
       // Verify the update worked
       const updatedUser = await apiService.getStoredUser();
-      console.log('Updated user data after backend registration:', {
-        name: `${updatedUser?.first_name} ${updatedUser?.last_name}`,
-        face_registered: updatedUser?.has_face_registered,
-        user_id: updatedUser?.id
-      });
+      // console.log removed for production
       
       // Hide processing animation and show success modal
       setShowProcessingAnimation(false);
       setShowSuccessModal(true);
       
     } catch (error: any) {
-      console.error('Face registration error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        config: error.config
-      });
+      // console.error removed for production
       
       let errorMessage = 'Failed to register face';
       
@@ -213,39 +199,56 @@ export default function FaceRegistrationScreen() {
 
   const takeSquarePicture = async () => {
     if (!cameraRef.current) return null;
-    
+
     try {
       // 1. Capture the full-resolution photo
-      const photo = await cameraRef.current.takePictureAsync({ 
-        skipProcessing: true,
-        quality: 0.8 
+      const photo = await cameraRef.current.takePictureAsync({
+        skipProcessing: Platform.OS === 'ios',
+        quality: 0.8,
       });
-      
-      // 2. Compute a centered square crop
-      const size = Math.min(photo.width, photo.height);
+
+      const photoWidth = photo.width ?? 0;
+      const photoHeight = photo.height ?? 0;
+
+      if (!photoWidth || !photoHeight) {
+        throw new Error('Unable to determine captured image dimensions.');
+      }
+
+      // 2. Compute a centered square crop and clamp to image bounds
+      const targetSize = Math.min(photoWidth, photoHeight);
+      const cropWidth = Math.floor(targetSize);
+      const cropHeight = Math.floor(targetSize);
+      const originX = Math.max(0, Math.floor((photoWidth - cropWidth) / 2));
+      const originY = Math.max(0, Math.floor((photoHeight - cropHeight) / 2));
+      const availableWidth = Math.max(0, photoWidth - originX);
+      const availableHeight = Math.max(0, photoHeight - originY);
       const crop = {
-        originX: (photo.width - size) / 2,
-        originY: (photo.height - size) / 2,
-        width: size,
-        height: size,
+        originX,
+        originY,
+        width: Math.min(cropWidth, availableWidth),
+        height: Math.min(cropHeight, availableHeight),
       };
-      
+
+      if (crop.width <= 0 || crop.height <= 0) {
+        throw new Error('Calculated crop dimensions are invalid for the captured image.');
+      }
+
       // 3. Crop to square and resize to optimal size for face recognition
       const square = await ImageManipulator.manipulateAsync(
         photo.uri,
         [
-          { crop }, 
-          { resize: { width: 640, height: 640 } }
+          { crop },
+          { resize: { width: 640, height: 640 } },
         ],
-        { 
-          compress: 0.9, 
-          format: ImageManipulator.SaveFormat.JPEG 
+        {
+          compress: 0.9,
+          format: ImageManipulator.SaveFormat.JPEG,
         }
       );
-      
+
       return square.uri;
     } catch (error) {
-      console.error('Error taking square picture:', error);
+      // console.error removed for production
       throw error;
     }
   };
@@ -274,44 +277,41 @@ export default function FaceRegistrationScreen() {
             <View style={styles.cameraHeaderRight} />
           </LinearGradient>
 
-          {/* Camera Preview */}
+          {/* Camera Preview with White Padding */}
           <View style={styles.cameraContainer}>
-            <CameraView
-              ref={cameraRef}
-              style={styles.cameraView}
-              facing="front"
-            />
-            
-            {/* Face Detection Overlay */}
-            <View style={styles.faceDetectionOverlay}>
-              {/* Face Detection Status */}
-              <View style={styles.faceStatusContainer}>
-                <View style={[styles.faceStatusIndicator, { backgroundColor: hasFace ? '#10B981' : '#EF4444' }]}>
-                  <Ionicons 
-                    name={hasFace ? 'checkmark-circle' : 'close-circle'} 
-                    size={20} 
-                    color="#FFFFFF" 
+            {/* Blue Box Container */}
+            <View style={styles.blueBoxContainer}>
+              {/* Top Blue Section */}
+              <View style={styles.topBlueBar} />
+              
+              {/* Middle Row with Oval */}
+              <View style={styles.middleRow}>
+                {/* Left Blue Bar */}
+                <View style={styles.sideBlueBar} />
+                
+                {/* Oval Container with Camera */}
+                <View style={styles.ovalCameraContainer}>
+                  {/* Camera View - Only in Oval */}
+                  <CameraView
+                    ref={cameraRef}
+                    style={styles.cameraViewOval}
+                    facing="front"
                   />
+                  
+                  {/* Oval Frame Border */}
+                  <View style={[styles.ovalFrameBorder, { borderColor: hasFace ? '#10B981' : '#FFFFFF' }]} />
+                  
+                  {/* Face Alignment Guides */}
+                  {/* <View style={styles.guideLineHorizontal} />
+                  <View style={styles.guideLineVertical} /> */}
                 </View>
-                <Text style={[styles.faceStatusText, { color: hasFace ? '#10B981' : '#EF4444' }]}>
-                  {hasFace ? 'Face Detected' : 'Face Not Detected'}
-                </Text>
+                
+                {/* Right Blue Bar */}
+                <View style={styles.sideBlueBar} />
               </View>
               
-              {/* Face Detection Frame */}
-              <View style={styles.faceFrame}>
-                <View style={[styles.faceFrameCorner, styles.topLeft]} />
-                <View style={[styles.faceFrameCorner, styles.topRight]} />
-                <View style={[styles.faceFrameCorner, styles.bottomLeft]} />
-                <View style={[styles.faceFrameCorner, styles.bottomRight]} />
-              </View>
-              
-              {/* Instructions */}
-              <View style={styles.instructionsOverlay}>
-                <Text style={styles.instructionText}>
-                  {!hasFace ? 'Center your face in the frame' : 'Hold steady - Ready to capture!'}
-                </Text>
-              </View>
+              {/* Bottom Blue Section */}
+              <View style={styles.bottomBlueBar} />
             </View>
           </View>
 
@@ -329,7 +329,7 @@ export default function FaceRegistrationScreen() {
                     setIsRegistering(false);
                   }
                 } catch (error) {
-                  console.error('Capture error:', error);
+                  // console.error removed for production
                   showAlert('Error', 'Failed to capture image', undefined, 'error');
                 } finally {
                   setIsLoading(false);
@@ -350,115 +350,118 @@ export default function FaceRegistrationScreen() {
           </View>
         </View>
       ) : (
-        <KeyboardAvoidingView 
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-        >
-          <ScrollView 
-            style={{ flex: 1 }}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
+        <>
+          {/* Fixed Gradient Header */}
+          <LinearGradient
+            colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
+            style={styles.header}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           >
-            {/* Gradient Header */}
-            <LinearGradient
-              colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
-              style={styles.header}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <TouchableOpacity 
-                style={styles.backButton}
-                onPress={() => router.back()}
-              >
-                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-              <View style={styles.headerContent}>
-                <Text style={styles.headerTitle}>Face Recognition</Text>
-                <Text style={styles.headerSubtitle}>Setup secure biometric authentication</Text>
-              </View>
-            </LinearGradient>
-
-            {/* Content */}
-            <View style={styles.content}>
-              <View style={styles.iconContainer}>
-                <View style={styles.iconCircle}>
-                  <Ionicons name="scan" size={48} color="#6B46C1" />
-                </View>
-              </View>
-
-              <Text style={styles.title}>Face Recognition Setup</Text>
-              <Text style={styles.subtitle}>
-                Enable facial recognition for quick and secure payments.
-              </Text>
-
-              <View style={styles.descriptionContainer}>
-                <Text style={styles.descriptionTitle}>Description:</Text>
-                <Text style={styles.description}>
-                  Register your face to verify your identity during transactions. Your biometric data is encrypted and securely stored in compliance with industry standards.
-                </Text>
-              </View>
-
-              {/* Name Input Field */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Full Name</Text>
-                <Text style={styles.inputSubtext}>Enter the name associated with your account</Text>
-                <View style={styles.readOnlyInput}>
-                  <Text style={styles.readOnlyText}>{userName || 'Loading...'}</Text>
-                </View>
-              </View>
-
-              <View style={styles.benefitsContainer}>
-                <Text style={styles.benefitsTitle}>Why Use Face Recognition?</Text>
-                
-                <View style={styles.benefit}>
-                  <Ionicons name="shield-checkmark" size={24} color="#10B981" />
-                  <View style={styles.benefitTextContainer}>
-                    <Text style={styles.benefitTitle}>Secure & Encrypted</Text>
-                    <Text style={styles.benefitText}>Stored using bank-grade protection</Text>
-                  </View>
-                </View>
-
-                <View style={styles.benefit}>
-                  <Ionicons name="flash" size={24} color="#10B981" />
-                  <View style={styles.benefitTextContainer}>
-                    <Text style={styles.benefitTitle}>Faster Payments</Text>
-                    <Text style={styles.benefitText}>You can enable Autopay</Text>
-                  </View>
-                </View>
-
-                <View style={styles.benefit}>
-                  <Ionicons name="lock-closed" size={24} color="#10B981" />
-                  <View style={styles.benefitTextContainer}>
-                    <Text style={styles.benefitTitle}>Trusted Technology</Text>
-                    <Text style={styles.benefitText}>Built for secure transactions</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </ScrollView>
-
-          {/* Fixed Bottom Actions */}
-          <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 20 }]}>
             <TouchableOpacity 
-              style={styles.primaryButton}
-              onPress={handleStartRegistration}
-              disabled={isLoading}
+              style={styles.backButton}
+              onPress={() => router.back()}
             >
-              <LinearGradient
-                colors={['#6B46C1', '#8B5CF6']}
-                style={styles.primaryButtonGradient}
-              >
-                <Ionicons name="scan" size={24} color="#FFFFFF" style={styles.buttonIcon} />
-                <Text style={styles.primaryButtonText}>
-                  {isLoading ? 'Registering...' : 'Register Face'}
-                </Text>
-              </LinearGradient>
+              <Ionicons name="arrow-back" size={24} color="#6B46C1" />
             </TouchableOpacity>
+            <View style={styles.headerContent}>
+              <Text style={styles.headerTitle}>Face Recognition</Text>
+              <Text style={styles.headerSubtitle}>Setup secure biometric authentication</Text>
+            </View>
+          </LinearGradient>
 
-           
-          </View>
-        </KeyboardAvoidingView>
+          {/* Scrollable Content */}
+          <KeyboardAvoidingView 
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          >
+            <ScrollView 
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Content */}
+              <View style={styles.content}>
+                <View style={styles.iconContainer}>
+                  <View style={styles.iconCircle}>
+                    <Ionicons name="scan" size={48} color="#6B46C1" />
+                  </View>
+                </View>
+
+                <Text style={styles.title}>Face Recognition Setup</Text>
+                <Text style={styles.subtitle}>
+                  Enable facial recognition for quick and secure payments.
+                </Text>
+
+                <View style={styles.descriptionContainer}>
+                  <Text style={styles.descriptionTitle}>Description:</Text>
+                  <Text style={styles.description}>
+                    Register your face to verify your identity during transactions. Your biometric data is encrypted and securely stored in compliance with industry standards.
+                  </Text>
+                </View>
+
+                {/* Name Input Field */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Full Name</Text>
+                  {/* <Text style={styles.inputSubtext}>Enter the name associated with your account</Text> */}
+                  <View style={styles.readOnlyInput}>
+                    <Text style={styles.readOnlyText}>{userName || 'Loading...'}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.benefitsContainer}>
+                  <Text style={styles.benefitsTitle}>Why Use Face Recognition?</Text>
+                  
+                  <View style={styles.benefit}>
+                    <Ionicons name="shield-checkmark" size={24} color="#10B981" />
+                    <View style={styles.benefitTextContainer}>
+                      <Text style={styles.benefitTitle}>Secure & Encrypted</Text>
+                      <Text style={styles.benefitText}>Stored using bank-grade protection</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.benefit}>
+                    <Ionicons name="flash" size={24} color="#10B981" />
+                    <View style={styles.benefitTextContainer}>
+                      <Text style={styles.benefitTitle}>Faster Payments</Text>
+                      <Text style={styles.benefitText}>You can enable Autopay</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.benefit}>
+                    <Ionicons name="lock-closed" size={24} color="#10B981" />
+                    <View style={styles.benefitTextContainer}>
+                      <Text style={styles.benefitTitle}>Trusted Technology</Text>
+                      <Text style={styles.benefitText}>Built for secure transactions</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* Fixed Bottom Actions */}
+            <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 20 }]}>
+              <TouchableOpacity 
+                style={styles.primaryButton}
+                onPress={handleStartRegistration}
+                disabled={isLoading}
+              >
+                <LinearGradient
+                  colors={['#6B46C1', '#8B5CF6']}
+                  style={styles.primaryButtonGradient}
+                >
+                  <Ionicons name="scan" size={24} color="#FFFFFF" style={styles.buttonIcon} />
+                  <Text style={styles.primaryButtonText}>
+                    {isLoading ? 'Registering...' : 'Register Face'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+             
+            </View>
+          </KeyboardAvoidingView>
+        </>
       )}
 
       {/* Face Registration Instruction Modal */}
@@ -473,7 +476,7 @@ export default function FaceRegistrationScreen() {
         visible={showSuccessModal}
         onClose={() => {
           setShowSuccessModal(false);
-          console.log('Face registration complete, navigating back');
+          // console.log removed for production
           router.back();
         }}
         userName={userName}
@@ -501,6 +504,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: 20,
   },
   header: {
     flexDirection: 'row',
@@ -510,7 +514,6 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
-    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -524,9 +527,19 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(107, 70, 193, 0.2)',
+    shadowColor: '#6B46C1',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
     marginRight: 16,
   },
   headerContent: {
@@ -546,7 +559,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 24,
   },
   iconContainer: {
     alignItems: 'center',
@@ -614,6 +627,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    marginTop: 12,
   },
   readOnlyText: {
     fontSize: 16,
@@ -732,27 +746,39 @@ const styles = StyleSheet.create({
   },
   cameraContainer: {
     flex: 1,
-    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 30,
+    paddingVertical: 50,
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 40,
+    alignItems: 'center',
   },
-  cameraView: {
-    width: width * 0.85,
-    height: width * 1.2,
-    borderRadius: 20,
+  blueBoxContainer: {
+    width: '100%',
+    flex: 1,
+    maxHeight: 600,
+    borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 12,
+    backgroundColor: '#3B82F6',
+  },
+  // cameraView: {
+  //   flex: 1,
+  //   width: '100%',
+  //   height: '100%',
+  // },
+  cameraViewOval: {
+    position: 'absolute',
+    width: 240,
+    height: 380,
+    overflow: 'hidden',
+    borderTopLeftRadius: 200,
+    borderTopRightRadius: 200,
+    borderBottomLeftRadius: 120,
+    borderBottomRightRadius: 120,
   },
   buttonContainer: {
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 24,
+    paddingVertical: 20,
   },
   takePhotoButton: {
     borderRadius: 16,
@@ -819,92 +845,78 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   
-  // Face Detection Overlay Styles
-  faceDetectionOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 20,
+  // Face Detection Overlay Styles (Unused - commented out)
+  // faceDetectionOverlay: {
+  //   position: 'absolute',
+  //   top: 0,
+  //   left: 0,
+  //   right: 0,
+  //   bottom: 0,
+  //   justifyContent: 'space-between',
+  //   alignItems: 'center',
+  // },
+  topBlueBar: {
+    height: 70,
+    backgroundColor: '#3B82F6',
+    width: '100%',
   },
-  faceStatusContainer: {
+  middleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginTop: 20,
-  },
-  faceStatusIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  faceStatusText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  faceFrame: {
-    width: 200,
-    height: 200,
-    position: 'relative',
-    alignItems: 'center',
     justifyContent: 'center',
   },
-  faceFrameCorner: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
+  sideBlueBar: {
+    width: 40,
+    height: 400,
+    backgroundColor: '#3B82F6',
+  },
+  ovalCameraContainer: {
+    width: 260,
+    height: 400,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  ovalFrameBorder: {
+    width: 240,
+    height: 380,
+    borderWidth: 5,
     borderColor: '#FFFFFF',
-    borderWidth: 3,
+    backgroundColor: 'transparent',
+    borderTopLeftRadius: 200,
+    borderTopRightRadius: 200,
+    borderBottomLeftRadius: 120,
+    borderBottomRightRadius: 120,
   },
-  topLeft: {
-    top: 0,
-    left: 0,
-    borderBottomWidth: 0,
-    borderRightWidth: 0,
-    borderTopLeftRadius: 8,
+  bottomBlueBar: {
+    height: 70,
+    backgroundColor: '#3B82F6',
+    width: '100%',
   },
-  topRight: {
-    top: 0,
-    right: 0,
-    borderBottomWidth: 0,
-    borderLeftWidth: 0,
-    borderTopRightRadius: 8,
-  },
-  bottomLeft: {
-    bottom: 0,
-    left: 0,
-    borderTopWidth: 0,
-    borderRightWidth: 0,
-    borderBottomLeftRadius: 8,
-  },
-  bottomRight: {
-    bottom: 0,
-    right: 0,
-    borderTopWidth: 0,
-    borderLeftWidth: 0,
-    borderBottomRightRadius: 8,
-  },
-
-  instructionsOverlay: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 16,
-    marginBottom: 20,
-  },
-  instructionText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
+  // Commented unused styles
+  // instructionsContainer: {
+  //   backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  //   paddingHorizontal: 24,
+  //   paddingVertical: 14,
+  //   borderRadius: 20,
+  //   marginHorizontal: 20,
+  // },
+  // guideLineHorizontal: {
+  //   position: 'absolute',
+  //   width: 200,
+  //   height: 1,
+  //   backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  // },
+  // guideLineVertical: {
+  //   position: 'absolute',
+  //   width: 1,
+  //   height: 260,
+  //   backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  // },
+  // instructionText: {
+  //   color: '#FFFFFF',
+  //   fontSize: 17,
+  //   fontWeight: '600',
+  //   textAlign: 'center',
+  // },
 }); 

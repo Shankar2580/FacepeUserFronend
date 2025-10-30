@@ -14,10 +14,10 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../hooks/useAuth';
-import { apiService } from '../services/api';
-import { useAlert } from '../components/ui/AlertModal';
-import { PasswordStrengthIndicator } from '../components/ui/PasswordStrengthIndicator';
+import { useAuth } from '../src/hooks/useAuth';
+import { apiService } from '../src/services/api';
+import { useAlert } from '../src/components/ui/AlertModal';
+import { PasswordStrengthIndicator } from '../src/components/ui/PasswordStrengthIndicator';
 
 export default function ChangePasswordScreen() {
   const [step, setStep] = useState<'verification' | 'newPassword'>('verification');
@@ -89,7 +89,9 @@ export default function ChangePasswordScreen() {
       await apiService.verifyPasswordReset({
         phone_number: user?.phone_number || '',
         verification_code: verificationCode,
-        new_password: newPassword
+        password_reset: {
+          new_password: newPassword
+        }
       });
       
       showAlert('Success', 'Password changed successfully', [
@@ -125,11 +127,13 @@ export default function ChangePasswordScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#6B46C1" />
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <LinearGradient
+                colors={['#FFFFFF', '#F8F7FF']}
+                style={styles.backButtonGradient}
+              >
+                <Ionicons name="arrow-back" size={24} color="#6B46C1" />
+              </LinearGradient>
             </TouchableOpacity>
             <Text style={styles.title}>Change Password</Text>
             <View style={styles.placeholder} />
@@ -313,7 +317,24 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   backButton: {
-    padding: 8,
+    borderRadius: 22,
+    shadowColor: '#6B46C1',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  backButtonGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(107, 70, 193, 0.1)',
   },
   title: {
     fontSize: 18,

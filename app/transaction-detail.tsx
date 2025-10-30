@@ -13,9 +13,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { apiService } from '../services/api';
-import { TransactionDetail, PaymentMethod, CreateAutoPayRequest, AutoPay } from '../constants/types';
-import { useAlert } from '../components/ui/AlertModal';
+import { apiService } from '../src/services/api';
+import { TransactionDetail, PaymentMethod, CreateAutoPayRequest, AutoPay } from '../src/constants/types';
+import { useAlert } from '../src/components/ui/AlertModal';
 
 export default function TransactionDetailScreen() {
   const { transactionId } = useLocalSearchParams<{ transactionId: string }>();
@@ -46,7 +46,7 @@ export default function TransactionDetailScreen() {
       const data = await apiService.getTransactionDetail(transactionId);
       setTransaction(data);
     } catch (error) {
-      console.error('Error loading transaction detail:', error);
+      // console.error removed for production
       showAlert('Error', 'Failed to load transaction details', undefined, 'error');
     } finally {
       setLoading(false);
@@ -62,7 +62,7 @@ export default function TransactionDetailScreen() {
         setSelectedPaymentMethod(defaultMethod.id);
       }
     } catch (error) {
-      console.error('Error loading payment methods:', error);
+      // console.error removed for production
     }
   };
 
@@ -71,7 +71,7 @@ export default function TransactionDetailScreen() {
       const autoPay = await apiService.getAutoPay();
       setExistingAutoPay(autoPay);
     } catch (error) {
-      console.error('Error loading auto pay:', error);
+      // console.error removed for production
     }
   };
 
@@ -123,7 +123,7 @@ export default function TransactionDetailScreen() {
       setShowAutoPayModal(false);
       setAutoPayLimit('');
     } catch (error) {
-      console.error('Error setting up auto-pay:', error);
+      // console.error removed for production
       showAlert('Error', 'Failed to set up auto-pay', undefined, 'error');
     } finally {
       setSettingUpAutoPay(false);
@@ -149,7 +149,7 @@ export default function TransactionDetailScreen() {
         minute: '2-digit',
       });
     } catch (error) {
-      console.error('Error formatting date:', error);
+      // console.error removed for production
       return 'Invalid Date';
     }
   };
@@ -207,19 +207,19 @@ export default function TransactionDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      {/* Fixed Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backIcon}>
+          <Ionicons name="arrow-back" size={24} color="#6B46C1" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Transaction Details</Text>
+      </View>
+
       <ScrollView
         style={styles.container}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backIcon}>
-            <Ionicons name="arrow-back" size={24} color="#6B46C1" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Transaction Details</Text>
-        </View>
-
         {/* Transaction Status */}
         <View style={styles.statusCard}>
           <View style={styles.statusHeader}>

@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Switch,
-  TextInput,
-  Modal,
-} from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { apiService } from '../services/api';
-import { AutoPay, PaymentMethod, CreateAutoPayRequest } from '../constants/types';
-import { useAlert } from '../components/ui/AlertModal';
+import { useAlert } from '../src/components/ui/AlertModal';
+import { AutoPay, PaymentMethod } from '../src/constants/types';
+import { apiService } from '../src/services/api';
 
 export default function AutoPaySettingsScreen() {
   const router = useRouter();
@@ -43,7 +43,7 @@ export default function AutoPaySettingsScreen() {
       setAutoPays(autoPayData);
       setPaymentMethods(paymentMethodData);
     } catch (error) {
-      console.error('Error loading AutoPay data:', error);
+      // console.error removed for production
       showAlert('Error', 'Failed to load AutoPay settings', undefined, 'error');
     } finally {
       setLoading(false);
@@ -55,7 +55,7 @@ export default function AutoPaySettingsScreen() {
       await apiService.updateAutoPay(autoPayId, { is_enabled: isEnabled });
       await loadData(); // Refresh data
     } catch (error) {
-      console.error('Error toggling AutoPay:', error);
+      // console.error removed for production
       showAlert('Error', 'Failed to update AutoPay setting', undefined, 'error');
     }
   };
@@ -75,7 +75,7 @@ export default function AutoPaySettingsScreen() {
               await loadData(); // Refresh data
               showAlert('Success', 'AutoPay setting deleted successfully', undefined, 'success');
             } catch (error) {
-              console.error('Error deleting AutoPay:', error);
+              // console.error removed for production
               showAlert('Error', 'Failed to delete AutoPay setting', undefined, 'error');
             }
           },
@@ -85,7 +85,7 @@ export default function AutoPaySettingsScreen() {
   };
 
   const openEditModal = (autoPay: AutoPay) => {
-    setEditingAutoPayId(autoPay.id);
+    setEditingAutoPayId(autoPay.merchant_id);
     setEditAmount(autoPay.max_amount ? (autoPay.max_amount / 100).toString() : '');
     setShowEditModal(true);
   };
@@ -109,7 +109,7 @@ export default function AutoPaySettingsScreen() {
       setEditAmount('');
       showAlert('Success', 'AutoPay limit updated successfully', undefined, 'success');
     } catch (error) {
-      console.error('Error updating AutoPay amount:', error);
+      // console.error removed for production
       showAlert('Error', 'Failed to update AutoPay limit', undefined, 'error');
     }
   };
@@ -197,7 +197,7 @@ export default function AutoPaySettingsScreen() {
                 <View style={styles.autoPayActions}>
                   <Switch
                     value={autoPay.is_enabled}
-                    onValueChange={(value) => toggleAutoPay(autoPay.id, value)}
+                    onValueChange={(value) => toggleAutoPay(autoPay.merchant_id, value)}
                     trackColor={{ false: '#E5E7EB', true: '#10B981' }}
                     thumbColor={autoPay.is_enabled ? '#FFFFFF' : '#9CA3AF'}
                   />
@@ -209,7 +209,7 @@ export default function AutoPaySettingsScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.deleteButton}
-                    onPress={() => deleteAutoPay(autoPay.id, autoPay.merchant_name)}
+                    onPress={() => deleteAutoPay(autoPay.merchant_id, autoPay.merchant_name)}
                   >
                     <Ionicons name="trash" size={16} color="#EF4444" />
                   </TouchableOpacity>
