@@ -86,7 +86,7 @@ export const useUpdates = (): UseUpdatesReturn => {
       }
     } catch (error) {
       if (error instanceof UpdateError) {
-        showAlert('Update Failed', error.message, undefined, 'error');
+        showAlert('Update Failed', error.message, undefined, 'warning');
       } else {
         // console.error removed for production
       }
@@ -105,7 +105,7 @@ export const useUpdates = (): UseUpdatesReturn => {
       await updateService.downloadAndInstallUpdate();
     } catch (error) {
       if (error instanceof UpdateError) {
-        showAlert('Update Failed', error.message, undefined, 'error');
+        showAlert('Update Failed', error.message, undefined, 'warning');
       } else {
         // console.error removed for production
       }

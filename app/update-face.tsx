@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -42,6 +43,9 @@ export default function UpdateFaceScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showProcessingAnimation, setShowProcessingAnimation] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPin] = useState('');
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false);
   const cameraRef = useRef<CameraView | null>(null);
   const router = useRouter();
   const { refreshUser } = useAuth();
@@ -105,7 +109,13 @@ export default function UpdateFaceScreen() {
   };
 
   const handleStartUpdate = async () => {
-    // Show instruction modal first
+    // Show PIN modal first
+    setShowPinModal(true);
+  };
+
+  const handlePinVerified = () => {
+    // After PIN is verified, show instruction modal
+    setShowPinModal(false);
     setShowInstructionModal(true);
   };
 
@@ -116,7 +126,14 @@ export default function UpdateFaceScreen() {
 
   const handleFaceUpdate = async (imageUri: string) => {
     if (!userId || !userName.trim()) {
-      showAlert('Error', 'User information is missing', undefined, 'error');
+      showAlert('Error', 'User information is missing', undefined, 'warning');
+      return;
+    }
+
+    // Get the verified PIN from AsyncStorage
+    const storedPin = await AsyncStorage.getItem('verified_pin');
+    if (!storedPin || storedPin.length !== 4) {
+      showAlert('Error', 'PIN verification required', undefined, 'warning');
       return;
     }
 
@@ -128,8 +145,8 @@ export default function UpdateFaceScreen() {
       // console.log removed for production);
       // console.log removed for production
       
-      // Call the external Face Update API (port 8443)
-      const faceApiResponse = await apiService.updateFace(userId, userName.trim(), imageUri);
+      // Call the external Face Update API (port 8443) with PIN
+      const faceApiResponse = await apiService.updateFace(userId, userName.trim(), imageUri, storedPin);
       
       // console.log removed for production
       
@@ -174,7 +191,7 @@ export default function UpdateFaceScreen() {
       }
       
       setShowProcessingAnimation(false);
-      showAlert('Update Failed', errorMessage, undefined, 'error');
+      showAlert('Update Failed', errorMessage, undefined, 'warning');
     } finally {
       setIsLoading(false);
       setSelectedImage(null);
@@ -282,44 +299,37 @@ export default function UpdateFaceScreen() {
             <View style={styles.cameraHeaderRight} />
           </LinearGradient>
 
-          {/* Camera Preview */}
+          {/* Camera Preview with White Padding */}
           <View style={styles.cameraContainer}>
-            <CameraView
-              ref={cameraRef}
-              style={styles.cameraView}
-              facing="front"
-            />
-            
-            {/* Face Detection Overlay */}
-            <View style={styles.faceDetectionOverlay}>
-              {/* Face Detection Status */}
-              <View style={styles.faceStatusContainer}>
-                <View style={[styles.faceStatusIndicator, { backgroundColor: hasFace ? '#10B981' : '#EF4444' }]}>
-                  <Ionicons 
-                    name={hasFace ? 'checkmark-circle' : 'close-circle'} 
-                    size={20} 
-                    color="#FFFFFF" 
+            {/* Blue Box Container */}
+            <View style={styles.blueBoxContainer}>
+              {/* Top Blue Section */}
+              <View style={styles.topBlueBar} />
+              
+              {/* Middle Row with Circle */}
+              <View style={styles.middleRow}>
+                {/* Left Blue Bar */}
+                <View style={styles.sideBlueBar} />
+                
+                {/* Circle Container with Camera */}
+                <View style={styles.ovalCameraContainer}>
+                  {/* Camera View - Only in Circle */}
+                  <CameraView
+                    ref={cameraRef}
+                    style={styles.cameraViewOval}
+                    facing="front"
                   />
+                  
+                  {/* Circle Frame Border */}
+                  <View style={styles.circleFrameBorder} />
                 </View>
-                <Text style={[styles.faceStatusText, { color: hasFace ? '#10B981' : '#EF4444' }]}>
-                  {hasFace ? 'Face Detected' : 'Face Not Detected'}
-                </Text>
+                
+                {/* Right Blue Bar */}
+                <View style={styles.sideBlueBar} />
               </View>
               
-              {/* Face Detection Frame */}
-              <View style={styles.faceFrame}>
-                <View style={[styles.faceFrameCorner, styles.topLeft]} />
-                <View style={[styles.faceFrameCorner, styles.topRight]} />
-                <View style={[styles.faceFrameCorner, styles.bottomLeft]} />
-                <View style={[styles.faceFrameCorner, styles.bottomRight]} />
-              </View>
-              
-              {/* Instructions */}
-              <View style={styles.instructionsOverlay}>
-                <Text style={styles.instructionText}>
-                  {!hasFace ? 'Center your face in the frame' : 'Hold steady - Ready to capture!'}
-                </Text>
-              </View>
+              {/* Bottom Blue Section */}
+              <View style={styles.bottomBlueBar} />
             </View>
           </View>
 
@@ -333,12 +343,13 @@ export default function UpdateFaceScreen() {
                 try {
                   const squareImageUri = await takeSquarePicture();
                   if (squareImageUri) {
+                    // Directly update face with captured image
                     await handleFaceUpdate(squareImageUri);
                     setIsUpdating(false);
                   }
                 } catch (error) {
                   // console.error removed for production
-                  showAlert('Error', 'Failed to capture image', undefined, 'error');
+                  showAlert('Error', 'Failed to capture image', undefined, 'warning');
                 } finally {
                   setIsLoading(false);
                 }
@@ -403,13 +414,13 @@ export default function UpdateFaceScreen() {
               </View>
 
               {/* Name Input Field */}
-              <View style={styles.inputContainer}>
+              {/* <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Full Name</Text>
                 <Text style={styles.inputSubtext}>Enter the name associated with your account</Text>
                 <View style={styles.readOnlyInput}>
                   <Text style={styles.readOnlyText}>{userName || 'Loading...'}</Text>
                 </View>
-              </View>
+              </View> */}
 
               {/* Features List */}
               <View style={styles.featuresList}>
@@ -475,6 +486,127 @@ export default function UpdateFaceScreen() {
         title="Updating Face"
         subtitle="Updating your biometric data..."
       />
+
+      {/* PIN Verification Modal */}
+      <Modal
+        visible={showPinModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowPinModal(false);
+          setPin('');
+        }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.pinModalContainer}
+        >
+          <TouchableOpacity
+            style={styles.pinModalOverlay}
+            activeOpacity={1}
+            onPress={() => {
+              setShowPinModal(false);
+              setPin('');
+            }}
+          />
+          <View style={styles.pinModalContent}>
+            <View style={styles.pinModalHeader}>
+              <Ionicons name="lock-closed" size={32} color="#6B46C1" />
+              <Text style={styles.pinModalTitle}>Verify Your PIN</Text>
+              <Text style={styles.pinModalSubtitle}>
+                Verify your identity to proceed with face update
+              </Text>
+            </View>
+
+            <View style={styles.pinInputContainer}>
+              <TextInput
+                style={styles.pinInput}
+                value={pin}
+                onChangeText={(text) => {
+                  // Only allow numbers and max 4 digits
+                  const numericText = text.replace(/[^0-9]/g, '');
+                  if (numericText.length <= 4) {
+                    setPin(numericText);
+                  }
+                }}
+                placeholder="Enter PIN"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="number-pad"
+                maxLength={4}
+                secureTextEntry
+                autoFocus
+              />
+            </View>
+
+            <View style={styles.pinModalButtons}>
+              <TouchableOpacity
+                style={styles.pinCancelButton}
+                onPress={() => {
+                  setShowPinModal(false);
+                  setPin('');
+                }}
+              >
+                <Text style={styles.pinCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.pinConfirmButton,
+                  { opacity: pin.length === 4 && !isVerifyingPin ? 1 : 0.5 }
+                ]}
+                disabled={pin.length !== 4 || isVerifyingPin}
+                onPress={async () => {
+                  if (pin.length === 4) {
+                    setIsVerifyingPin(true);
+                    try {
+                      // Verify the PIN
+                      const verifyResponse = await apiService.verifyCurrentPin(pin);
+                      
+                      if (verifyResponse.success) {
+                        // Store the verified PIN in AsyncStorage
+                        await AsyncStorage.setItem('verified_pin', pin);
+                        
+                        // Close PIN modal and show instruction modal
+                        handlePinVerified();
+                        setPin('');
+                      }
+                    } catch (error: any) {
+                      // Handle PIN verification errors
+                      let errorMessage = 'PIN verification failed';
+                      
+                      if (error.response?.status === 400) {
+                        errorMessage = 'PIN not set. Please reset your PIN first.';
+                      } else if (error.response?.status === 401) {
+                        errorMessage = 'Invalid PIN. Please try again.';
+                      } else if (error.response?.data?.detail) {
+                        errorMessage = error.response.data.detail;
+                      } else if (error.message) {
+                        errorMessage = error.message;
+                      }
+                      
+                      showAlert('PIN Verification Failed', errorMessage, undefined, 'warning');
+                      setPin('');
+                    } finally {
+                      setIsVerifyingPin(false);
+                    }
+                  }
+                }}
+              >
+                <LinearGradient
+                  colors={['#6B46C1', '#8B5CF6']}
+                  style={styles.pinConfirmButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.pinConfirmButtonText}>
+                    {isVerifyingPin ? 'Verifying...' : 'Verify'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Alert Component */}
       <AlertComponent />
@@ -734,24 +866,62 @@ const styles = StyleSheet.create({
   },
   cameraContainer: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 30,
+    paddingVertical: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  blueBoxContainer: {
+    width: '100%',
+    flex: 1,
+    maxHeight: 600,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#3B82F6',
+  },
+  topBlueBar: {
+    height: 70,
+    backgroundColor: '#3B82F6',
+    width: '100%',
+  },
+  middleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 40,
   },
-  cameraView: {
-    width: width * 0.85,
-    height: width * 1.2,
-    borderRadius: 20,
+  sideBlueBar: {
+    width: 40,
+    height: 400,
+    backgroundColor: '#3B82F6',
+  },
+  ovalCameraContainer: {
+    width: 280,
+    height: 400,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  cameraViewOval: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 12,
+    borderRadius: 140,
+  },
+  circleFrameBorder: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    backgroundColor: 'transparent',
+    borderRadius: 140,
+  },
+  bottomBlueBar: {
+    height: 70,
+    backgroundColor: '#3B82F6',
+    width: '100%',
   },
   buttonContainer: {
     paddingHorizontal: 24,
@@ -863,5 +1033,97 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     textAlign: 'center',
+  },
+
+  // PIN Modal Styles
+  pinModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pinModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  pinModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    width: width * 0.85,
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  pinModalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  pinModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  pinModalSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  pinInputContainer: {
+    marginBottom: 24,
+  },
+  pinInput: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 24,
+    fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: 8,
+    color: '#1F2937',
+  },
+  pinModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  pinCancelButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  pinCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  pinConfirmButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  pinConfirmButtonGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  pinConfirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 }); 

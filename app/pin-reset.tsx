@@ -190,7 +190,7 @@ export default function PinResetScreen() {
 
   const handleSendVerification = async () => {
     if (!phoneNumber) {
-      showAlert('Error', 'Phone number is required', undefined, 'error');
+      showAlert('Error', 'Phone number is required', undefined, 'warning');
       return;
     }
 
@@ -207,7 +207,7 @@ export default function PinResetScreen() {
       // Don't show success alert for manual send to prevent popup spam
       // console.log removed for production
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'error');
+      showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'warning');
     } finally {
       setIsLoading(false);
     }
@@ -229,7 +229,7 @@ export default function PinResetScreen() {
           // Don't show success alert for auto-send to prevent popup spam
           // console.log removed for production
         } catch (error: any) {
-          showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'error');
+          showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'warning');
         } finally {
           setIsLoading(false);
         }
@@ -246,7 +246,7 @@ export default function PinResetScreen() {
 
   const handleVerifyCode = async () => {
     if (!verificationCode || verificationCode.length !== 6) {
-      showAlert('Error', 'Please enter a valid 6-digit verification code', undefined, 'error');
+      showAlert('Error', 'Please enter a valid 6-digit verification code', undefined, 'warning');
       return;
     }
 
@@ -258,7 +258,7 @@ export default function PinResetScreen() {
       });
       setStep('current_pin');
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Invalid verification code', undefined, 'error');
+      showAlert('Error', error.response?.data?.message || 'Invalid verification code', undefined, 'warning');
     } finally {
       setIsLoading(false);
     }
@@ -267,7 +267,7 @@ export default function PinResetScreen() {
   const handleCurrentPinSubmit = () => {
     if (!currentPin || currentPin.length !== 4) {
       setCurrentPinError(true);
-      showAlert('Error', 'Please enter your current 4-digit PIN', undefined, 'error');
+      showAlert('Error', 'Please enter your current 4-digit PIN', undefined, 'warning');
       return;
     }
     setCurrentPinError(false);
@@ -277,22 +277,22 @@ export default function PinResetScreen() {
   const handleNewPinSubmit = async () => {
     if (!newPin || newPin.length !== 4) {
       setNewPinError(true);
-      showAlert('Error', 'Please enter a 4-digit PIN', undefined, 'error');
+      showAlert('Error', 'Please enter a 4-digit PIN', undefined, 'warning');
       return;
     }
     if (newPin !== confirmNewPin) {
       setNewPinError(true);
-      showAlert('Error', 'PINs do not match', undefined, 'error');
+      showAlert('Error', 'PINs do not match', undefined, 'warning');
       return;
     }
     if (newPin === currentPin) {
       setNewPinError(true);
-      showAlert('Error', 'New PIN must be different from current PIN', undefined, 'error');
+      showAlert('Error', 'New PIN must be different from current PIN', undefined, 'warning');
       return;
     }
     if (!validatePinSecurity(newPin)) {
       setNewPinError(true);
-      showAlert('Error', 'Please choose a more secure PIN. Avoid common sequences like 1234, 0000, etc.', undefined, 'error');
+      showAlert('Error', 'Please choose a more secure PIN. Avoid common sequences like 1234, 0000, etc.', undefined, 'warning');
       return;
     }
 
@@ -309,11 +309,11 @@ export default function PinResetScreen() {
       showAlert(
         'Success',
         'Your PIN has been reset successfully!',
-        [{ text: 'OK', onPress: () => router.push('/(tabs)/profile') }],
+        [{ text: 'Done', onPress: () => router.push('/(tabs)/profile') }],
         'success'
       );
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Failed to reset PIN', undefined, 'error');
+      showAlert('Error', error.response?.data?.message || 'Failed to reset PIN', undefined, 'warning');
     } finally {
       setIsLoading(false);
     }
@@ -417,6 +417,7 @@ export default function PinResetScreen() {
                       <Text style={styles.primaryButtonText}>
                         {isLoading ? 'Verifying...' : 'Verify Code'}
                       </Text>
+                      {!isLoading && <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />}
                     </LinearGradient>
                   </TouchableOpacity>
 
@@ -451,6 +452,7 @@ export default function PinResetScreen() {
                       style={styles.primaryButtonGradient}
                     >
                       <Text style={styles.primaryButtonText}>Continue</Text>
+                      <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
                     </LinearGradient>
                   </TouchableOpacity>
                 </>
@@ -651,7 +653,6 @@ const styles = StyleSheet.create({
   },
   pinInputsContainer: {
     width: '100%',
-    maxWidth: 280,
     alignItems: 'center',
     alignSelf: 'center',
   },
@@ -659,6 +660,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 280,
   },
   pinInput: {
     width: 56,
@@ -694,6 +698,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   primaryButton: {
+    height: 56, // Set a fixed height for the button
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 16,
@@ -707,8 +712,13 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   primaryButtonGradient: {
-    paddingVertical: 16,
+    flex: 1, // Make gradient fill the entire button
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   primaryButtonText: {
     fontSize: 16,

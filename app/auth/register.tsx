@@ -214,15 +214,17 @@ export default function RegisterScreen() {
         phone_number: fullPhoneNumber, 
         method: 'sms'
       });
+      setIsLoading(false);
       setStep('verification');
       startCountdown();
     } catch (error: any) {
+      setIsLoading(false); // Hide processing animation before showing error
       // Only show alert if screen is still focused
       if (isScreenFocused.current) {
-        showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'error');
+        setTimeout(() => {
+          showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'error');
+        }, 100);
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -251,13 +253,15 @@ export default function RegisterScreen() {
         phone_number: fullPhoneNumber,
         code: verificationCode
       });
+      setIsLoading(false);
       setStep('details');
       showAlert('Success', 'Mobile number verified! Please complete your registration', undefined, 'success');
     } catch (error: any) {
+      setIsLoading(false); // Hide processing animation before showing error
       // API error - show the message from backend
-      showAlert('Error', error.response?.data?.message || 'Invalid verification code', undefined, 'error');
-    } finally {
-      setIsLoading(false);
+      setTimeout(() => {
+        showAlert('Error', error.response?.data?.message || 'Invalid verification code', undefined, 'error');
+      }, 100);
     }
   };
 
@@ -348,29 +352,34 @@ export default function RegisterScreen() {
           password: password
         });
         
+        setIsLoading(false);
         // Success - user will be redirected by auth system
         // console.log removed for production
         
       } catch (loginError: any) {
+        setIsLoading(false); // Hide processing animation before showing alert
         // console.log removed for production
         // If auto-login fails, redirect to login page as fallback
-        showAlert(
-          'Registration Successful', 
-          'Your account has been created successfully. Please login to continue.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.push('/auth/login')
-            }
-          ],
-          'success'
-        );
+        setTimeout(() => {
+          showAlert(
+            'Registration Successful', 
+            'Your account has been created successfully. Please login to continue.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.push('/auth/login')
+              }
+            ],
+            'success'
+          );
+        }, 100);
       }
       
     } catch (error: any) {
-      showAlert('Registration Failed', error.response?.data?.message || 'Please try again', undefined, 'error');
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Hide processing animation before showing error
+      setTimeout(() => {
+        showAlert('Registration Failed', error.response?.data?.message || 'Please try again', undefined, 'error');
+      }, 100);
     }
   };
 

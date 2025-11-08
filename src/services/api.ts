@@ -7,6 +7,7 @@ import {
   User,
   PaymentMethod,
   Transaction,
+  TransactionListResponse,
   TransactionDetail,
   AutoPay,
   VerificationRequest,
@@ -68,7 +69,20 @@ class ApiService {
         
         // console.error removed for production
         
-        // Handle 401 errors with token refresh
+        // Skip token refresh for authentication endpoints completely
+        const isAuthEndpoint = originalRequest.url?.includes('/cb/auth/login') || 
+                              originalRequest.url?.includes('/cb/auth/register') ||
+                              originalRequest.url?.includes('/cb/auth/refresh') ||
+                              originalRequest.url?.includes('/auth/login') ||
+                              originalRequest.url?.includes('/auth/register') ||
+                              originalRequest.url?.includes('/auth/refresh');
+        
+        // For auth endpoints, just pass through the error without any token refresh logic
+        if (isAuthEndpoint) {
+          return Promise.reject(error);
+        }
+        
+        // Handle 401 errors with token refresh (only for non-auth endpoints)
         if (error.response?.status === 401 && !originalRequest._retry) {
           if (this.isRefreshing) {
             // If already refreshing, queue this request
@@ -157,28 +171,36 @@ class ApiService {
     let lastError;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
+      // console.log removed for production
+      const response = await this.api.post<AuthResponse>(API_ENDPOINTS.LOGIN, data);
+      // console.log removed for production
+
+      if (response.data.access_token && response.data.refresh_token) {
         // console.log removed for production
-        const response = await this.api.post<AuthResponse>(API_ENDPOINTS.LOGIN, data);
+        await SecureStore.setItemAsync('access_token', response.data.access_token);
+        await SecureStore.setItemAsync('refresh_token', response.data.refresh_token);
+        await SecureStore.setItemAsync('user_data', JSON.stringify(response.data.user));
         // console.log removed for production
-        
-        if (response.data.access_token && response.data.refresh_token) {
-          // console.log removed for production
-          await SecureStore.setItemAsync('access_token', response.data.access_token);
-          await SecureStore.setItemAsync('refresh_token', response.data.refresh_token);
-          await SecureStore.setItemAsync('user_data', JSON.stringify(response.data.user));
-          // console.log removed for production
-        }
         return response.data;
+      } else {
+        // If no tokens received, treat as authentication failure
+        throw new Error('Invalid credentials. Please check your email/phone number and password.');
+      }
       } catch (error: any) {
         lastError = error;
         const isNetworkError = error.code === 'NETWORK_ERROR' || error.code === 'ERR_NETWORK' || !error.response;
-        
+
         if (isNetworkError && attempt < 3) {
           // console.log removed for production`);
           await new Promise(resolve => setTimeout(resolve, attempt * 5000)); // Wait 5s, then 10s
           continue;
         }
-        
+
+        // For auth errors, extract the message and throw a new error with the backend message
+        if (error.response?.status === 401 && error.response?.data?.message) {
+          throw new Error(error.response.data.message);
+        }
+
         // console.error removed for production
         break;
       }
@@ -377,7 +399,7 @@ class ApiService {
     }
   }
 
-  async updateFace(userId: string, name: string, imageUri: string): Promise<any> {
+  async updateFace(userId: string, name: string, imageUri: string, pin: string): Promise<any> {
     // console.log removed for production
     // console.log removed for production
     
@@ -388,6 +410,7 @@ class ApiService {
       // Add text fields
       formData.append('user_id', userId);
       formData.append('name', name);
+      formData.append('pin', pin);  // Add PIN for verification
       
       // Add file - React Native specific format
       const uriParts = imageUri.split('.');
@@ -572,8 +595,13 @@ class ApiService {
   }
 
   // Transactions
-  async getTransactions(): Promise<Transaction[]> {
-    const response = await this.api.get<Transaction[]>(API_ENDPOINTS.GET_TRANSACTIONS);
+  async getTransactions(params?: {
+    status_filter?: string;
+    time_filter?: string;
+    cursor?: string;
+    limit?: number;
+  }): Promise<TransactionListResponse> {
+    const response = await this.api.get<TransactionListResponse>(API_ENDPOINTS.GET_TRANSACTIONS, { params });
     return response.data;
   }
 
@@ -664,6 +692,33 @@ class ApiService {
   async resetPin(data: PinResetRequest): Promise<PinResetResponse> {
     // console.log removed for production
     const response = await this.api.post<PinResetResponse>(API_ENDPOINTS.PIN_RESET, data);
+    return response.data;
+  }
+
+  async verifyCurrentPin(pin: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.api.post<{ success: boolean; message: string }>(
+      API_ENDPOINTS.VERIFY_CURRENT_PIN,
+      { pin }
+    );
+    return response.data;
+  }
+
+  // Account Deletion
+  async requestAccountDeletion(): Promise<ApiResponse<any>> {
+    const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.REQUEST_ACCOUNT_DELETION);
+    return response.data;
+  }
+
+  async cancelAccountDeletion(): Promise<ApiResponse<any>> {
+    const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.CANCEL_ACCOUNT_DELETION);
+    return response.data;
+  }
+
+  // Profile Name Update
+  async updateUserName(fullName: string): Promise<ApiResponse<any>> {
+    const response = await this.api.put<ApiResponse<any>>(API_ENDPOINTS.UPDATE_USER_NAME, {
+      full_name: fullName
+    });
     return response.data;
   }
 }

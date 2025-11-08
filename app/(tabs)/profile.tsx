@@ -46,10 +46,12 @@ export default function ProfileScreen() {
     // console.log removed for production
     
     if (user) {
+      // Force refresh user data to get latest face registration status
+      refreshUser();
       loadData();
       startAnimations();
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -131,7 +133,9 @@ export default function ProfileScreen() {
   };
 
   const handleFaceRegistration = () => {
-    if (user?.has_face_registered) {
+    // Check both has_face_registered and face_active (backend returns both)
+    const isFaceRegistered = user?.has_face_registered || user?.face_active;
+    if (isFaceRegistered) {
       router.push('/update-face' as any);
     } else {
       router.push('/face-registration');
@@ -161,7 +165,7 @@ export default function ProfileScreen() {
               // Refresh user data
               await refreshUser();
               
-              showAlert('Success', 'Face data deleted successfully', undefined, 'success');
+              showAlert('Success', 'Face data deleted successfully', [{ text: 'Done' }], 'success');
               
               // Refresh the profile data
               await loadData();
@@ -197,9 +201,12 @@ export default function ProfileScreen() {
           },
         },
       ],
-      'warning'
+      'info'
     );
   };
+
+  // Check both has_face_registered and face_active (backend returns both)
+  const isFaceRegistered = user?.has_face_registered || user?.face_active;
 
   const profileSections = [
     {
@@ -207,11 +214,11 @@ export default function ProfileScreen() {
       items: [
         {
           icon: 'scan',
-          title: user?.has_face_registered ? 'Update Face Data' : 'Register Your Face',
-          subtitle: user?.has_face_registered ? 'Update your biometric data' : 'Setup biometric authentication',
+          title: isFaceRegistered ? 'Update Face Data' : 'Register Your Face',
+          subtitle: isFaceRegistered ? 'Update your biometric data' : 'Setup biometric authentication',
           action: 'setup',
           onPress: handleFaceRegistration,
-          rightElement: user?.has_face_registered ? (
+          rightElement: isFaceRegistered ? (
             <View style={styles.statusBadge}>
               <Ionicons name="checkmark-circle" size={16} color="#10B981" />
               <Text style={styles.statusText}>Active</Text>
@@ -222,7 +229,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           ),
         },
-        ...(user?.has_face_registered ? [{
+        ...(isFaceRegistered ? [{
           icon: 'trash-outline',
           title: 'Delete Face Data',
           subtitle: 'Remove biometric data',
@@ -337,12 +344,24 @@ export default function ProfileScreen() {
           </View>
         </View>
         
-        <Text style={styles.userName}>
-          {user.first_name && user.last_name 
-            ? `${user.first_name} ${user.last_name}` 
-            : 'User'
-          }
-        </Text>
+        {/* User Name with Edit Button */}
+        <View style={styles.userNameContainer}>
+          <Text style={styles.userName}>
+            {user.first_name && user.last_name 
+              ? `${user.first_name} ${user.last_name}` 
+              : 'User'
+            }
+          </Text>
+          <TouchableOpacity
+            style={styles.editNameButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/edit-profile' as any);
+            }}
+          >
+            <Ionicons name="pencil" size={16} color="#6B46C1" />
+          </TouchableOpacity>
+        </View>
         <Text style={styles.userEmail}>
           {user.email || user.phone_number || 'No contact info'}
         </Text>
@@ -355,6 +374,47 @@ export default function ProfileScreen() {
           <Text style={styles.brandSubtext}>Secure Facial Payment</Text>
         </View>
       </Animated.View>
+
+      {/* Deletion Warning Banner */}
+      {user?.pending_deletion && (
+        <Animated.View 
+          style={[
+            styles.deletionWarningBanner,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <View style={styles.warningIconContainer}>
+            <Ionicons name="warning" size={24} color="#F59E0B" />
+          </View>
+          <View style={styles.warningContent}>
+            <Text style={styles.warningTitle}>Account Deletion Scheduled</Text>
+            <Text style={styles.warningText}>
+              Your account will be deleted on{' '}
+              {user.scheduled_deletion_at 
+                ? new Date(user.scheduled_deletion_at).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })
+                : 'Unknown date'
+              }
+            </Text>
+            <TouchableOpacity
+              style={styles.cancelDeletionButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.push('/delete-account' as any);
+              }}
+            >
+              <Text style={styles.cancelDeletionText}>Cancel Deletion</Text>
+              <Ionicons name="arrow-forward" size={16} color="#059669" />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
 
       <ScrollView 
         style={styles.scrollView}
@@ -415,6 +475,32 @@ export default function ProfileScreen() {
             </View>
           </Animated.View>
         ))}
+
+        {/* Account Settings - Nested Menu */}
+        <Animated.View 
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <Text style={styles.sectionTitle}>Account Settings</Text>
+          <View style={styles.sectionItems}>
+            <TouchableOpacity 
+              style={styles.accountSettingsButton} 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/account-management' as any);
+              }}
+            >
+              <Ionicons name="settings-outline" size={22} color="#6B7280" />
+              <Text style={styles.accountSettingsText}>Account Management</Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={{ marginLeft: 'auto' }} />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
 
         {/* Logout Section */}
         <Animated.View 
@@ -506,6 +592,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
+    position: 'relative',
+  },
+  editProfileButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatarContainer: {
     position: 'relative',
@@ -668,6 +774,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FECACA',
   },
+  deleteAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 8,
+  },
+  deleteAccountText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#DC2626',
+  },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -709,5 +826,82 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
+  },
+  deletionWarningBanner: {
+    backgroundColor: '#FFFBEB',
+    marginHorizontal: 24,
+    marginTop: 16,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    borderWidth: 2,
+    borderColor: '#FCD34D',
+    shadowColor: '#F59E0B',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  warningIconContainer: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  warningContent: {
+    flex: 1,
+  },
+  warningTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#92400E',
+    marginBottom: 4,
+  },
+  warningText: {
+    fontSize: 13,
+    color: '#78350F',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  cancelDeletionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    gap: 6,
+  },
+  cancelDeletionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  
+  // New styles for improved UI
+  userNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 16,
+  },
+  editNameButton: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: 'rgba(107, 70, 193, 0.1)',
+  },
+  accountSettingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 8,
+  },
+  accountSettingsText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#374151',
   },
 }); 

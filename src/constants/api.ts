@@ -15,6 +15,7 @@ export const API_ENDPOINTS = {
   FORGOT_PASSWORD_REQUEST: '/cb/auth/forgot-password/request',
   FORGOT_PASSWORD_VERIFY: '/cb/auth/forgot-password/verify',
   PIN_RESET: '/cb/auth/pin-reset',
+  VERIFY_CURRENT_PIN: '/cb/auth/verify-current-pin',
   
   // Verification (routed through /cb/)
   SEND_VERIFICATION: '/cb/verification/send-phone-code',
@@ -23,10 +24,13 @@ export const API_ENDPOINTS = {
   // Users (routed through /cb/)
   GET_PROFILE: '/cb/users/me',
   UPDATE_PROFILE: '/cb/users/me',
+  UPDATE_USER_NAME: '/cb/users/me/profile',
   UPDATE_PUSH_TOKEN: '/cb/users/me/push-token',
   GET_FACE_STATUS: '/cb/users/me/face-status',
   UPDATE_FACE_STATUS: '/cb/users/me/face-status',
   DELETE_FACE_ENROLLMENT: '/cb/users/me/face-enrollment',
+  REQUEST_ACCOUNT_DELETION: '/cb/users/me/deletion-request',
+  CANCEL_ACCOUNT_DELETION: '/cb/users/me/deletion-cancel',
   
   // Face Registration (routed through /cb/)
   REGISTER_FACE: '/cb/face/register',

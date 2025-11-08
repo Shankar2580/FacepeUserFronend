@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { PaymentCard } from '../src/components/ui/PaymentCard';
 import { CardSuccessModal } from '../src/components/ui/CardSuccessModal';
 import { ProcessingAnimation } from '../src/components/ui/ProcessingAnimation';
 import { useAlert } from '../src/components/ui/AlertModal';
+import { useScreenSecurity } from '../src/hooks/useScreenSecurity';
 
 // Define types for card details
 interface CardDetails {
@@ -81,10 +82,17 @@ function AddCardContent() {
   const [showProcessingAnimation, setShowProcessingAnimation] = useState(false);
   const [addedCardDetails, setAddedCardDetails] = useState<{brand?: string; last4?: string} | null>(null);
   const [addedCardIsDefault, setAddedCardIsDefault] = useState<boolean>(false);
+  const [cardInputFocused, setCardInputFocused] = useState(false);
+  
   const { confirmSetupIntent } = useStripe();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { showAlert, AlertComponent } = useAlert();
+
+  // Screen security hook - prevents screenshots when entering card details
+  const { isSecured } = useScreenSecurity({
+    preventScreenshots: cardInputFocused, // Only prevent when card input is focused
+  });
 
   const addDebugInfo = (info: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -119,6 +127,7 @@ function AddCardContent() {
       try {
         setupIntentResult = await apiService.createSetupIntent();
         addDebugInfo(`Setup Intent created successfully: ${setupIntentResult.setup_intent_id}`);
+        addDebugInfo(`Client secret length: ${setupIntentResult.client_secret?.length || 0}`);
       } catch (apiError: any) {
         addDebugInfo(`API Error creating setup intent: ${apiError.message}`);
         // console.error removed for production
@@ -136,6 +145,17 @@ function AddCardContent() {
       if (!client_secret) {
         addDebugInfo('No client_secret received from backend');
         throw new Error('Invalid setup intent response from server');
+      }
+
+      if (!setup_intent_id) {
+        addDebugInfo('No setup_intent_id received from backend');
+        throw new Error('Invalid setup intent ID from server');
+      }
+
+      // Validate setup intent ID format
+      if (!setup_intent_id.startsWith('seti_')) {
+        addDebugInfo(`Invalid setup intent ID format: ${setup_intent_id}`);
+        throw new Error('Invalid setup intent ID format received from server');
       }
 
       // Step 2: Confirm Setup Intent with Stripe (securely collects card data)
@@ -164,6 +184,13 @@ function AddCardContent() {
       // Step 3: Backend confirms Setup Intent and saves payment method
       addDebugInfo(`Step 3: Confirming Setup Intent with backend: ${setup_intent_id}`);
       
+      // Add a longer delay to ensure Stripe has processed the setup intent
+      addDebugInfo('Adding 5-second delay before backend confirmation...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Verify the setup intent status with Stripe before confirming with backend
+      addDebugInfo('Verifying setup intent status before backend confirmation...');
+      
       let confirmResult;
       try {
         confirmResult = await apiService.confirmSetupIntent(setup_intent_id);
@@ -175,6 +202,12 @@ function AddCardContent() {
         if (confirmError.response) {
           addDebugInfo(`Confirm API Response status: ${confirmError.response.status}`);
           addDebugInfo(`Confirm API Response data: ${JSON.stringify(confirmError.response.data)}`);
+        }
+        
+        // If it's a "no such setupintent" error, provide specific guidance
+        if (confirmError.message.includes('no such setupintent') || confirmError.message.includes('seti_')) {
+          addDebugInfo('Setup intent not found - this may be a timing or backend issue');
+          throw new Error('Setup intent not found on Stripe. This could be due to:\n1. Backend/Stripe environment mismatch\n2. Setup intent expired\n3. Network timing issues\n\nPlease wait 30 seconds and try again. If the issue persists, contact support.');
         }
         
         throw new Error(`Failed to confirm setup intent: ${confirmError.message}`);
@@ -299,6 +332,14 @@ function AddCardContent() {
               }}
               style={styles.cardFieldWrapper}
               onCardChange={updateCardPreview}
+              onFocus={() => {
+                setCardInputFocused(true);
+                addDebugInfo('Card input focused - security enabled');
+              }}
+              onBlur={() => {
+                setCardInputFocused(false);
+                addDebugInfo('Card input blurred - security disabled');
+              }}
             />
             </View>
           </View>
@@ -311,7 +352,17 @@ function AddCardContent() {
             <Ionicons name="shield-checkmark" size={20} color="#10B981" />
             <Text style={styles.securePaymentText}>Your payment info is stored securely.</Text>
           </View>
-          
+
+          {/* Security Status Indicator
+          {cardInputFocused && (
+            <View style={styles.securityStatusContainer}>
+              <Ionicons name="eye-off" size={16} color="#EF4444" />
+              <Text style={styles.securityStatusText}>
+                Screenshots disabled for your security
+              </Text>
+            </View>
+          )}
+           */}
           <TouchableOpacity
             style={[styles.addButton, (!cardComplete || loading) && styles.disabledButton]}
             onPress={handleAddCard}
@@ -572,6 +623,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     marginLeft: 8,
+  },
+  securityStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  securityStatusText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginLeft: 6,
+    fontWeight: '500',
   },
   bottomAction: {
     paddingHorizontal: 24,

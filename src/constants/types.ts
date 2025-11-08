@@ -6,9 +6,13 @@ export interface User {
   email?: string;
   is_verified?: boolean;
   has_face_registered: boolean;
+  face_active?: boolean;  // Backend also returns this field
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  pending_deletion?: boolean;
+  deletion_requested_at?: string;
+  scheduled_deletion_at?: string;
 }
 
 export interface PaymentMethod {
@@ -37,6 +41,12 @@ export interface Transaction {
   description?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface TransactionListResponse {
+  transactions: Transaction[];
+  next_cursor?: string;
+  has_more: boolean;
 }
 
 export interface TransactionDetail {

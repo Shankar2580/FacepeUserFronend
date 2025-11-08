@@ -47,7 +47,7 @@ export default function TransactionDetailScreen() {
       setTransaction(data);
     } catch (error) {
       // console.error removed for production
-      showAlert('Error', 'Failed to load transaction details', undefined, 'error');
+      showAlert('Error', 'Failed to load transaction details', undefined, 'warning');
     } finally {
       setLoading(false);
     }
@@ -90,13 +90,13 @@ export default function TransactionDetailScreen() {
 
   const handleSetupAutoPay = async () => {
     if (!transaction || !selectedPaymentMethod || !autoPayLimit) {
-      showAlert('Error', 'Please fill in all fields', undefined, 'error');
+      showAlert('Error', 'Please fill in all fields', undefined, 'warning');
       return;
     }
 
     const limitAmount = parseFloat(autoPayLimit);
     if (isNaN(limitAmount) || limitAmount <= 0) {
-      showAlert('Error', 'Please enter a valid limit amount', undefined, 'error');
+      showAlert('Error', 'Please enter a valid limit amount', undefined, 'warning');
       return;
     }
 
@@ -124,7 +124,7 @@ export default function TransactionDetailScreen() {
       setAutoPayLimit('');
     } catch (error) {
       // console.error removed for production
-      showAlert('Error', 'Failed to set up auto-pay', undefined, 'error');
+      showAlert('Error', 'Failed to set up auto-pay', undefined, 'warning');
     } finally {
       setSettingUpAutoPay(false);
     }

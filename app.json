@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Facepe",
+    "name": "FacePe",
     "slug": "facepe",
     "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
-    "scheme": "facepe",
+    "scheme": "FacePe",
     "userInterfaceStyle": "light",
     "updates": {
       "enabled": false,
@@ -71,8 +71,8 @@
       "router": {},
       "API_BASE_URL": "https://api.dev.facepe.ai",
       "FACE_API_BASE_URL": "https://api.dev.facepe.ai",
-      "STRIPE_PUBLISHABLE_KEY": "pk_test_51RV2FNPSTCb7l9BW9VZanPBOOHxbtKkhrxp2iJNQhRa49RpBCKhkKdKTpU65LfG6yDyPad3IxsaCUwxwX5OI87W500aAed39G4",
-      "STRIPE_MERCHANT_DISPLAY_NAME": "PayByFaeAi",
+      "STRIPE_PUBLISHABLE_KEY": "pk_test_51RttPNRCzaG7EU7RcsEo6VYhoA5BCKB5LGVGHlNIeGLSQ6XZlP7OlOaaWpibnvSqJbO3DwBAjS4JiKQ26mnadMyd00J0j0FtGh",
+      "STRIPE_MERCHANT_DISPLAY_NAME": "FacePe",
       "STRIPE_COUNTRY_CODE": "US",
       "STRIPE_CURRENCY": "usd",
       "APP_ENV": "development",
@@ -84,6 +84,7 @@
       "eas": {
         "projectId": "527eaa60-4742-4cca-800a-b61d4e7d0f70"
       }
-    }
+    },
+    "owner": "facepeai"
   }
 }

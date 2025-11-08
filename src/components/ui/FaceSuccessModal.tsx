@@ -165,7 +165,7 @@ export const FaceSuccessModal: React.FC<FaceSuccessModalProps> = ({
                   <Text style={styles.featureText}>Instant payment authentication</Text>
                 </View>
                 <View style={styles.feature}>
-                  <Ionicons name="finger-print" size={20} color="rgba(255,255,255,0.9)" />
+                  <Ionicons name="lock-closed" size={20} color="rgba(255,255,255,0.9)" />
                   <Text style={styles.featureText}>Bank-grade security enabled</Text>
                 </View>
                 <View style={styles.feature}>

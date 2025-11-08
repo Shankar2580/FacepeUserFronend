@@ -127,15 +127,17 @@ export default function ForgotPasswordScreen() {
     setIsLoading(true);
     try {
       await apiService.requestPasswordReset(fullPhoneNumber);
+      setIsLoading(false);
       setStep('verification');
       startCountdown();
     } catch (error: any) {
+      setIsLoading(false); // Hide processing animation before showing error
       // Only show alert if screen is still focused
       if (isScreenFocused.current) {
-        showAlert('Error', error.response?.data?.detail || 'Failed to send verification code', undefined, 'error');
+        setTimeout(() => {
+          showAlert('Error', error.response?.data?.detail || 'Failed to send verification code', undefined, 'error');
+        }, 100);
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -172,6 +174,7 @@ export default function ForgotPasswordScreen() {
         }
       });
       
+      setIsLoading(false);
       showAlert(
         'Success', 
         'Your password has been reset successfully. Please login with your new password.',
@@ -184,9 +187,10 @@ export default function ForgotPasswordScreen() {
         'success'
       );
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.detail || 'Failed to reset password', undefined, 'error');
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Hide processing animation before showing error
+      setTimeout(() => {
+        showAlert('Error', error.response?.data?.detail || 'Failed to reset password', undefined, 'error');
+      }, 100);
     }
   };
 

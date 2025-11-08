@@ -5,11 +5,11 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,7 +45,7 @@ export default function ChangePasswordScreen() {
 
   const sendVerificationCode = async () => {
     if (!user?.phone_number) {
-      showAlert('Error', 'Phone number not found', undefined, 'error');
+      showAlert('Error', 'Phone number not found', undefined, 'warning');
       return;
     }
 
@@ -57,7 +57,7 @@ export default function ChangePasswordScreen() {
       await apiService.requestPasswordReset(user.phone_number);
       setCountdown(60);
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'error');
+      showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'warning');
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +65,7 @@ export default function ChangePasswordScreen() {
 
   const handleVerifyCode = async () => {
     if (!verificationCode || verificationCode.length !== 6) {
-      showAlert('Error', 'Please enter the 6-digit verification code', undefined, 'error');
+      showAlert('Error', 'Please enter the 6-digit verification code', undefined, 'warning');
       return;
     }
 
@@ -75,12 +75,12 @@ export default function ChangePasswordScreen() {
 
   const handleChangePassword = async () => {
     if (!newPassword || newPassword.length < 8) {
-      showAlert('Error', 'Password must be at least 8 characters long', undefined, 'error');
+      showAlert('Error', 'Password must be at least 8 characters long', undefined, 'warning');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      showAlert('Error', 'Passwords do not match', undefined, 'error');
+      showAlert('Error', 'Passwords do not match', undefined, 'warning');
       return;
     }
 
@@ -96,12 +96,12 @@ export default function ChangePasswordScreen() {
       
       showAlert('Success', 'Password changed successfully', [
         {
-          text: 'OK',
+          text: 'Done',
           onPress: () => router.back()
         }
       ], 'success');
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Failed to change password', undefined, 'error');
+      showAlert('Error', error.response?.data?.message || 'Failed to change password', undefined, 'warning');
     } finally {
       setIsLoading(false);
     }

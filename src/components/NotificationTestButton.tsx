@@ -48,7 +48,7 @@ export default function NotificationTestButton() {
       showAlert('Success', 'Test notifications sent! Check your notification panel.', undefined, 'success');
     } catch (error) {
       // console.error removed for production
-      showAlert('Error', 'Failed to send test notifications', undefined, 'error');
+      showAlert('Error', 'Failed to send test notifications', undefined, 'warning');
     }
   };
 

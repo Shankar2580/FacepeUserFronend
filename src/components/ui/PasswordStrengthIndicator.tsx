@@ -135,8 +135,8 @@ export const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps>
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: 12,
+    marginBottom: 8,
   },
   progressContainer: {
     flexDirection: 'row',
@@ -145,23 +145,28 @@ const styles = StyleSheet.create({
   },
   progressBackground: {
     flex: 1,
-    height: 6,
+    height: 8,
     backgroundColor: '#E5E7EB',
-    borderRadius: 3,
+    borderRadius: 4,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   progressBar: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 4,
   },
   progressGradient: {
     flex: 1,
-    borderRadius: 3,
+    borderRadius: 4,
   },
   strengthText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
     minWidth: 80,
     textAlign: 'right',
   },
-}); 
+});

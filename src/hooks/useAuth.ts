@@ -105,6 +105,9 @@ export const useAuthProvider = () => {
       // console.log removed for production
       setUser(response.user);
       // console.log removed for production
+    } catch (error: any) {
+      // Re-throw the error so it can be caught by the login screen
+      throw error;
     } finally {
       setIsLoading(false);
       // console.log removed for production

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -33,38 +33,41 @@ export const AlertModal: React.FC<AlertModalProps> = ({
   visible,
   title,
   message,
-  buttons = [{ text: 'OK', style: 'default' }],
+  buttons = [{ text: 'OK', style: 'default' as const }],
   type = 'info',
   onDismiss,
 }) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const iconAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
-      Animated.sequence([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
+      Animated.stagger(100, [
         Animated.spring(scaleAnim, {
           toValue: 1,
-          tension: 100,
-          friction: 8,
+          tension: 40,
+          friction: 5,
           useNativeDriver: true,
         }),
-        Animated.timing(bounceAnim, {
+        Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 300,
           useNativeDriver: true,
         }),
       ]).start();
+
+      // Icon animation
+      Animated.spring(iconAnim, {
+        toValue: 1,
+        tension: 20,
+        friction: 3,
+        useNativeDriver: true,
+      }).start();
     } else {
       scaleAnim.setValue(0);
       fadeAnim.setValue(0);
-      bounceAnim.setValue(0);
+      iconAnim.setValue(0);
     }
   }, [visible]);
 
@@ -72,35 +75,23 @@ export const AlertModal: React.FC<AlertModalProps> = ({
     switch (type) {
       case 'success':
         return {
-          icon: 'checkmark-circle',
-          iconColor: '#10B981',
+          icon: 'checkmark-circle-outline',
           gradientColors: ['#10B981', '#059669'],
-          backgroundColor: '#F0FDF4',
-          borderColor: '#BBF7D0',
         };
       case 'warning':
         return {
-          icon: 'warning',
-          iconColor: '#F59E0B',
-          gradientColors: ['#F59E0B', '#D97706'],
-          backgroundColor: '#FFFBEB',
-          borderColor: '#FED7AA',
+          icon: 'warning-outline',
+          gradientColors: ['#6B46C1', '#8B5CF6'],
         };
       case 'error':
         return {
-          icon: 'close-circle',
-          iconColor: '#EF4444',
-          gradientColors: ['#EF4444', '#DC2626'],
-          backgroundColor: '#FEF2F2',
-          borderColor: '#FECACA',
+          icon: 'close-circle-outline',
+          gradientColors: ['#FF4D4D', '#CC0000'],
         };
       default:
         return {
-          icon: 'information-circle',
-          iconColor: '#6366F1',
-          gradientColors: ['#6366F1', '#8B5CF6'],
-          backgroundColor: '#F8FAFC',
-          borderColor: '#E2E8F0',
+          icon: 'information-circle-outline',
+          gradientColors: ['#6B46C1', '#9333EA'],
         };
     }
   };
@@ -116,26 +107,15 @@ export const AlertModal: React.FC<AlertModalProps> = ({
     }
   };
 
-  const getButtonStyle = (buttonStyle: string) => {
-    switch (buttonStyle) {
-      case 'destructive':
-        return {
-          backgroundColor: '#EF4444',
-          textColor: '#FFFFFF',
-        };
-      case 'cancel':
-        return {
-          backgroundColor: 'transparent',
-          textColor: '#6B7280',
-          borderColor: '#E5E7EB',
-        };
-      default:
-        return {
-          backgroundColor: config.gradientColors[0],
-          textColor: '#FFFFFF',
-        };
-    }
-  };
+  const iconContainerScale = iconAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.5, 1],
+  });
+
+  const iconContainerRotate = iconAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['-180deg', '0deg'],
+  });
 
   return (
     <Modal
@@ -145,80 +125,65 @@ export const AlertModal: React.FC<AlertModalProps> = ({
       statusBarTranslucent
       onRequestClose={onDismiss}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="rgba(0,0,0,0.3)" translucent />
-      <Animated.View 
-        style={[
-          styles.overlay,
-          { opacity: fadeAnim }
-        ]}
-      >
-        <Animated.View 
-          style={[
-            styles.modalContainer,
-            {
-              transform: [
-                { scale: scaleAnim },
-                { 
-                  translateY: bounceAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [20, 0],
-                  })
-                }
-              ],
-            }
-          ]}
-        >
-          <View style={[styles.modal, { backgroundColor: config.backgroundColor, borderColor: config.borderColor }]}>
-            {/* Icon Header */}
-            <View style={styles.iconContainer}>
-              <LinearGradient
-                colors={config.gradientColors as [string, string]}
-                style={styles.iconGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name={config.icon as any} size={32} color="white" />
-              </LinearGradient>
-            </View>
+      <StatusBar barStyle="light-content" backgroundColor="rgba(0,0,0,0.5)" translucent />
+      <View style={styles.overlay}>
+        <Animated.View style={[styles.modalContainer, { transform: [{ scale: scaleAnim }] }]}>
+          <LinearGradient
+            colors={config.gradientColors}
+            style={styles.modalContent}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Animated.View
+              style={[
+                styles.iconWrapper,
+                {
+                  transform: [
+                    { scale: iconContainerScale },
+                    { rotate: iconContainerRotate },
+                  ],
+                },
+              ]}
+            >
+              <Ionicons name={config.icon as any} size={48} color="white" />
+            </Animated.View>
 
-            {/* Content */}
-            <View style={styles.content}>
+            <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
               <Text style={styles.title}>{title}</Text>
               <Text style={styles.message}>{message}</Text>
-            </View>
+            </Animated.View>
 
-            {/* Buttons */}
-            <View style={styles.buttonContainer}>
+            <Animated.View style={[styles.buttonContainer, { opacity: fadeAnim }]}>
               {buttons.map((button, index) => {
-                const buttonStyle = getButtonStyle(button.style || 'default');
-                const isLast = index === buttons.length - 1;
+                const isPrimary = button.style === 'default' || button.style === 'destructive';
                 const isCancel = button.style === 'cancel';
-                
+
                 return (
                   <TouchableOpacity
                     key={index}
                     style={[
                       styles.button,
-                      {
-                        backgroundColor: buttonStyle.backgroundColor,
-                        borderColor: buttonStyle.borderColor,
-                        borderWidth: isCancel ? 1 : 0,
-                        marginLeft: index > 0 ? 12 : 0,
-                        flex: 1,
-                      }
+                      isPrimary ? styles.primaryButton : styles.secondaryButton,
+                      button.style === 'destructive' && styles.destructiveButton,
+                      buttons.length > 1 && { flex: 1 },
                     ]}
                     onPress={() => handleButtonPress(button)}
                   >
-                    <Text style={[styles.buttonText, { color: buttonStyle.textColor }]}>
+                    <Text
+                      style={[
+                        styles.buttonText,
+                        isPrimary ? styles.primaryButtonText : styles.secondaryButtonText,
+                      ]}
+                    >
                       {button.text}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
-            </View>
-          </View>
+            </Animated.View>
+          </LinearGradient>
         </Animated.View>
-      </Animated.View>
+      </View>
     </Modal>
   );
 };
@@ -226,53 +191,50 @@ export const AlertModal: React.FC<AlertModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
   modalContainer: {
-    width: width * 0.85,
-    maxWidth: 400,
+    width: '100%',
+    maxWidth: 380,
   },
-  modal: {
-    borderRadius: 20,
+  modalContent: {
+    borderRadius: 24,
     padding: 24,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.25,
     shadowRadius: 20,
     elevation: 10,
-    borderWidth: 1,
   },
-  iconContainer: {
-    marginBottom: 16,
-  },
-  iconGradient: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  iconWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   content: {
     alignItems: 'center',
     marginBottom: 24,
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#1F2937',
+    color: 'white',
     textAlign: 'center',
     marginBottom: 8,
   },
   message: {
     fontSize: 16,
-    color: '#6B7280',
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -280,18 +242,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
     gap: 12,
+    alignItems: 'stretch', // Stretch items to have the same height
+    justifyContent: 'center',
   },
   button: {
-    paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    paddingVertical: 16, // Add back vertical padding
+    borderRadius: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
+    justifyContent: 'center', // Center content
+    minWidth: 100,
+  },
+  primaryButton: {
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  secondaryButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  destructiveButton: {
+    backgroundColor: '#CC0000',
   },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  primaryButtonText: {
+    color: '#333',
+  },
+  secondaryButtonText: {
+    color: 'white',
   },
 });
 

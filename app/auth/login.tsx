@@ -31,9 +31,6 @@ export default function LoginScreen() {
   
   const router = useRouter();
   const { login } = useAuth();
-  const colorScheme = 'light'; // Using light theme by default
-  const theme = Colors[colorScheme];
-  const { showAlert, AlertComponent } = useAlert();
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,7 +44,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!identifier || !password) {
-      showAlert('Error', 'Please enter your mobile number/email and password', undefined, 'error');
+      Alert.alert('Error', 'Please enter your mobile number/email and password');
       return;
     }
 
@@ -70,7 +67,7 @@ export default function LoginScreen() {
     const isPhone = validatePhoneNumber(processedIdentifier);
 
     if (!isEmail && !isPhone) {
-      showAlert('Error', 'Please enter a valid mobile number or email address', undefined, 'error');
+      Alert.alert('Error', 'Please enter a valid mobile number or email address');
       return;
     }
 
@@ -82,149 +79,143 @@ export default function LoginScreen() {
         password 
       };
       
-      // console.log removed for production
       await login(loginData);
-      // console.log removed for production
-      
+      setIsLoading(false);
       router.replace('/(tabs)');
     } catch (error: any) {
-      // console.error removed for production
-      showAlert('Login Failed', error.response?.data?.message || 'Please check your credentials and try again', undefined, 'error');
-    } finally {
       setIsLoading(false);
+      const errMsg = error.response?.data?.message || error.message || 'Please check your credentials and try again';
+      Alert.alert('Login Failed', errMsg, [{ text: 'OK' }]);
     }
   };
 
-  // Show processing animation during login
-  if (isLoading) {
-    return (
-      <ProcessingAnimation
-        visible={isLoading}
-        type="generic"
-        title="Signing In"
-        subtitle="Please wait while we authenticate your account"
-      />
-    );
-  }
-
-
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-      {/* keeps text below the notch on both OSes */}
-      <StatusBar style="dark" translucent={false} />
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 32} // tweak if needed
-        style={{ flex: 1 }}
-      >
-        {/* makes long forms scroll past the keyboard */}
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: 24 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.content}>
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>Sign in to your account</Text>
-              
-              <View style={styles.tabContainer}>
-                <TouchableOpacity style={[styles.tab, styles.activeTab]}>
-                  <Text style={[styles.tabText, styles.activeTabText]}>Login</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.tab}
-                  onPress={() => router.push('/auth/register')}
-                >
-                  <Text style={styles.tabText}>Signup</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Form */}
-            <View style={styles.form}>
-              <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Mobile Number or Email"
-                  placeholderTextColor="#999"
-                  value={identifier}
-                  onChangeText={setIdentifier}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  placeholderTextColor="#999"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity 
-                  style={styles.eyeButton}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <Ionicons 
-                    name={showPassword ? 'eye-off' : 'eye'} 
-                    size={20} 
-                    color="#999" 
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity 
-                style={styles.forgotPasswordButton}
-                onPress={() => router.push('/auth/forgot-password')}
-              >
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.loginButton, isLoading && styles.disabledButton]}
-                onPress={handleLogin}
-                disabled={isLoading}
-              >
-                <LinearGradient
-                  colors={['#6B46C1', '#9333EA']}
-                  style={styles.loginButtonGradient}
-                >
-                  <Text style={styles.loginButtonText}>
-                    {isLoading ? 'Signing In...' : 'Sign In'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-
-            </View>
-
-            {/* Footer */}
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>
-                Don't have an account?{' '}
-                <Text 
-                  style={styles.footerLink}
-                  onPress={() => router.push('/auth/register')}
-                >
-                  Sign Up
-                </Text>
-              </Text>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+    <>
+      {/* Processing animation overlay - always rendered */}
+      {isLoading && (
+        <ProcessingAnimation
+          visible={isLoading}
+          type="generic"
+          title="Signing In"
+          subtitle="Please wait while we authenticate your account"
+        />
+      )}
       
-      {/* Alert Component */}
-      <AlertComponent />
-    </SafeAreaView>
+      {/* Main content */}
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        {/* keeps text below the notch on both OSes */}
+        <StatusBar style="dark" translucent={false} />
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 32} // tweak if needed
+          style={{ flex: 1 }}
+        >
+          {/* makes long forms scroll past the keyboard */}
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: 24 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.content}>
+              {/* Header */}
+              <View style={styles.header}>
+                <Text style={styles.title}>Welcome Back</Text>
+                <Text style={styles.subtitle}>Sign in to your account</Text>
+                
+                <View style={styles.tabContainer}>
+                  <TouchableOpacity style={[styles.tab, styles.activeTab]}>
+                    <Text style={[styles.tabText, styles.activeTabText]}>Login</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.tab}
+                    onPress={() => router.push('/auth/register')}
+                  >
+                    <Text style={styles.tabText}>Signup</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Form */}
+              <View style={styles.form}>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Mobile Number or Email"
+                    placeholderTextColor="#999"
+                    value={identifier}
+                    onChangeText={setIdentifier}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    placeholderTextColor="#999"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons 
+                      name={showPassword ? 'eye-off' : 'eye'} 
+                      size={20} 
+                      color="#999" 
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.forgotPasswordButton}
+                  onPress={() => router.push('/auth/forgot-password')}
+                >
+                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.loginButton, isLoading && styles.disabledButton]}
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                >
+                  <LinearGradient
+                    colors={['#6B46C1', '#9333EA']}
+                    style={styles.loginButtonGradient}
+                  >
+                    <Text style={styles.loginButtonText}>
+                      {isLoading ? 'Signing In...' : 'Sign In'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+
+              </View>
+
+              {/* Footer */}
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>
+                  Don't have an account?{' '}
+                  <Text 
+                    style={styles.footerLink}
+                    onPress={() => router.push('/auth/register')}
+                  >
+                    Sign Up
+                  </Text>
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </>
   );
 }
 

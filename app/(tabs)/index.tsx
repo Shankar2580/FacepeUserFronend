@@ -42,19 +42,13 @@ export default function HomeScreen() {
       const defaultPaymentMethod = paymentMethods.find(pm => pm.is_default);
       setDefaultCard(defaultPaymentMethod || null);
       
-      // Load transactions and calculate summary
-      const transactions = await apiService.getTransactions();
-      
-      // Filter for today's transactions only
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      const todaysTransactions = transactions.filter(t => {
-        const transactionDate = new Date(t.created_at);
-        return transactionDate >= today && transactionDate < tomorrow && t.status === 'completed';
+      // Load transactions and calculate summary - use time_filter for today
+      const transactionsResponse = await apiService.getTransactions({ 
+        time_filter: 'daily',
+        status_filter: 'completed'
       });
+      
+      const todaysTransactions = transactionsResponse.transactions;
       
       const total = todaysTransactions.reduce((sum, t) => sum + t.amount, 0) / 100; // Convert cents to dollars
       setTotalEarnings(total);
@@ -255,6 +249,59 @@ export default function HomeScreen() {
           }
           showsVerticalScrollIndicator={false}
         >
+          {/* Payment Requests - Top Priority */}
+          {paymentRequests.length > 0 && (
+            <View style={styles.paymentRequestsTop}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitleTop}>⚡ Payment Requests</Text>
+                <TouchableOpacity onPress={() => router.push('/(tabs)/history')}>
+                  <Text style={styles.viewAllText}>View All</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.transactionList}>
+                {paymentRequests.slice(0, 2).map((request) => (
+                  <View key={request.id} style={styles.urgentTransactionItem}>
+                    <View style={styles.transactionTopRow}>
+                      <View style={styles.transactionLeft}>
+                        <View style={styles.urgentTransactionIcon}>
+                          <Text style={styles.transactionEmoji}>
+                            {getMerchantIcon(getDisplayName(request))}
+                          </Text>
+                        </View>
+                        <View style={styles.transactionInfo}>
+                          <Text style={styles.urgentTransactionMerchant}>
+                            {getDisplayName(request)}
+                          </Text>
+                          <Text style={styles.urgentTransactionDate}>
+                            {formatDate(request.created_at)} • {getTimeRemaining(request.expires_at)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.urgentRequestAmount}>
+                        {formatAmount(request.amount)}
+                      </Text>
+                    </View>
+                    <View style={styles.requestActions}>
+                      <TouchableOpacity 
+                        style={[styles.declineButton, styles.requestButton]}
+                        onPress={() => handleDeclinePayment(request.id)}
+                      >
+                        <Text style={styles.declineButtonText}>Decline</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[styles.approveButton, styles.requestButtonPrimary]}
+                        onPress={() => handleApprovePayment(request.id)}
+                      >
+                        <Text style={styles.approveButtonText}>Approve</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
           {/* Face Registration Prompt */}
           {user && !user.has_face_registered && (
           <TouchableOpacity 
@@ -693,5 +740,64 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     textAlign: 'center',
     fontWeight: '500',
+  },
+  paymentRequestsTop: {
+    marginHorizontal: 24,
+    marginBottom: 20,
+    backgroundColor: '#FEF3F2',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#FEE2E2',
+    padding: 16,
+  },
+  sectionTitleTop: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#DC2626',
+    marginBottom: 4,
+  },
+  urgentTransactionItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    shadowColor: '#DC2626',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  urgentTransactionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FEF3F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#FEE2E2',
+  },
+  urgentTransactionMerchant: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  urgentTransactionDate: {
+    fontSize: 14,
+    color: '#DC2626',
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  urgentRequestAmount: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#DC2626',
+    marginBottom: 0,
   },
 });

@@ -7,6 +7,8 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthContext, useAuthProvider } from '../src/hooks/useAuth';
+import { AuthProvider as DeviceLockAuthProvider } from '../src/contexts/AuthContext';
+import DeviceLockWrapper from '../src/components/DeviceLockWrapper';
 import Toast from 'react-native-toast-message';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { STRIPE_CONFIG } from '../src/constants/Stripe';
@@ -123,18 +125,24 @@ export default function RootLayout() {
         merchantIdentifier={STRIPE_CONFIG.MERCHANT_DISPLAY_NAME}
       >
         <AuthContext.Provider value={authProps}>
-          <ThemeProvider value={DefaultTheme}>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="auth" />
-              <Stack.Screen name="add-card" />
-              <Stack.Screen name="change-password" />
-              <Stack.Screen name="transaction-detail" />
-              <Stack.Screen name="+not-found" />
-            </Stack>
-            <StatusBar style="dark" translucent={false} backgroundColor="#FFFFFF" />
-            <Toast />
-          </ThemeProvider>
+          <DeviceLockAuthProvider>
+            <ThemeProvider value={DefaultTheme}>
+              <DeviceLockWrapper>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="auth" />
+                  <Stack.Screen name="auth-screen" />
+                  <Stack.Screen name="security-settings" />
+                  <Stack.Screen name="add-card" />
+                  <Stack.Screen name="change-password" />
+                  <Stack.Screen name="transaction-detail" />
+                  <Stack.Screen name="+not-found" />
+                </Stack>
+              </DeviceLockWrapper>
+              <StatusBar style="dark" translucent={false} backgroundColor="#FFFFFF" />
+              <Toast />
+            </ThemeProvider>
+          </DeviceLockAuthProvider>
         </AuthContext.Provider>
       </StripeProvider>
     </SafeAreaProvider>
