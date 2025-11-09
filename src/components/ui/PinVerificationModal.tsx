@@ -108,7 +108,7 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
         }
       }
     } catch (error) {
-      console.error('Error loading lock state:', error);
+
     }
   };
 
@@ -116,7 +116,7 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
     try {
       await AsyncStorage.setItem('pin_lock_state', JSON.stringify(state));
     } catch (error) {
-      console.error('Error saving lock state:', error);
+
     }
   };
 
@@ -134,7 +134,7 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
     try {
       await AsyncStorage.removeItem('pin_lock_state');
     } catch (error) {
-      console.error('Error clearing lock state:', error);
+
     }
   };
 
@@ -187,17 +187,11 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
 
   const handleVerifyPin = async () => {
     const timestamp = new Date().toISOString();
-    console.log(`🔐 [${timestamp}] PIN Verification Started`);
-    console.log(`📍 [${timestamp}] PIN length: ${pin.length}`);
-    console.log(`📍 [${timestamp}] isVerifying: ${isVerifying}`);
-    console.log(`📍 [${timestamp}] isProcessing (ref): ${isProcessingRef.current}`);
-    console.log(`📍 [${timestamp}] isLocked: ${isLocked}`);
-    console.log(`📍 [${timestamp}] Current failed attempts: ${failedAttempts}`);
-    
+
     // Prevent double calls with both state and ref
     if (pin.length !== 4 || isVerifying || isLocked || isProcessingRef.current) {
-      console.log(`❌ [${timestamp}] BLOCKED - Validation failed, returning early`);
-      console.log(`   Reasons: pin=${pin.length !== 4}, verifying=${isVerifying}, locked=${isLocked}, processing=${isProcessingRef.current}`);
+
+
       return;
     }
 
@@ -205,11 +199,11 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
     const now = Date.now();
     const timeSinceLastCall = now - lastCallTimeRef.current;
     if (lastPinSubmittedRef.current === pin && timeSinceLastCall < 2000) {
-      console.log(`⚠️ [${timestamp}] DUPLICATE DETECTED! Same PIN submitted ${timeSinceLastCall}ms ago - BLOCKING`);
+
       return;
     }
     
-    console.log(`✅ [${timestamp}] PROCEEDING with API call`);
+
     lastPinSubmittedRef.current = pin;
     lastCallTimeRef.current = now;
     isProcessingRef.current = true; // Set ref immediately
@@ -219,44 +213,37 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
 
     try {
       const callTimestamp = new Date().toISOString();
-      console.log(`📡 [${callTimestamp}] ===== CALLING apiService.verifyCurrentPin =====`);
-      console.log(`📡 [${callTimestamp}] Sending PIN: ${pin}`);
+
+
       
       const response = await apiService.verifyCurrentPin(pin);
       
       const responseTimestamp = new Date().toISOString();
-      console.log(`✅ [${responseTimestamp}] ===== API RESPONSE RECEIVED =====`);
-      console.log(`✅ [${responseTimestamp}] Response:`, response);
+
+
 
       if (response.success) {
         // Success - store verified PIN and reset all counters
-        console.log('✅ PIN Verified Successfully!');
+
         
         try {
           await AsyncStorage.setItem('verified_pin', pin);
-          console.log('✅ PIN stored in AsyncStorage');
+
           
           await clearLockoutState();
-          console.log('✅ Lockout state cleared');
+
           
           setPin('');
-          console.log('✅ PIN input cleared');
-          console.log('✅ Calling onSuccess() callback...');
-          
+
           onSuccess();
-          console.log('✅ onSuccess() completed!');
+
         } catch (successError: any) {
-          console.error('❌ Error in success handler:', successError);
+
           throw successError; // Re-throw to be caught by outer catch
         }
       }
     } catch (error: any) {
-      console.error('❌ PIN Verification Error:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        fullError: error,
-      });
+
       // Handle different error scenarios
       const status = error.response?.status;
       const data = error.response?.data;
@@ -268,12 +255,12 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
         
         if (lockedUntilValue) {
           // Lockout just triggered
-          console.log('🔒 Lockout triggered, locked_until:', lockedUntilValue);
+
           const lockUntil = new Date(lockedUntilValue);
           
           // Validate the date
           if (isNaN(lockUntil.getTime())) {
-            console.error('⚠️ Invalid locked_until from backend:', data.locked_until);
+
             setErrorMessage('Invalid lockout time received from server. Please try again.');
             setPin('');
             return;
@@ -315,10 +302,10 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
         // Already locked
         // Backend now sends locked_until nested in message object
         const lockedUntilValue = data?.locked_until || data?.message?.locked_until;
-        console.log('🔒 Account already locked, locked_until:', lockedUntilValue);
+
         
         if (!lockedUntilValue) {
-          console.error('⚠️ No locked_until provided by backend for 423 response');
+
           setErrorMessage('Account is locked but server did not provide unlock time.');
           setPin('');
           return;
@@ -328,7 +315,7 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
         
         // Validate the date
         if (isNaN(lockUntil.getTime())) {
-          console.error('⚠️ Invalid locked_until from backend:', data.locked_until);
+
           setErrorMessage('Invalid lockout time received from server. Please try again.');
           setPin('');
           return;
@@ -357,7 +344,7 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
       } else if (status === 500) {
         // Backend server error
         setErrorMessage('Server error occurred. Please try again later or contact support.');
-        console.error('⚠️ Backend 500 error - tell backend developer to check server logs');
+
         triggerShakeAnimation();
         setPin('');
       } else {
@@ -368,12 +355,12 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
       }
     } finally {
       const finalTimestamp = new Date().toISOString();
-      console.log(`🏁 [${finalTimestamp}] ===== FINALLY BLOCK - Resetting flags =====`);
+
       setIsVerifying(false);
       isProcessingRef.current = false; // Reset ref
       // Note: We keep lastPinSubmittedRef and lastCallTimeRef for duplicate detection
-      console.log(`🏁 [${finalTimestamp}] Flags reset complete`);
-      console.log(`🏁 [${finalTimestamp}] Last submitted PIN still tracked for 2s duplicate prevention`);
+
+
     }
   };
 
@@ -389,7 +376,7 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
       try {
         // Validate date before calling toISOString
         if (isNaN(lockedUntil.getTime())) {
-          console.error('⚠️ Invalid lockedUntil date:', lockedUntil);
+
           return '#EF4444'; // Default to red for invalid dates
         }
         const durationMinutes = getLockoutDuration(lockedUntil.toISOString());
@@ -397,7 +384,7 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
         if (durationMinutes <= 70) return '#EF4444'; // Red for 1 hour lock
         return '#DC2626'; // Dark red for 24 hour lock
       } catch (error) {
-        console.error('⚠️ Error in getSeverityColor:', error);
+
         return '#EF4444'; // Default to red on error
       }
     }

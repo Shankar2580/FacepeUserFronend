@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }) => {
       // User must authenticate - never automatically authenticated
       setIsAuthenticated(false);
     } catch (error) {
-      console.error('Error checking app lock status:', error);
+
       // Even on error, require authentication
       setAppLockEnabled(true);
       setIsAuthenticated(false);
@@ -96,7 +96,7 @@ export const AuthProvider = ({ children }) => {
         };
       }
     } catch (error) {
-      console.error('Authentication error:', error);
+
       return { 
         success: false, 
         error: error.message || 'Authentication failed' 

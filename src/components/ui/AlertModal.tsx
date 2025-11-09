@@ -86,7 +86,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
       case 'error':
         return {
           icon: 'close-circle-outline',
-          gradientColors: ['#FF4D4D', '#CC0000'],
+          gradientColors: ['#6B46C1', '#8B5CF6'],
         };
       default:
         return {

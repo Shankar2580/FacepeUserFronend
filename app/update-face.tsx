@@ -126,13 +126,7 @@ export default function UpdateFaceScreen() {
   };
 
   const handleFaceUpdate = async (imageUri: string) => {
-    console.log('🎬 Starting Face Update Process...');
-    console.log('👤 User ID:', userId);
-    console.log('📛 User Name:', userName);
-    console.log('🖼️ Image URI:', imageUri?.substring(0, 50));
-    
     if (!userId || !userName.trim()) {
-      console.error('❌ Missing user information');
       showAlert('Error', 'User information is missing', undefined, 'warning');
       return;
     }
@@ -140,74 +134,41 @@ export default function UpdateFaceScreen() {
     // Verify PIN was confirmed (for user security)
     // Backend uses JWT token for authentication, not PIN
     const storedPin = await AsyncStorage.getItem('verified_pin');
-    console.log('🔑 Retrieved PIN from storage, length:', storedPin?.length);
     
     if (!storedPin || storedPin.length !== 4) {
-      console.error('❌ Invalid PIN in storage');
       showAlert('Error', 'PIN verification required', undefined, 'warning');
       return;
     }
 
-    console.log('✅ All validations passed, calling API...');
     setShowProcessingAnimation(true);
     setIsLoading(true);
     try {
       // Call the external Face Update API
       // Backend requires both JWT token AND PIN for security
-      console.log('📡 Calling updateFace API...');
-      console.log('📤 Sending: userId=' + userId + ', name=' + userName.trim() + ', PIN length=' + storedPin.length);
-      
       const faceApiResponse = await apiService.updateFace(userId, userName.trim(), imageUri, storedPin);
-      
-      console.log('📥 Face API Response received:', faceApiResponse);
-      
-      // console.log removed for production
       
       // Check for embedding_id in the nested data structure
       const embeddingId = faceApiResponse.data?.embedding_id || faceApiResponse.embedding_id;
-      console.log('🆔 Embedding ID:', embeddingId);
       
       if (!embeddingId) {
-        console.error('❌ No embedding ID in response:', faceApiResponse);
         throw new Error('Face update failed - no embedding ID returned');
       }
       
-      // console.log removed for production
-      
       // Update the main backend database with face registration status
-      console.log('💾 Updating user face status...');
       await apiService.updateUserFaceStatus(true);
-      console.log('✅ Face status updated successfully');
       
       // The backend has already updated the user's face status in the database
       // Refresh the user context to get the updated data from the backend
-      console.log('🔄 Refreshing user data...');
       await refreshUser();
-      console.log('✅ User data refreshed');
       
       // Verify the update worked
-      console.log('✅ Verifying update...');
-      const updatedUser = await apiService.getStoredUser();
-      console.log('👤 Updated user has_face_registered:', updatedUser?.has_face_registered);
+      await apiService.getStoredUser();
       
       // Hide processing animation and show success modal
-      console.log('🎉 SUCCESS! Showing success modal');
       setShowProcessingAnimation(false);
       setShowSuccessModal(true);
       
     } catch (error: any) {
-      // Better error serialization
-      console.error('❌ Face Update Error - Full Details:');
-      console.error('Error object:', error);
-      console.error('Error type:', typeof error);
-      console.error('Error constructor:', error?.constructor?.name);
-      console.error('Error message:', error?.message);
-      console.error('Error message type:', typeof error?.message);
-      console.error('Response status:', error.response?.status);
-      console.error('Response data:', JSON.stringify(error.response?.data, null, 2));
-      console.error('Error code:', error?.code);
-      console.error('Error stack:', error?.stack);
-      
       let errorMessage = 'Failed to update face';
       
       // Extract error message properly
@@ -225,7 +186,6 @@ export default function UpdateFaceScreen() {
       };
       
       const rawErrorMessage = getErrorMessage(error);
-      console.log('📤 Extracted error message:', rawErrorMessage);
       
       if (error.code === 'NETWORK_ERROR' || (rawErrorMessage && rawErrorMessage.includes('Network Error'))) {
         errorMessage = 'Network Error: Cannot connect to face update server. Please check your network connection and try again.';
@@ -247,8 +207,6 @@ export default function UpdateFaceScreen() {
       } else {
         errorMessage = rawErrorMessage || 'An unexpected error occurred. Please try again.';
       }
-      
-      console.log('📤 Final error message:', errorMessage);
       
       setShowProcessingAnimation(false);
       showAlert('Update Failed', errorMessage, undefined, 'warning');

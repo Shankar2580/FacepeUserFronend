@@ -32,7 +32,7 @@ class DeviceLockService {
         // but supportedAuthenticationTypesAsync might still return empty array
         // In this case, we assume device lock exists if hardware is available
         if (DEBUG_CONFIG.ENABLE_LOGS) {
-          console.log('Hardware available but not enrolled detected - checking further');
+
         }
         
         // Check if we can at least attempt authentication (this indicates device lock exists)
@@ -44,7 +44,7 @@ class DeviceLockService {
           }
         } catch (levelError) {
           if (DEBUG_CONFIG.ENABLE_LOGS) {
-            console.log('getEnrolledLevelAsync not available or failed:', levelError);
+
           }
           // Fallback: assume device lock exists if hardware is present
           // This is safer for tablets that might have detection issues
@@ -73,13 +73,7 @@ class DeviceLockService {
       }
 
       if (DEBUG_CONFIG.ENABLE_LOGS) {
-        console.log('Security Info:', {
-          hasHardware,
-          isEnrolled,
-          hasDeviceLock,
-          supportedTypes,
-          biometricTypes
-        });
+
       }
 
       return {
@@ -89,7 +83,7 @@ class DeviceLockService {
       };
     } catch (error) {
       if (DEBUG_CONFIG.ENABLE_LOGS) {
-        console.error('Error getting security info:', error);
+
       }
       
       // Return safe defaults
@@ -116,7 +110,7 @@ class DeviceLockService {
       return result.success;
     } catch (error) {
       if (DEBUG_CONFIG.ENABLE_LOGS) {
-        console.error('Authentication error:', error);
+
       }
       return false;
     }
@@ -132,7 +126,7 @@ class DeviceLockService {
       return hasHardware && isEnrolled;
     } catch (error) {
       if (DEBUG_CONFIG.ENABLE_LOGS) {
-        console.error('Error checking biometric availability:', error);
+
       }
       return false;
     }
@@ -183,7 +177,7 @@ class DeviceLockService {
         }
       }
     } catch (error) {
-      console.error('Authentication error:', error);
+
       return { 
         success: false, 
         error: 'Authentication failed. Please try again.' 
@@ -213,7 +207,7 @@ class DeviceLockService {
       return 'low';
     } catch (error) {
       if (DEBUG_CONFIG.ENABLE_LOGS) {
-        console.error('Error getting security level:', error);
+
       }
       return 'none';
     }

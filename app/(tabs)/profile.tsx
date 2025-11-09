@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -143,44 +144,67 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleDeleteFace = () => {
-    showAlert(
-      'Delete Face Data',
-      'Are you sure you want to delete your facial recognition data? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setRefreshing(true);
-              // console.log removed for production
-              
-              // Call the delete face API
-              await apiService.deleteFace();
-              
-              // Update the user's face status in the backend
-              await apiService.updateUserFaceStatus(false);
-              
-              // Refresh user data
-              await refreshUser();
-              
-              showAlert('Success', 'Face data deleted successfully', [{ text: 'Done' }], 'success');
-              
-              // Refresh the profile data
-              await loadData();
-            } catch (error: any) {
-              // console.error removed for production
-              showAlert('Error', error.message || 'Failed to delete face data', undefined, 'error');
-            } finally {
-              setRefreshing(false);
-            }
+  const handleDeleteFace = async () => {
+    try {
+      // Check if biometric authentication is available
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+      if (!hasHardware || !isEnrolled) {
+        showAlert('Error', 'Biometric authentication is not available on this device', undefined, 'error');
+        return;
+      }
+
+      // Authenticate with biometrics
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Authenticate to delete face data',
+        fallbackLabel: 'Use passcode',
+        disableDeviceFallback: false,
+      });
+
+      if (!result.success) {
+        return; // User cancelled or authentication failed
+      }
+
+      // If authentication successful, show confirmation dialog
+      showAlert(
+        'Delete Face Data',
+        'Are you sure you want to delete your facial recognition data? This action cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setRefreshing(true);
+                
+                // Call the delete face API
+                await apiService.deleteFace();
+                
+                // Update the user's face status in the backend
+                await apiService.updateUserFaceStatus(false);
+                
+                // Refresh user data
+                await refreshUser();
+                
+                showAlert('Success', 'Face data deleted successfully', [{ text: 'Done' }], 'success');
+                
+                // Refresh the profile data
+                await loadData();
+              } catch (error: any) {
+                showAlert('Error', error.message || 'Failed to delete face data', undefined, 'error');
+              } finally {
+                setRefreshing(false);
+              }
+            },
           },
-        },
-      ],
-      'warning'
-    );
+        ],
+        'warning'
+      );
+    } catch (error: any) {
+      showAlert('Error', 'Authentication failed. Please try again.', undefined, 'error');
+    }
   };
 
   const handleCheckForUpdates = async () => {

@@ -41,7 +41,7 @@ export default function SecuritySettingsScreen() {
       const info = await DeviceLockService.getSecurityInfo();
       setBiometricInfo(info);
     } catch (error) {
-      console.error('Error loading security settings:', error);
+
     } finally {
       setIsLoading(false);
     }

@@ -47,7 +47,7 @@ export const DEBUG_CONFIG = {
 
 // Validation
 if (APP_CONFIG.IS_PROD && !STRIPE_CONFIG.PUBLISHABLE_KEY.startsWith('pk_live_')) {
-  console.warn('⚠️  Warning: Using test Stripe key in production environment');
+
 }
 
 export default {
