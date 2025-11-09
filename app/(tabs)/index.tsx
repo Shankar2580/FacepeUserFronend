@@ -224,7 +224,6 @@ export default function HomeScreen() {
       >
           <View>
             <Text style={styles.greeting}>Hello, {user?.first_name}</Text>
-            <Text style={styles.subtitle}>Welcome back!</Text>
           </View>
           <TouchableOpacity 
             style={styles.avatarContainer}
@@ -449,8 +448,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 24,
-    paddingBottom: 32,
+    paddingVertical: 16,
+    paddingBottom: 16,
+    minHeight: 80,
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
     marginBottom: 24,

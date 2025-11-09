@@ -273,7 +273,6 @@ export default function HistoryScreen() {
         end={{ x: 1, y: 1 }}
       >
         <Text style={styles.title}>Transaction History</Text>
-        <Text style={styles.subtitle}>View all your payment transactions</Text>
       </LinearGradient>
 
       {/* Filter Button */}
@@ -458,9 +457,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F7FF',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 24,
-    paddingBottom: 32,
+    paddingVertical: 16,
+    paddingBottom: 16,
+    minHeight: 80,
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
     marginBottom: 24,
@@ -477,12 +480,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginTop: 4,
-    opacity: 0.9,
   },
   filterContainer: {
     paddingHorizontal: 24,

@@ -141,7 +141,6 @@ export default function SecuritySettingsScreen() {
           <Text style={styles.title}>Security Settings</Text>
           <View style={{ width: 40 }} />
         </View>
-        <Text style={styles.subtitle}>Manage app security and authentication</Text>
       </LinearGradient>
 
       <ScrollView style={styles.scrollView}>
@@ -254,12 +253,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F7FF',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 20,
-    paddingBottom: 24,
+    paddingVertical: 16,
+    paddingBottom: 16,
+    minHeight: 80,
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
     marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   headerContent: {
     flexDirection: 'row',
@@ -277,12 +288,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    opacity: 0.9,
-    marginTop: 4,
   },
   scrollView: {
     flex: 1,

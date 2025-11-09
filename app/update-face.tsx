@@ -27,6 +27,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { FaceSuccessModal } from '../src/components/ui/FaceSuccessModal';
 import { ProcessingAnimation } from '../src/components/ui/ProcessingAnimation';
 import { useAlert } from '../src/components/ui/AlertModal';
+import { PinVerificationModal } from '../src/components/ui/PinVerificationModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -35,7 +36,7 @@ export default function UpdateFaceScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
   const [userId, setUserId] = useState('');
-  const [showInstructionModal, setShowInstructionModal] = useState(false);
+  const [showInstructionModal, setShowInstructionModal] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [faces, setFaces] = useState<any[]>([]);
   const [hasFace, setHasFace] = useState(false);
@@ -44,8 +45,6 @@ export default function UpdateFaceScreen() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showProcessingAnimation, setShowProcessingAnimation] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
-  const [pin, setPin] = useState('');
-  const [isVerifyingPin, setIsVerifyingPin] = useState(false);
   const cameraRef = useRef<CameraView | null>(null);
   const router = useRouter();
   const { refreshUser } = useAuth();
@@ -109,14 +108,16 @@ export default function UpdateFaceScreen() {
   };
 
   const handleStartUpdate = async () => {
+    // This is now called from instruction modal's "Start Face Registration" button
     // Show PIN modal first
     setShowPinModal(true);
   };
 
-  const handlePinVerified = () => {
-    // After PIN is verified, show instruction modal
+  const handlePinSuccess = () => {
+    // After PIN is verified, close modals and go to camera
     setShowPinModal(false);
-    setShowInstructionModal(true);
+    setShowInstructionModal(false);
+    setIsUpdating(true);
   };
 
   const handleInstructionsComplete = () => {
@@ -125,70 +126,129 @@ export default function UpdateFaceScreen() {
   };
 
   const handleFaceUpdate = async (imageUri: string) => {
+    console.log('🎬 Starting Face Update Process...');
+    console.log('👤 User ID:', userId);
+    console.log('📛 User Name:', userName);
+    console.log('🖼️ Image URI:', imageUri?.substring(0, 50));
+    
     if (!userId || !userName.trim()) {
+      console.error('❌ Missing user information');
       showAlert('Error', 'User information is missing', undefined, 'warning');
       return;
     }
 
-    // Get the verified PIN from AsyncStorage
+    // Verify PIN was confirmed (for user security)
+    // Backend uses JWT token for authentication, not PIN
     const storedPin = await AsyncStorage.getItem('verified_pin');
+    console.log('🔑 Retrieved PIN from storage, length:', storedPin?.length);
+    
     if (!storedPin || storedPin.length !== 4) {
+      console.error('❌ Invalid PIN in storage');
       showAlert('Error', 'PIN verification required', undefined, 'warning');
       return;
     }
 
+    console.log('✅ All validations passed, calling API...');
     setShowProcessingAnimation(true);
     setIsLoading(true);
     try {
-      // console.log removed for production
-      // console.log removed for production
-      // console.log removed for production);
-      // console.log removed for production
+      // Call the external Face Update API
+      // Backend requires both JWT token AND PIN for security
+      console.log('📡 Calling updateFace API...');
+      console.log('📤 Sending: userId=' + userId + ', name=' + userName.trim() + ', PIN length=' + storedPin.length);
       
-      // Call the external Face Update API (port 8443) with PIN
       const faceApiResponse = await apiService.updateFace(userId, userName.trim(), imageUri, storedPin);
+      
+      console.log('📥 Face API Response received:', faceApiResponse);
       
       // console.log removed for production
       
       // Check for embedding_id in the nested data structure
       const embeddingId = faceApiResponse.data?.embedding_id || faceApiResponse.embedding_id;
+      console.log('🆔 Embedding ID:', embeddingId);
+      
       if (!embeddingId) {
+        console.error('❌ No embedding ID in response:', faceApiResponse);
         throw new Error('Face update failed - no embedding ID returned');
       }
       
       // console.log removed for production
       
       // Update the main backend database with face registration status
-      // console.log removed for production
+      console.log('💾 Updating user face status...');
       await apiService.updateUserFaceStatus(true);
+      console.log('✅ Face status updated successfully');
       
       // The backend has already updated the user's face status in the database
       // Refresh the user context to get the updated data from the backend
-      // console.log removed for production
+      console.log('🔄 Refreshing user data...');
       await refreshUser();
+      console.log('✅ User data refreshed');
       
       // Verify the update worked
+      console.log('✅ Verifying update...');
       const updatedUser = await apiService.getStoredUser();
-      // console.log removed for production
+      console.log('👤 Updated user has_face_registered:', updatedUser?.has_face_registered);
       
       // Hide processing animation and show success modal
+      console.log('🎉 SUCCESS! Showing success modal');
       setShowProcessingAnimation(false);
       setShowSuccessModal(true);
       
     } catch (error: any) {
-      // console.error removed for production
+      // Better error serialization
+      console.error('❌ Face Update Error - Full Details:');
+      console.error('Error object:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error constructor:', error?.constructor?.name);
+      console.error('Error message:', error?.message);
+      console.error('Error message type:', typeof error?.message);
+      console.error('Response status:', error.response?.status);
+      console.error('Response data:', JSON.stringify(error.response?.data, null, 2));
+      console.error('Error code:', error?.code);
+      console.error('Error stack:', error?.stack);
       
       let errorMessage = 'Failed to update face';
       
-      if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
+      // Extract error message properly
+      const getErrorMessage = (err: any): string => {
+        // If error.message is an object, try to stringify it
+        if (err.message && typeof err.message === 'object') {
+          return JSON.stringify(err.message);
+        }
+        // If error.message is a string, return it
+        if (err.message && typeof err.message === 'string') {
+          return err.message;
+        }
+        // Fallback
+        return 'Unknown error';
+      };
+      
+      const rawErrorMessage = getErrorMessage(error);
+      console.log('📤 Extracted error message:', rawErrorMessage);
+      
+      if (error.code === 'NETWORK_ERROR' || (rawErrorMessage && rawErrorMessage.includes('Network Error'))) {
         errorMessage = 'Network Error: Cannot connect to face update server. Please check your network connection and try again.';
+      } else if (error.response?.status === 401) {
+        errorMessage = `Authentication Failed: ${error.response?.data?.detail || error.response?.data?.message || 'Please try again'}`;
       } else if (error.response?.status === 422) {
-        errorMessage = 'Invalid data format. Please try again.';
+        errorMessage = `Invalid data: ${error.response?.data?.detail || error.response?.data?.message || 'Please try again.'}`;
+      } else if (error.response?.status === 423) {
+        errorMessage = 'Your account is temporarily locked. Please try again later.';
+      } else if (error.response?.status) {
+        // Has response status but not handled above
+        errorMessage = `Server error (${error.response.status}): ${error.response?.data?.detail || error.response?.data?.message || error.response?.data?.error || rawErrorMessage}`;
       } else if (error.response?.data?.detail) {
         errorMessage = error.response.data.detail;
-      } else if (error.message) {
-        errorMessage = error.message;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else {
+        errorMessage = rawErrorMessage || 'An unexpected error occurred. Please try again.';
       }
+      
+      console.log('📤 Final error message:', errorMessage);
       
       setShowProcessingAnimation(false);
       showAlert('Update Failed', errorMessage, undefined, 'warning');
@@ -197,27 +257,6 @@ export default function UpdateFaceScreen() {
       setSelectedImage(null);
     }
   };
-
-  if (!permission) {
-    return <View />;
-  }
-
-  if (!permission.granted) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: '#1F2937', fontSize: 18, textAlign: 'center', marginBottom: 20 }}>
-            Camera permission is required for face update.
-          </Text>
-          <TouchableOpacity onPress={requestPermission}>
-            <LinearGradient colors={['#6B46C1', '#6B46C1']} style={{ paddingVertical: 16, paddingHorizontal: 40, borderRadius: 30 }}>
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' }}>Grant Permission</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   const takeSquarePicture = async () => {
     if (!cameraRef.current) return null;
@@ -294,7 +333,6 @@ export default function UpdateFaceScreen() {
             </TouchableOpacity>
             <View style={styles.cameraHeaderContent}>
               <Text style={styles.cameraHeaderTitle}>Update Face</Text>
-              <Text style={styles.cameraHeaderSubtitle}>Your Face is Stored as Encrypted Biometric Embeddings</Text>
             </View>
             <View style={styles.cameraHeaderRight} />
           </LinearGradient>
@@ -368,103 +406,17 @@ export default function UpdateFaceScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      ) : (
-        <KeyboardAvoidingView 
-          style={styles.fullScreenContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          {/* Header with gradient background */}
-          <LinearGradient
-            colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
-            style={styles.header}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#6B46C1" />
-            </TouchableOpacity>
-            <View style={styles.headerContent}>
-              <Text style={styles.headerTitle}>Update Face</Text>
-              <Text style={styles.headerSubtitle}>Update your facial recognition data</Text>
-            </View>
-            <View style={styles.headerRight} />
-          </LinearGradient>
+      ) : null}
 
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-            <View style={styles.content}>
-              <View style={styles.iconContainer}>
-                <View style={styles.iconCircle}>
-                  <Ionicons name="refresh" size={48} color="#6B46C1" />
-                </View>
-              </View>
-
-              <Text style={styles.title}>Update Face Recognition</Text>
-              <Text style={styles.subtitle}>
-                Update your facial recognition data for quick and secure payments.
-              </Text>
-
-              <View style={styles.descriptionContainer}>
-                <Text style={styles.descriptionTitle}>Description:</Text>
-                <Text style={styles.description}>
-                  Update your face to verify your identity during transactions. Your biometric data is encrypted and securely stored in compliance with industry standards.
-                </Text>
-              </View>
-
-              {/* Name Input Field */}
-              {/* <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Full Name</Text>
-                <Text style={styles.inputSubtext}>Enter the name associated with your account</Text>
-                <View style={styles.readOnlyInput}>
-                  <Text style={styles.readOnlyText}>{userName || 'Loading...'}</Text>
-                </View>
-              </View> */}
-
-              {/* Features List */}
-              <View style={styles.featuresList}>
-                <View style={styles.featureItem}>
-                  <Ionicons name="shield-checkmark" size={24} color="#10B981" />
-                  <Text style={styles.featureText}>Secure encrypted storage</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Ionicons name="flash" size={24} color="#F59E0B" />
-                  <Text style={styles.featureText}>Fast authentication</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Ionicons name="eye-off" size={24} color="#8B5CF6" />
-                  <Text style={styles.featureText}>Privacy protected</Text>
-                </View>
-              </View>
-            </View>
-          </ScrollView>
-
-          <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 20 }]}>
-            <TouchableOpacity 
-              style={styles.primaryButton}
-              onPress={handleStartUpdate}
-              disabled={isLoading}
-            >
-              <LinearGradient
-                colors={['#6B46C1', '#8B5CF6']}
-                style={styles.primaryButtonGradient}
-              >
-                <Ionicons name="refresh" size={24} color="#FFFFFF" style={styles.buttonIcon} />
-                <Text style={styles.primaryButtonText}>
-                  {isLoading ? 'Updating...' : 'Update Face'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      )}
-
-      {/* Face Update Instruction Modal */}
+      {/* Face Update Instruction Modal - Now shows as first screen with PIN requirement */}
       <FaceRegistrationInstructionModal
         visible={showInstructionModal}
-        onClose={() => setShowInstructionModal(false)}
-        onComplete={handleInstructionsComplete}
+        onClose={() => {
+          setShowInstructionModal(false);
+          router.back();
+        }}
+        onComplete={handleStartUpdate}
+        title="Update Face"
       />
 
       {/* Face Update Success Modal */}
@@ -488,125 +440,13 @@ export default function UpdateFaceScreen() {
       />
 
       {/* PIN Verification Modal */}
-      <Modal
+      <PinVerificationModal
         visible={showPinModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setShowPinModal(false);
-          setPin('');
-        }}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.pinModalContainer}
-        >
-          <TouchableOpacity
-            style={styles.pinModalOverlay}
-            activeOpacity={1}
-            onPress={() => {
-              setShowPinModal(false);
-              setPin('');
-            }}
-          />
-          <View style={styles.pinModalContent}>
-            <View style={styles.pinModalHeader}>
-              <Ionicons name="lock-closed" size={32} color="#6B46C1" />
-              <Text style={styles.pinModalTitle}>Verify Your PIN</Text>
-              <Text style={styles.pinModalSubtitle}>
-                Verify your identity to proceed with face update
-              </Text>
-            </View>
-
-            <View style={styles.pinInputContainer}>
-              <TextInput
-                style={styles.pinInput}
-                value={pin}
-                onChangeText={(text) => {
-                  // Only allow numbers and max 4 digits
-                  const numericText = text.replace(/[^0-9]/g, '');
-                  if (numericText.length <= 4) {
-                    setPin(numericText);
-                  }
-                }}
-                placeholder="Enter PIN"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="number-pad"
-                maxLength={4}
-                secureTextEntry
-                autoFocus
-              />
-            </View>
-
-            <View style={styles.pinModalButtons}>
-              <TouchableOpacity
-                style={styles.pinCancelButton}
-                onPress={() => {
-                  setShowPinModal(false);
-                  setPin('');
-                }}
-              >
-                <Text style={styles.pinCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.pinConfirmButton,
-                  { opacity: pin.length === 4 && !isVerifyingPin ? 1 : 0.5 }
-                ]}
-                disabled={pin.length !== 4 || isVerifyingPin}
-                onPress={async () => {
-                  if (pin.length === 4) {
-                    setIsVerifyingPin(true);
-                    try {
-                      // Verify the PIN
-                      const verifyResponse = await apiService.verifyCurrentPin(pin);
-                      
-                      if (verifyResponse.success) {
-                        // Store the verified PIN in AsyncStorage
-                        await AsyncStorage.setItem('verified_pin', pin);
-                        
-                        // Close PIN modal and show instruction modal
-                        handlePinVerified();
-                        setPin('');
-                      }
-                    } catch (error: any) {
-                      // Handle PIN verification errors
-                      let errorMessage = 'PIN verification failed';
-                      
-                      if (error.response?.status === 400) {
-                        errorMessage = 'PIN not set. Please reset your PIN first.';
-                      } else if (error.response?.status === 401) {
-                        errorMessage = 'Invalid PIN. Please try again.';
-                      } else if (error.response?.data?.detail) {
-                        errorMessage = error.response.data.detail;
-                      } else if (error.message) {
-                        errorMessage = error.message;
-                      }
-                      
-                      showAlert('PIN Verification Failed', errorMessage, undefined, 'warning');
-                      setPin('');
-                    } finally {
-                      setIsVerifyingPin(false);
-                    }
-                  }
-                }}
-              >
-                <LinearGradient
-                  colors={['#6B46C1', '#8B5CF6']}
-                  style={styles.pinConfirmButtonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.pinConfirmButtonText}>
-                    {isVerifyingPin ? 'Verifying...' : 'Verify'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        onClose={() => setShowPinModal(false)}
+        onSuccess={handlePinSuccess}
+        title="Verify Your PIN"
+        subtitle="Verify your identity to proceed with face update"
+      />
 
       {/* Alert Component */}
       <AlertComponent />
@@ -627,8 +467,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 24,
-    paddingBottom: 32,
+    paddingVertical: 16,
+    paddingBottom: 16,
+    minHeight: 80,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -663,13 +507,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    marginTop: 4,
-    opacity: 0.9,
     textAlign: 'center',
   },
   headerRight: {
@@ -816,8 +653,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 24,
-    paddingBottom: 32,
+    paddingVertical: 16,
+    paddingBottom: 16,
+    minHeight: 80,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -852,13 +693,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  cameraHeaderSubtitle: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    marginTop: 4,
-    opacity: 0.9,
     textAlign: 'center',
   },
   cameraHeaderRight: {
@@ -1033,97 +867,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     textAlign: 'center',
-  },
-
-  // PIN Modal Styles
-  pinModalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pinModalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  pinModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
-    width: width * 0.85,
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  pinModalHeader: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  pinModalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  pinModalSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  pinInputContainer: {
-    marginBottom: 24,
-  },
-  pinInput: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 24,
-    fontWeight: '600',
-    textAlign: 'center',
-    letterSpacing: 8,
-    color: '#1F2937',
-  },
-  pinModalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  pinCancelButton: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  pinCancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  pinConfirmButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  pinConfirmButtonGradient: {
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  pinConfirmButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
 }); 

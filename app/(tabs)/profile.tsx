@@ -12,7 +12,8 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  Platform
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../../src/components/ui/AlertModal';
@@ -316,7 +317,7 @@ export default function ProfileScreen() {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerContent}>
-          {/* Removed the Profile header text */}
+          {/* Empty header for profile */}
         </View>
       </LinearGradient>
 
@@ -418,7 +419,10 @@ export default function ProfileScreen() {
 
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === 'ios' ? 96 : 8) }}
+        contentInset={Platform.OS === 'ios' ? { bottom: insets.bottom + 32 } : { bottom: 0 }}
+        scrollIndicatorInsets={Platform.OS === 'ios' ? { bottom: insets.bottom + 32 } : { bottom: 0 }}
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : undefined as any}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -525,7 +529,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </Animated.View>
-        {/* Legal Links Footer (outside logout button) */}
+        {/* Legal Links Footer (inside scrollview) */}
         <View style={styles.legalLinksFooter}>
           <View style={styles.legalLinksContainer}>
             <TouchableOpacity onPress={() => setShowTerms(true)}>
@@ -537,6 +541,8 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        {/* Small bottom spacer for comfortable tapping; larger on iOS */}
+        <View style={{ height: Platform.OS === 'ios' ? 24 : 8 }} />
       </ScrollView>
       
       {/* Alert Component */}
@@ -562,10 +568,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F7FF',
   },
   gradientHeader: {
-    height: 100,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingVertical: 16,
+    paddingBottom: 16,
+    minHeight: 80,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   headerContent: {
     flexDirection: 'row',
@@ -806,6 +826,14 @@ const styles = StyleSheet.create({
   legalLinksFooter: {
     marginTop: 25,
     
+  },
+  legalFixedFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   legalLinkText: {
     fontSize: 12,

@@ -9,6 +9,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   ScrollView,
+  Keyboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
@@ -275,6 +276,12 @@ function AddCardContent() {
       };
       setCardDetails(cardInfo);
       setCardComplete(details.complete);
+      
+      // Automatically dismiss keyboard when all card details are entered
+      if (details.complete) {
+        addDebugInfo('Card details complete - dismissing keyboard');
+        Keyboard.dismiss();
+      }
     } catch (error: any) {
       addDebugInfo(`Error updating card preview: ${error.message}`);
       // console.error removed for production
@@ -300,9 +307,9 @@ function AddCardContent() {
       </View>
 
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardAvoidingView}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0} // Adjusted offset for iOS
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
       >
         {/* Main Content Area */}
         <ScrollView 
@@ -310,6 +317,8 @@ function AddCardContent() {
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          bounces={false}
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
           {/* Card Preview */}
           <View style={styles.cardPreviewContainer}>

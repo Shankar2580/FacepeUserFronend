@@ -153,7 +153,7 @@ const PinInput = ({
 };
 
 export default function PinResetScreen() {
-  const [step, setStep] = useState<'verification' | 'current_pin' | 'new_pin'>('verification');
+  const [step, setStep] = useState<'send_code' | 'verification' | 'current_pin' | 'new_pin'>('send_code');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [currentPin, setCurrentPin] = useState('');
@@ -204,8 +204,9 @@ export default function PinResetScreen() {
         method: 'sms'
       });
       startCountdown();
-      // Don't show success alert for manual send to prevent popup spam
-      // console.log removed for production
+      // Move to verification step after sending code
+      setStep('verification');
+      showAlert('Success', 'Verification code sent to your phone', undefined, 'success');
     } catch (error: any) {
       showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'warning');
     } finally {
@@ -214,34 +215,10 @@ export default function PinResetScreen() {
   };
 
   React.useEffect(() => {
-    const init = async () => {
-      if (user?.phone_number) {
-        const phone = user.phone_number;
-        setPhoneNumber(phone);
-
-        setIsLoading(true);
-        try {
-          await apiService.sendVerification({ 
-            phone_number: phone, 
-            method: 'sms'
-          });
-          startCountdown();
-          // Don't show success alert for auto-send to prevent popup spam
-          // console.log removed for production
-        } catch (error: any) {
-          showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'warning');
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
-        // Optional: Handle case where phone number is missing
-        showAlert('Warning', 'No phone number associated with account. Please enter manually.', undefined, 'warning');
-        // Allow editing if no phone
-        // But for now, since editable=false, perhaps remove editable=false if !user?.phone_number
-      }
-    };
-
-    init();
+    // Just load the phone number, don't auto-send code
+    if (user?.phone_number) {
+      setPhoneNumber(user.phone_number);
+    }
   }, [user]);
 
   const handleVerifyCode = async () => {
@@ -326,6 +303,7 @@ export default function PinResetScreen() {
 
   const getStepTitle = () => {
     switch (step) {
+      case 'send_code': return 'Reset PIN';
       case 'verification': return 'Verify Your Phone';
       case 'current_pin': return 'Enter Current PIN';
       case 'new_pin': return 'Set New PIN';
@@ -335,7 +313,8 @@ export default function PinResetScreen() {
 
   const getStepSubtitle = () => {
     switch (step) {
-      case 'verification': return 'We\'ll send a verification code to confirm it\'s you';
+      case 'send_code': return 'We\'ll send a verification code to your phone number';
+      case 'verification': return 'Enter the 6-digit code sent to your phone';
       case 'current_pin': return 'Enter your current 4-digit PIN for security';
       case 'new_pin': return 'Choose a new secure 4-digit PIN';
       default: return '';
@@ -375,8 +354,10 @@ export default function PinResetScreen() {
               {/* Progress Indicator */}
               <View style={styles.progressContainer}>
                 <View style={[styles.progressDot, styles.progressDotActive]} />
-                <View style={[styles.progressLine, step !== 'verification' ? styles.progressLineActive : null]} />
-                <View style={[styles.progressDot, step !== 'verification' ? styles.progressDotActive : null]} />
+                <View style={[styles.progressLine, step !== 'send_code' ? styles.progressLineActive : null]} />
+                <View style={[styles.progressDot, step !== 'send_code' ? styles.progressDotActive : null]} />
+                <View style={[styles.progressLine, step === 'current_pin' || step === 'new_pin' ? styles.progressLineActive : null]} />
+                <View style={[styles.progressDot, step === 'current_pin' || step === 'new_pin' ? styles.progressDotActive : null]} />
                 <View style={[styles.progressLine, step === 'new_pin' ? styles.progressLineActive : null]} />
                 <View style={[styles.progressDot, step === 'new_pin' ? styles.progressDotActive : null]} />
               </View>
@@ -384,6 +365,47 @@ export default function PinResetScreen() {
 
             {/* Form */}
             <View style={styles.form}>
+              {step === 'send_code' && (
+                <>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="phone-portrait-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Phone Number"
+                      placeholderTextColor="#999"
+                      value={phoneNumber}
+                      onChangeText={setPhoneNumber}
+                      keyboardType="phone-pad"
+                      autoCapitalize="none"
+                      editable={false} // Pre-filled from user data
+                    />
+                  </View>
+
+                  <View style={styles.infoBox}>
+                    <Ionicons name="information-circle" size={20} color="#6B46C1" />
+                    <Text style={styles.infoText}>
+                      We'll send a 6-digit verification code to this number
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity 
+                    style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                    onPress={handleSendVerification}
+                    disabled={isLoading}
+                  >
+                    <LinearGradient
+                      colors={['#6B46C1', '#9333EA']}
+                      style={styles.primaryButtonGradient}
+                    >
+                      <Text style={styles.primaryButtonText}>
+                        {isLoading ? 'Sending...' : 'Send Verification Code'}
+                      </Text>
+                      {!isLoading && <Ionicons name="send" size={20} color="#FFFFFF" />}
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </>
+              )}
+
               {step === 'verification' && (
                 <>
                   <View style={styles.inputContainer}>
@@ -618,6 +640,21 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#1F2937',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    gap: 12,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#6B46C1',
+    lineHeight: 20,
   },
   otpContainer: {
     flexDirection: 'row',

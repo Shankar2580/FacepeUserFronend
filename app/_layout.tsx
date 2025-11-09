@@ -86,7 +86,8 @@ export default function RootLayout() {
     if (!loaded) return;
 
     const inAuthGroup = segments[0] === 'auth';
-    const isAuthenticatedScreen = !inAuthGroup;
+    const isWelcomeScreen = segments[0] === 'welcome';
+    const isAuthenticatedScreen = !inAuthGroup && !isWelcomeScreen;
     
     // Navigation debugging removed for production
 
@@ -100,9 +101,9 @@ export default function RootLayout() {
       if (!authProps.isAuthenticated && isAuthenticatedScreen) {
         // User is not authenticated but trying to access protected screens
         // console.log removed for production
-        router.replace('/auth/login');
-      } else if (authProps.isAuthenticated && inAuthGroup) {
-        // User is authenticated but in auth group
+        router.replace('/welcome');
+      } else if (authProps.isAuthenticated && (inAuthGroup || isWelcomeScreen)) {
+        // User is authenticated but in auth group or welcome screen
         // console.log removed for production
         router.replace('/(tabs)');
       } else if (authProps.isAuthenticated && isAuthenticatedScreen) {
@@ -129,6 +130,7 @@ export default function RootLayout() {
             <ThemeProvider value={DefaultTheme}>
               <DeviceLockWrapper>
                 <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="welcome" />
                   <Stack.Screen name="(tabs)" />
                   <Stack.Screen name="auth" />
                   <Stack.Screen name="auth-screen" />

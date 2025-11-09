@@ -410,7 +410,7 @@ class ApiService {
       // Add text fields
       formData.append('user_id', userId);
       formData.append('name', name);
-      formData.append('pin', pin);  // Add PIN for verification
+      formData.append('pin', pin); // PIN is required by backend for update endpoint
       
       // Add file - React Native specific format
       const uriParts = imageUri.split('.');
@@ -426,7 +426,14 @@ class ApiService {
       // Get authorization header
       const authHeader = await this.getAuthHeader();
       
-      // console.log removed for production
+      console.log('📡 About to call updateFace API:');
+      console.log('URL:', `${API_BASE_URL}${API_ENDPOINTS.UPDATE_FACE}`);
+      console.log('Method: PUT');
+      console.log('Has Auth Header:', !!authHeader);
+      console.log('User ID:', userId);
+      console.log('Name:', name);
+      console.log('Has PIN:', !!pin);
+      console.log('Image URI:', imageUri.substring(0, 50) + '...');
 
       // Use axios instead of fetch for better FormData handling
       const response = await axios({
@@ -439,13 +446,37 @@ class ApiService {
         },
         timeout: 60000,
       });
+      
+      console.log('✅ updateFace API call successful!');
+      console.log('Response:', response.data);
 
       // console.log removed for production
       // console.log removed for production
       return response.data;
       
     } catch (error: any) {
-      // console.error removed for production
+      console.error('❌ updateFace API Error:');
+      console.error('Error type:', typeof error);
+      console.error('Error name:', error.name);
+      console.error('Error code:', error.code);
+      console.error('Has response:', !!error.response);
+      console.error('Status:', error.response?.status);
+      console.error('Response data:', JSON.stringify(error.response?.data, null, 2));
+      console.error('Error message:', error.message);
+      console.error('Request URL:', error.config?.url);
+      console.error('Request method:', error.config?.method);
+      
+      // Check for network errors first
+      if (!error.response) {
+        console.error('🔴 NETWORK ERROR: No response from server');
+        if (error.code === 'ECONNABORTED') {
+          throw new Error('Request timeout. Please check your network connection.');
+        } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+          throw new Error('Network error. Cannot reach the face update server.');
+        } else {
+          throw new Error(`Connection failed: ${error.message}`);
+        }
+      }
       
       // Re-throw with better error handling
       if (error.response?.status === 422) {
@@ -455,14 +486,20 @@ class ApiService {
         
         if (responseData?.error?.detail) {
           errorDetail = responseData.error.detail;
+          console.error('422 Error detail (nested):', errorDetail);
         } else if (responseData?.detail) {
           errorDetail = responseData.detail;
+          console.error('422 Error detail:', errorDetail);
         } else if (responseData?.message) {
           errorDetail = responseData.message;
+          console.error('422 Error message:', errorDetail);
         }
         
+        console.error('🔴 Throwing 422 error:', errorDetail);
         throw new Error(errorDetail);
       }
+      
+      console.error('🔴 Re-throwing original error');
       throw error;
     }
   }
