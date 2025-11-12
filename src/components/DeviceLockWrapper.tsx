@@ -14,23 +14,23 @@ export default function DeviceLockWrapper({ children }: DeviceLockWrapperProps) 
   const router = useRouter();
   const segments = useSegments();
 
+  // Handle device lock authentication navigation
   useEffect(() => {
-    if (isLoading || isLoginLoading) return;
+    if (isLoading || isLoginLoading) {
+      return;
+    }
 
     const inAuthScreen = segments[0] === 'auth-screen';
-    const inAuthGroup = segments[0] === 'auth';
-    const currentPath = segments.join('/');
-    
-    // Only show device lock if user is already logged in
-    // If user is not logged in, let the login auth handle it
-    if (isLoggedIn && appLockEnabled && !isDeviceLockAuthenticated && !inAuthScreen) {
-      // User is logged in but needs device authentication
-      router.replace('/auth-screen');
-    } else if (isDeviceLockAuthenticated && inAuthScreen) {
-      // Device authenticated, navigate away from auth screen
-      router.replace('/(tabs)');
+    const inWelcomeOrAuth = segments[0] === 'welcome' || segments[0] === 'auth';
+
+    // Only enforce device lock if user is logged in and app lock is enabled
+    if (isLoggedIn && appLockEnabled) {
+      if (!isDeviceLockAuthenticated && !inAuthScreen && !inWelcomeOrAuth) {
+        // User is logged in but not device-authenticated, redirect to auth-screen
+        router.replace('/auth-screen');
+      }
     }
-  }, [isDeviceLockAuthenticated, isLoggedIn, isLoading, isLoginLoading, appLockEnabled, segments, router]);
+  }, [isDeviceLockAuthenticated, isLoggedIn, isLoading, isLoginLoading, appLockEnabled, segments]);
 
   // Show loading indicator while checking authentication
   if (isLoading || isLoginLoading) {
@@ -41,7 +41,7 @@ export default function DeviceLockWrapper({ children }: DeviceLockWrapperProps) 
     );
   }
 
-  // Always render children - let routing handle the screens
+  // Render children
   return <>{children}</>;
 }
 

@@ -101,7 +101,7 @@ export const ProcessingAnimation: React.FC<ProcessingAnimationProps> = ({
       case 'face':
         return {
           icon: 'scan',
-          gradientColors: ['#6B46C1', '#8B5CF6', '#06B6D4'],
+          gradientColors: ['#10B981', '#059669', '#047857'],
           defaultTitle: 'Processing Face',
           defaultSubtitle: 'Analyzing biometric data...',
         };
@@ -115,14 +115,14 @@ export const ProcessingAnimation: React.FC<ProcessingAnimationProps> = ({
       case 'payment':
         return {
           icon: 'cash',
-          gradientColors: ['#F59E0B', '#D97706', '#B45309'],
+          gradientColors: ['#3B82F6', '#2563EB', '#1D4ED8'],
           defaultTitle: 'Processing Payment',
           defaultSubtitle: 'Completing transaction...',
         };
       default:
         return {
           icon: 'hourglass',
-          gradientColors: ['#6366F1', '#8B5CF6', '#A855F7'],
+          gradientColors: ['#3B82F6', '#2563EB', '#1D4ED8'],
           defaultTitle: 'Processing',
           defaultSubtitle: 'Please wait...',
         };

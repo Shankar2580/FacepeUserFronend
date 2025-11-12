@@ -130,10 +130,7 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
       <StatusBar barStyle="light-content" backgroundColor="rgba(0,0,0,0.5)" translucent />
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
-          <LinearGradient
-            colors={['#10B981', '#059669']}
-            style={styles.modalContent}
-          >
+          <View style={styles.modalContent}>
             {/* Success Icon with Animation */}
             <Animated.View 
               style={[
@@ -152,7 +149,7 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
               ]}
             >
               <View style={styles.successIcon}>
-                <Ionicons name="checkmark" size={48} color="white" />
+                <Ionicons name="checkmark" size={48} color="#10B981" />
               </View>
             </Animated.View>
 
@@ -206,15 +203,15 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
               {/* Features List */}
               <View style={styles.featuresContainer}>
                 <View style={styles.feature}>
-                  <Ionicons name="shield-checkmark" size={20} color="rgba(255,255,255,0.9)" />
+                  <Ionicons name="shield-checkmark" size={20} color="#10B981" />
                   <Text style={styles.featureText}>Secured with bank-grade encryption</Text>
                 </View>
                 <View style={styles.feature}>
-                  <Ionicons name="flash" size={20} color="rgba(255,255,255,0.9)" />
+                  <Ionicons name="flash" size={20} color="#F59E0B" />
                   <Text style={styles.featureText}>Ready for instant payments</Text>
                 </View>
                 <View style={styles.feature}>
-                  <Ionicons name="lock-closed" size={20} color="rgba(255,255,255,0.9)" />
+                  <Ionicons name="lock-closed" size={20} color="#6B46C1" />
                   <Text style={styles.featureText}>Compatible with face recognition</Text>
                 </View>
               </View>
@@ -225,9 +222,16 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
               style={styles.doneButton}
               onPress={onClose}
             >
-              <Text style={styles.doneButtonText}>Done</Text>
+              <LinearGradient
+                colors={['#10B981', '#059669']}
+                style={styles.doneButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </LinearGradient>
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
 
           {/* Celebration Elements */}
           <Animated.View 
@@ -291,6 +295,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
   },
   modalContent: {
+    backgroundColor: '#E6FFE6',
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
@@ -307,9 +312,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#10B98120',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#10B98140',
   },
   contentContainer: {
     alignItems: 'center',
@@ -318,13 +325,13 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: 'white',
+    color: '#1F2937',
     textAlign: 'center',
     marginBottom: 8,
   },
   successSubtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#4B5563',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
@@ -332,17 +339,19 @@ const styles = StyleSheet.create({
   cardDetailsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
     width: '100%',
+    borderWidth: 1,
+    borderColor: '#10B98140',
   },
   cardIcon: {
     width: 50,
     height: 32,
     borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -359,18 +368,18 @@ const styles = StyleSheet.create({
   cardBrand: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
+    color: '#1F2937',
     marginBottom: 2,
   },
   cardNumber: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#4B5563',
     fontFamily: 'Courier',
   },
   defaultBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: '#F59E0B',
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -392,21 +401,25 @@ const styles = StyleSheet.create({
   },
   featureText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#4B5563',
     marginLeft: 12,
     flex: 1,
   },
   doneButton: {
-    backgroundColor: 'white',
     borderRadius: 16,
+    overflow: 'hidden',
+    minWidth: 120,
+  },
+  doneButtonGradient: {
     paddingVertical: 16,
     paddingHorizontal: 32,
-    minWidth: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   doneButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#10B981',
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   celebrationElement: {

@@ -173,7 +173,7 @@ export default function DeleteAccountConfirmScreen() {
         ]}
       >
         <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()} disabled={isLoading}>
-          <Text style={styles.cancelButtonText}>Go Back</Text>
+          <Text style={styles.cancelButtonText} numberOfLines={1}>Go Back</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -197,8 +197,8 @@ export default function DeleteAccountConfirmScreen() {
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <>
-                <Ionicons name="trash" size={20} color="#FFFFFF" />
-                <Text style={styles.deleteButtonText}>Delete Account</Text>
+                <Ionicons name="trash" size={18} color="#FFFFFF" />
+                <Text style={styles.deleteButtonText} numberOfLines={1}>Delete</Text>
               </>
             )}
           </LinearGradient>
@@ -387,14 +387,13 @@ const styles = StyleSheet.create({
   cancelButton: {
     flex: 1,
     paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     borderRadius: 12,
     backgroundColor: '#F3F4F6',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 0, // Ensure flexbox distributes width equally
   },
   cancelButtonText: {
     fontSize: 16,
@@ -413,7 +412,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
-    minWidth: 0, // Ensure flexbox distributes width equally
   },
   deleteButtonDisabled: {
     shadowOpacity: 0.1,
@@ -423,7 +421,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     gap: 8,
   },
   deleteButtonText: {

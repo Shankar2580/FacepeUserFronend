@@ -35,8 +35,12 @@ export const TermsModal: React.FC<TermsModalProps> = ({
       transparent={true}
       onRequestClose={onDecline}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.container}>
+      <TouchableOpacity 
+        style={styles.modalOverlay} 
+        activeOpacity={1}
+        onPress={onDecline}
+      >
+        <View style={styles.container} onStartShouldSetResponder={() => true}>
         
         <View style={styles.header}>
           <Text style={styles.title}>Terms & Conditions</Text>
@@ -282,7 +286,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <TouchableOpacity style={[styles.singleButton, isTablet && styles.singleButtonTablet]} onPress={onAccept}>
             <LinearGradient
-              colors={['#6B46C1', '#9333EA']}
+              colors={['#3B82F6', '#2563EB']}
               style={[styles.singleButtonGradient, isTablet && styles.singleButtonGradientTablet]}
             >
               <Text style={[styles.singleButtonText, isTablet && styles.singleButtonTextTablet]}>I Understand</Text>
@@ -290,7 +294,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({
           </TouchableOpacity>
         </View>
         </View>
-      </View>
+      </TouchableOpacity>
     </Modal>
   );
 };

@@ -286,7 +286,7 @@ export default function PinResetScreen() {
       showAlert(
         'Success',
         'Your PIN has been reset successfully!',
-        [{ text: 'Done', onPress: () => router.push('/(tabs)/profile') }],
+        [{ text: 'Done', onPress: () => router.replace('/(tabs)/profile') }],
         'success'
       );
     } catch (error: any) {
@@ -326,7 +326,7 @@ export default function PinResetScreen() {
       <StatusBar style="dark" />
 
       {/* Back Button */}
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+      <TouchableOpacity onPress={() => router.replace('/(tabs)/profile')} style={styles.backButton}>
         <LinearGradient
           colors={['#FFFFFF', '#F8F7FF']}
           style={styles.backButtonGradient}

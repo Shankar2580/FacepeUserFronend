@@ -174,7 +174,22 @@ export default function FaceRegistrationScreen() {
       }
       
       setShowProcessingAnimation(false);
-      showAlert('Registration Failed', errorMessage, undefined, 'warning');
+      setIsRegistering(false);
+      showAlert('Registration Failed', errorMessage, [
+        {
+          text: 'Try Again',
+          onPress: () => {
+            setIsRegistering(true);
+          }
+        },
+        // {
+        //   text: 'Cancel',
+        //   style: 'cancel',
+        //   onPress: () => {
+        //     router.replace('/(tabs)/profile');
+        //   }
+        // }
+      ], 'warning');
     } finally {
       setIsLoading(false);
       setSelectedImage(null);
@@ -272,7 +287,10 @@ export default function FaceRegistrationScreen() {
           >
             <TouchableOpacity 
               style={styles.cameraBackButton}
-              onPress={() => setIsRegistering(false)}
+              onPress={() => {
+                setIsRegistering(false);
+                router.replace('/(tabs)/profile');
+              }}
             >
               <Ionicons name="close" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -361,7 +379,7 @@ export default function FaceRegistrationScreen() {
         visible={showInstructionModal}
         onClose={() => {
           setShowInstructionModal(false);
-          router.back();
+          router.replace('/(tabs)/profile');
         }}
         onComplete={handleStartRegistration}
         title="Face Registration"
@@ -373,7 +391,7 @@ export default function FaceRegistrationScreen() {
         onClose={() => {
           setShowSuccessModal(false);
           // console.log removed for production
-          router.back();
+          router.replace('/(tabs)/profile');
         }}
         userName={userName}
         isUpdate={false}

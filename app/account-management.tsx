@@ -104,7 +104,7 @@ export default function AccountManagementScreen() {
           style={styles.cancelButton}
           onPress={() => router.back()}
         >
-          <Text style={styles.cancelButtonText}>Keep Account</Text>
+          <Text style={styles.cancelButtonText} numberOfLines={1}>Keep Account</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -120,8 +120,8 @@ export default function AccountManagementScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Ionicons name="trash" size={20} color="#FFFFFF" />
-            <Text style={styles.deleteButtonText}>Delete Account</Text>
+            <Ionicons name="trash" size={18} color="#FFFFFF" />
+            <Text style={styles.deleteButtonText} numberOfLines={1}>Delete</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -279,14 +279,13 @@ const styles = StyleSheet.create({
   cancelButton: {
     flex: 1,
     paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     borderRadius: 12,
     backgroundColor: '#F3F4F6',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 0, // Ensure flexbox distributes width equally
   },
   cancelButtonText: {
     fontSize: 16,
@@ -305,14 +304,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
-    minWidth: 0, // Ensure flexbox distributes width equally
   },
   deleteButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     gap: 8,
   },
   deleteButtonText: {

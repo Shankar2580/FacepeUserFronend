@@ -388,7 +388,7 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
         return '#EF4444'; // Default to red on error
       }
     }
-    return '#6B46C1';
+    return '#3B82F6'; // Blue for normal state
   };
 
   return (
@@ -687,7 +687,7 @@ const styles = StyleSheet.create({
   },
   forgotPinText: {
     fontSize: 14,
-    color: '#6B46C1',
+    color: '#3B82F6',
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
@@ -724,10 +724,10 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   confirmButton: {
-    flex: 2,
+    flex: 1,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#6B46C1',
+    shadowColor: '#3B82F6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

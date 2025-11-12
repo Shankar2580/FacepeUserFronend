@@ -76,22 +76,19 @@ export const AlertModal: React.FC<AlertModalProps> = ({
       case 'success':
         return {
           icon: 'checkmark-circle-outline',
-          gradientColors: ['#10B981', '#059669'],
+          backgroundColor: '#E6FFE6',
+          iconColor: '#10B981',
+          buttonGradient: ['#10B981', '#059669'],
         };
       case 'warning':
-        return {
-          icon: 'warning-outline',
-          gradientColors: ['#6B46C1', '#8B5CF6'],
-        };
       case 'error':
-        return {
-          icon: 'close-circle-outline',
-          gradientColors: ['#6B46C1', '#8B5CF6'],
-        };
+      case 'info':
       default:
         return {
-          icon: 'information-circle-outline',
-          gradientColors: ['#6B46C1', '#9333EA'],
+          icon: type === 'error' ? 'close-circle-outline' : type === 'warning' ? 'warning-outline' : 'information-circle-outline',
+          backgroundColor: '#E6F2FF',
+          iconColor: '#3B82F6',
+          buttonGradient: ['#3B82F6', '#2563EB'],
         };
     }
   };
@@ -128,15 +125,11 @@ export const AlertModal: React.FC<AlertModalProps> = ({
       <StatusBar barStyle="light-content" backgroundColor="rgba(0,0,0,0.5)" translucent />
       <View style={styles.overlay}>
         <Animated.View style={[styles.modalContainer, { transform: [{ scale: scaleAnim }] }]}>
-          <LinearGradient
-            colors={config.gradientColors}
-            style={styles.modalContent}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
+          <View style={[styles.modalContent, { backgroundColor: config.backgroundColor }]}>
             <Animated.View
               style={[
                 styles.iconWrapper,
+                { backgroundColor: config.iconColor + '20' },
                 {
                   transform: [
                     { scale: iconContainerScale },
@@ -145,7 +138,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
                 },
               ]}
             >
-              <Ionicons name={config.icon as any} size={48} color="white" />
+              <Ionicons name={config.icon as any} size={48} color={config.iconColor} />
             </Animated.View>
 
             <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
@@ -163,25 +156,33 @@ export const AlertModal: React.FC<AlertModalProps> = ({
                     key={index}
                     style={[
                       styles.button,
-                      isPrimary ? styles.primaryButton : styles.secondaryButton,
-                      button.style === 'destructive' && styles.destructiveButton,
                       buttons.length > 1 && { flex: 1 },
                     ]}
                     onPress={() => handleButtonPress(button)}
                   >
-                    <Text
-                      style={[
-                        styles.buttonText,
-                        isPrimary ? styles.primaryButtonText : styles.secondaryButtonText,
-                      ]}
-                    >
-                      {button.text}
-                    </Text>
+                    {isPrimary && !isCancel ? (
+                      <LinearGradient
+                        colors={config.buttonGradient}
+                        style={styles.buttonGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                      >
+                        <Text style={styles.primaryButtonText}>
+                          {button.text}
+                        </Text>
+                      </LinearGradient>
+                    ) : (
+                      <View style={styles.secondaryButton}>
+                        <Text style={[styles.buttonText, { color: config.iconColor }]}>
+                          {button.text}
+                        </Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               })}
             </Animated.View>
-          </LinearGradient>
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -203,6 +204,7 @@ const styles = StyleSheet.create({
   modalContent: {
     borderRadius: 24,
     padding: 24,
+    paddingBottom: 32,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
@@ -214,27 +216,24 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   content: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 28,
   },
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: 'white',
+    color: '#1F2937',
     textAlign: 'center',
     marginBottom: 8,
   },
   message: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#4B5563',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -242,44 +241,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
     gap: 12,
-    alignItems: 'stretch', // Stretch items to have the same height
+    alignItems: 'stretch',
     justifyContent: 'center',
   },
   button: {
-    paddingHorizontal: 20,
-    paddingVertical: 16, // Add back vertical padding
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center', // Center content
+    overflow: 'visible',
     minWidth: 100,
   },
-  primaryButton: {
-    backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+  buttonGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
   },
   secondaryButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  destructiveButton: {
-    backgroundColor: '#CC0000',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: 'currentColor',
+    borderRadius: 16,
   },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
   },
   primaryButtonText: {
-    color: '#333',
-  },
-  secondaryButtonText: {
-    color: 'white',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

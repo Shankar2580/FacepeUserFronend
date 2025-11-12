@@ -109,8 +109,25 @@ export default function UpdateFaceScreen() {
 
   const handleStartUpdate = async () => {
     // This is now called from instruction modal's "Start Face Registration" button
-    // Show PIN modal first
-    setShowPinModal(true);
+    // CRITICAL FIX FOR iOS: Must close fullScreen modal before showing transparent modal
+    // iOS prevents transparent modals from appearing over fullScreen modals
+    // Android allows modal stacking, which is why this works on Android
+    setShowInstructionModal(false);
+    
+    // Wait briefly for modal transition before showing PIN modal
+    // Reduced to 100ms for faster response while maintaining iOS compatibility
+    setTimeout(() => {
+      setShowPinModal(true);
+    }, 100);
+  };
+
+  const handlePinCancel = () => {
+    // When user cancels PIN modal, restore the instruction modal
+    // This prevents white screen and maintains previous UX
+    setShowPinModal(false);
+    setTimeout(() => {
+      setShowInstructionModal(true);
+    }, 100);
   };
 
   const handlePinSuccess = () => {
@@ -209,7 +226,22 @@ export default function UpdateFaceScreen() {
       }
       
       setShowProcessingAnimation(false);
-      showAlert('Update Failed', errorMessage, undefined, 'warning');
+      setIsUpdating(false);
+      showAlert('Update Failed', errorMessage, [
+        {
+          text: 'Try Again',
+          onPress: () => {
+            setIsUpdating(true);
+          }
+        },
+        // {
+        //   text: 'Cancel',
+        //   style: 'cancel',
+        //   onPress: () => {
+        //     router.replace('/(tabs)/profile');
+        //   }
+        // }
+      ], 'warning');
     } finally {
       setIsLoading(false);
       setSelectedImage(null);
@@ -285,7 +317,10 @@ export default function UpdateFaceScreen() {
           >
             <TouchableOpacity 
               style={styles.cameraBackButton}
-              onPress={() => setIsUpdating(false)}
+              onPress={() => {
+                setIsUpdating(false);
+                router.replace('/(tabs)/profile');
+              }}
             >
               <Ionicons name="close" size={24} color="#6B46C1" />
             </TouchableOpacity>
@@ -371,10 +406,10 @@ export default function UpdateFaceScreen() {
         visible={showInstructionModal}
         onClose={() => {
           setShowInstructionModal(false);
-          router.back();
+          router.replace('/(tabs)/profile');
         }}
         onComplete={handleStartUpdate}
-        title="Update Face"
+        title="Face Update Guide"
       />
 
       {/* Face Update Success Modal */}
@@ -383,7 +418,7 @@ export default function UpdateFaceScreen() {
         onClose={() => {
           setShowSuccessModal(false);
           // console.log removed for production
-          router.back();
+          router.replace('/(tabs)/profile');
         }}
         userName={userName}
         isUpdate={true}
@@ -400,7 +435,7 @@ export default function UpdateFaceScreen() {
       {/* PIN Verification Modal */}
       <PinVerificationModal
         visible={showPinModal}
-        onClose={() => setShowPinModal(false)}
+        onClose={handlePinCancel}
         onSuccess={handlePinSuccess}
         title="Verify Your PIN"
         subtitle="Verify your identity to proceed with face update"

@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import * as LocalAuthentication from 'expo-local-authentication';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -24,6 +23,7 @@ import { AutoPay, PaymentMethod } from '../../src/constants/types';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useUpdates } from '../../src/hooks/useUpdates';
 import { apiService } from '../../src/services/api';
+import DeviceLockService from '../../src/services/DeviceLockService';
 
 const { width } = Dimensions.get('window');
 
@@ -146,23 +146,13 @@ export default function ProfileScreen() {
 
   const handleDeleteFace = async () => {
     try {
-      // Check if biometric authentication is available
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-
-      if (!hasHardware || !isEnrolled) {
-        showAlert('Error', 'Biometric authentication is not available on this device', undefined, 'error');
-        return;
-      }
-
-      // Authenticate with biometrics
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Authenticate to delete face data',
-        fallbackLabel: 'Use passcode',
-        disableDeviceFallback: false,
-      });
+      // Authenticate with device lock (biometric/PIN/pattern/password)
+      const result = await DeviceLockService.authenticateWithFallback('Authenticate to delete face data');
 
       if (!result.success) {
+        if (result.error) {
+          showAlert('Authentication Failed', result.error, undefined, 'error');
+        }
         return; // User cancelled or authentication failed
       }
 

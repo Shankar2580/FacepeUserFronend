@@ -81,39 +81,49 @@ export default function RootLayout() {
     }
   }, [loaded, authProps.isAuthenticated]);
 
-  // Handle authentication routing
+  // Handle authentication-based navigation
   useEffect(() => {
-    if (!loaded) return;
-
-    const inAuthGroup = segments[0] === 'auth';
-    const isWelcomeScreen = segments[0] === 'welcome';
-    const isAuthenticatedScreen = !inAuthGroup && !isWelcomeScreen;
-    
-    // Navigation debugging removed for production
-
-    // Wait for auth to finish loading before making navigation decisions
-    if (authProps.isLoading) {
-      // console.log removed for production
+    if (!loaded || authProps.isLoading) {
       return;
     }
 
-    try {
-      if (!authProps.isAuthenticated && isAuthenticatedScreen) {
-        // User is not authenticated but trying to access protected screens
-        // console.log removed for production
-        router.replace('/welcome');
-      } else if (authProps.isAuthenticated && (inAuthGroup || isWelcomeScreen)) {
-        // User is authenticated but in auth group or welcome screen
-        // console.log removed for production
+    const inAuthGroup = segments[0] === 'auth';
+    const inWelcome = segments[0] === 'welcome';
+    const inAuthScreen = segments[0] === 'auth-screen'; // Device lock screen
+    const inProtectedRoute = segments[0] === '(tabs)' || 
+                             segments[0] === 'face-registration' ||
+                             segments[0] === 'security-settings' ||
+                             segments[0] === 'add-card' ||
+                             segments[0] === 'change-password' ||
+                             segments[0] === 'transaction-detail' ||
+                             segments[0] === 'edit-profile' ||
+                             segments[0] === 'autopay-settings' ||
+                             segments[0] === 'account-management' ||
+                             segments[0] === 'delete-account' ||
+                             segments[0] === 'pin-reset' ||
+                             segments[0] === 'update-face';
+
+    if (authProps.isAuthenticated) {
+      // User is authenticated (logged in)
+      if (inAuthGroup || inWelcome) {
+        // Redirect to home if on auth/welcome screens
+        // Note: DeviceLockWrapper will handle redirecting to auth-screen if needed
         router.replace('/(tabs)');
-      } else if (authProps.isAuthenticated && isAuthenticatedScreen) {
-        // User is authenticated and accessing protected screens - this is fine
-        // console.log removed for production
+      } else if (segments.length === 0) {
+        // No route specified, go to tabs (DeviceLockWrapper will handle device auth)
+        router.replace('/(tabs)');
       }
-    } catch (error) {
-      // console.error removed for production
+    } else {
+      // User is not authenticated (not logged in)
+      if (inProtectedRoute || inAuthScreen) {
+        // Redirect to welcome if trying to access protected routes or auth-screen
+        router.replace('/welcome');
+      } else if (segments.length === 0) {
+        // No route specified, go to welcome
+        router.replace('/welcome');
+      }
     }
-  }, [authProps.isAuthenticated, authProps.isLoading, authProps.user, loaded, segments, router]);
+  }, [authProps.isAuthenticated, authProps.isLoading, loaded, segments]);
 
   if (!loaded) {
     return null;

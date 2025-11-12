@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   ScrollView, // Added ScrollView
+  InteractionManager,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,7 +19,6 @@ import { useAuth } from '../../src/hooks/useAuth';
 import { SafeAreaView } from 'react-native-safe-area-context'; // Changed import
 import { StatusBar } from 'expo-status-bar'; // Added StatusBar
 import { designSystem, spacing, shadows, borderRadius, typography } from '../../src/constants/DesignSystem';
-import { useAlert } from '../../src/components/ui/AlertModal';
 import { Colors } from '../../src/constants/Colors';
 // Removed useColorScheme - using light theme by default
 import { ProcessingAnimation } from '../../src/components/ui/ProcessingAnimation';
@@ -84,8 +84,25 @@ export default function LoginScreen() {
       router.replace('/(tabs)');
     } catch (error: any) {
       setIsLoading(false);
-      const errMsg = error.response?.data?.message || error.message || 'Please check your credentials and try again';
-      Alert.alert('Login Failed', errMsg, [{ text: 'OK' }]);
+      const errMsg = error.response?.data?.message || error.message || 'Incorrect phone number/email or password';
+      router.replace('/auth/login');
+      // Use InteractionManager to ensure alert shows AFTER all state updates complete
+      // This prevents navigation from happening before the alert appears
+      InteractionManager.runAfterInteractions(() => {
+        Alert.alert(
+          'Login Failed',
+          errMsg,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Just close the alert
+              },
+            },
+          ],
+          { cancelable: false }
+        );
+      });
     }
   };
 

@@ -22,12 +22,14 @@ interface FaceRegistrationInstructionModalProps {
   visible: boolean;
   onClose: () => void;
   onComplete: () => void;
+  title?: string;
 }
 
 export const FaceRegistrationInstructionModal: React.FC<FaceRegistrationInstructionModalProps> = ({
   visible,
   onClose,
   onComplete,
+  title = 'Face Registration Guide',
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -89,7 +91,7 @@ export const FaceRegistrationInstructionModal: React.FC<FaceRegistrationInstruct
           
           <View style={styles.headerCenter}>
             <Text style={[styles.headerTitle, isTablet && styles.headerTitleTablet]}>
-              Face Registration Guide
+              {title}
             </Text>
           </View>
           
@@ -166,7 +168,7 @@ export const FaceRegistrationInstructionModal: React.FC<FaceRegistrationInstruct
             onPress={handleStartRegistration}
           >
             <LinearGradient
-              colors={['#6B46C1', '#9333EA']}
+              colors={['#3B82F6', '#2563EB']}
               style={[styles.nextButtonGradient, isTablet && styles.nextButtonGradientTablet]}
             >
               <Text style={[styles.nextButtonText, isTablet && styles.nextButtonTextTablet]}>

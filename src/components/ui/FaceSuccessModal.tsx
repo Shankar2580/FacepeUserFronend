@@ -104,12 +104,7 @@ export const FaceSuccessModal: React.FC<FaceSuccessModalProps> = ({
       <StatusBar barStyle="light-content" backgroundColor="rgba(0,0,0,0.5)" translucent />
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
-          <LinearGradient
-            colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
-            style={styles.modalContent}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
+          <View style={styles.modalContent}>
             {/* Success Icon with Animation */}
             <Animated.View 
               style={[
@@ -129,7 +124,7 @@ export const FaceSuccessModal: React.FC<FaceSuccessModalProps> = ({
             >
               <View style={styles.successIcon}>
                 <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                  <Ionicons name="scan" size={48} color="white" />
+                  <Ionicons name="scan" size={48} color="#10B981" />
                 </Animated.View>
               </View>
             </Animated.View>
@@ -148,7 +143,7 @@ export const FaceSuccessModal: React.FC<FaceSuccessModalProps> = ({
               {userName && (
                 <View style={styles.userContainer}>
                   <View style={styles.userIcon}>
-                    <Ionicons name="person" size={20} color="rgba(255,255,255,0.9)" />
+                    <Ionicons name="person" size={20} color="#10B981" />
                   </View>
                   <Text style={styles.userName}>{userName}</Text>
                 </View>
@@ -157,19 +152,19 @@ export const FaceSuccessModal: React.FC<FaceSuccessModalProps> = ({
               {/* Features List */}
               <View style={styles.featuresContainer}>
                 <View style={styles.feature}>
-                  <Ionicons name="shield-checkmark" size={20} color="rgba(255,255,255,0.9)" />
+                  <Ionicons name="shield-checkmark" size={20} color="#10B981" />
                   <Text style={styles.featureText}>Encrypted biometric storage</Text>
                 </View>
                 <View style={styles.feature}>
-                  <Ionicons name="flash" size={20} color="rgba(255,255,255,0.9)" />
+                  <Ionicons name="flash" size={20} color="#10B981" />
                   <Text style={styles.featureText}>Instant payment authentication</Text>
                 </View>
                 <View style={styles.feature}>
-                  <Ionicons name="lock-closed" size={20} color="rgba(255,255,255,0.9)" />
+                  <Ionicons name="lock-closed" size={20} color="#10B981" />
                   <Text style={styles.featureText}>Bank-grade security enabled</Text>
                 </View>
                 <View style={styles.feature}>
-                  <Ionicons name="checkmark-circle" size={20} color="rgba(255,255,255,0.9)" />
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
                   <Text style={styles.featureText}>Ready for AutoPay setup</Text>
                 </View>
               </View>
@@ -180,9 +175,16 @@ export const FaceSuccessModal: React.FC<FaceSuccessModalProps> = ({
               style={styles.doneButton}
               onPress={onClose}
             >
-              <Text style={styles.doneButtonText}>Awesome!</Text>
+              <LinearGradient
+                colors={['#10B981', '#059669']}
+                style={styles.doneButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.doneButtonText}>Awesome!</Text>
+              </LinearGradient>
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
 
           {/* Celebration Elements */}
           <Animated.View 
@@ -284,6 +286,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   modalContent: {
+    backgroundColor: '#E6FFE6',
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
@@ -303,11 +306,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#10B98120',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: '#10B98140',
   },
   contentContainer: {
     alignItems: 'center',
@@ -316,13 +319,13 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: 'white',
+    color: '#1F2937',
     textAlign: 'center',
     marginBottom: 8,
   },
   successSubtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#4B5563',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
@@ -330,11 +333,13 @@ const styles = StyleSheet.create({
   userContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#10B98140',
   },
   userIcon: {
     marginRight: 8,
@@ -342,7 +347,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
+    color: '#1F2937',
   },
   featuresContainer: {
     gap: 12,
@@ -355,20 +360,22 @@ const styles = StyleSheet.create({
   },
   featureText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#4B5563',
     fontWeight: '500',
   },
   doneButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    overflow: 'hidden',
     minWidth: 120,
   },
+  doneButtonGradient: {
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   doneButtonText: {
-    color: 'white',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',

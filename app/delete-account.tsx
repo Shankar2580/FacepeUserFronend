@@ -90,7 +90,7 @@ export default function DeleteAccountScreen() {
       [
         { text: 'No', style: 'cancel' },
         {
-          text: 'Yes, Cancel Deletion',
+          text: 'Yes, Cancel',
           onPress: async () => {
             try {
               setIsLoading(true);
