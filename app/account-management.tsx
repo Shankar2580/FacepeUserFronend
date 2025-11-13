@@ -96,34 +96,40 @@ export default function AccountManagementScreen() {
       </ScrollView>
 
       {/* Fixed Footer with Action Buttons */}
-      <View style={[
-        styles.footer,
-        { paddingBottom: Math.max(insets.bottom, 10) }
-      ]}>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.cancelButtonText} numberOfLines={1}>Keep Account</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            router.push('/delete-account-confirm' as any);
-          }}
-        >
-          <LinearGradient
-            colors={['#6B46C1', '#8B5CF6']}
-            style={styles.deleteButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
+      <View
+        style={[
+          styles.footer,
+          { paddingBottom: Math.max(insets.bottom, 10) }
+        ]}
+      >
+        <View style={styles.footerButtonWrapper}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => router.back()}
           >
-            <Ionicons name="trash" size={18} color="#FFFFFF" />
-            <Text style={styles.deleteButtonText} numberOfLines={1}>Delete</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+            <Text style={styles.cancelButtonText} numberOfLines={1}>Keep Account</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.footerButtonWrapper}>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push('/delete-account-confirm' as any);
+            }}
+          >
+            <LinearGradient
+              colors={['#6B46C1', '#8B5CF6']}
+              style={styles.deleteButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Ionicons name="trash" size={18} color="#FFFFFF" />
+              <Text style={styles.deleteButtonText} numberOfLines={1}>Delete</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -273,17 +279,21 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    alignItems: 'stretch',
+  },
+  footerButtonWrapper: {
+    flex: 1,
+    marginHorizontal: 6,
   },
   cancelButton: {
-    flex: 1,
+    width: '100%',
     paddingVertical: 16,
     paddingHorizontal: 12,
     borderRadius: 12,
     backgroundColor: '#F3F4F6',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -293,7 +303,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   deleteButton: {
-    flex: 1,
+    width: '100%',
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#EF4444',
@@ -304,8 +314,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    alignItems: 'stretch',
   },
   deleteButtonGradient: {
+    flex: 1,
+    width: '100%',
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

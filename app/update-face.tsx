@@ -12,6 +12,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   ScrollView,
+  Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -50,6 +51,8 @@ export default function UpdateFaceScreen() {
   const { refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
   const { showAlert, AlertComponent } = useAlert();
+  const isCameraReady = permission?.granted === true;
+  const canRequestCameraPermission = permission?.canAskAgain !== false;
 
   // Simulate continuous face detection
   React.useEffect(() => {
@@ -94,6 +97,14 @@ export default function UpdateFaceScreen() {
     // Load user data from secure store
     loadUserData();
   }, []);
+
+  useEffect(() => {
+    if (!isUpdating) return;
+    if (!permission) return;
+    if (!permission.granted && permission.canAskAgain) {
+      requestPermission();
+    }
+  }, [isUpdating, permission, requestPermission]);
 
   const loadUserData = async () => {
     try {
@@ -344,15 +355,41 @@ export default function UpdateFaceScreen() {
                 
                 {/* Circle Container with Camera */}
                 <View style={styles.ovalCameraContainer}>
-                  {/* Camera View - Only in Circle */}
-                  <CameraView
-                    ref={cameraRef}
-                    style={styles.cameraViewOval}
-                    facing="front"
-                  />
+                  {!permission ? (
+                    <View style={[styles.cameraViewOval, styles.permissionPromptContainer]}>
+                      <Text style={styles.permissionTitle}>Checking camera access…</Text>
+                    </View>
+                  ) : isCameraReady ? (
+                    <CameraView
+                      ref={cameraRef}
+                      style={styles.cameraViewOval}
+                      facing="front"
+                    />
+                  ) : (
+                    <View style={[styles.cameraViewOval, styles.permissionPromptContainer]}>
+                      <Text style={styles.permissionTitle}>Camera Access Needed</Text>
+                      <Text style={styles.permissionDescription}>
+                        Allow FacePe to use your camera so we can update your face data securely.
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.permissionButton}
+                        onPress={() => {
+                          if (canRequestCameraPermission) {
+                            requestPermission();
+                          } else {
+                            Linking.openSettings();
+                          }
+                        }}
+                      >
+                        <Text style={styles.permissionButtonText}>
+                          {canRequestCameraPermission ? 'Grant Permission' : 'Open Settings'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                   
                   {/* Circle Frame Border */}
-                  <View style={styles.circleFrameBorder} />
+                  <View style={styles.circleFrameBorder} pointerEvents="none" />
                 </View>
                 
                 {/* Right Blue Bar */}
@@ -367,9 +404,33 @@ export default function UpdateFaceScreen() {
           {/* Take Photo Button */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity 
-              style={[styles.takePhotoButton, { opacity: isLoading ? 0.5 : 1 }]}
-              disabled={isLoading}
+              style={[
+                styles.takePhotoButton,
+                { opacity: isLoading || !isCameraReady ? 0.5 : 1 },
+              ]}
+              disabled={isLoading || !isCameraReady}
               onPress={async () => {
+                if (!isCameraReady) {
+                  showAlert(
+                    'Camera Permission Required',
+                    'Please allow camera access to capture your face.',
+                    [
+                      canRequestCameraPermission
+                        ? {
+                            text: 'Grant Permission',
+                            onPress: () => requestPermission(),
+                          }
+                        : {
+                            text: 'Open Settings',
+                            onPress: () => Linking.openSettings(),
+                          },
+                      { text: 'Cancel', style: 'cancel' },
+                    ],
+                    'warning'
+                  );
+                  return;
+                }
+
                 setIsLoading(true);
                 try {
                   const squareImageUri = await takeSquarePicture();
@@ -735,6 +796,43 @@ const styles = StyleSheet.create({
     height: 280,
     overflow: 'hidden',
     borderRadius: 140,
+  },
+  permissionPromptContainer: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: 'rgba(17, 24, 39, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  permissionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  permissionDescription: {
+    fontSize: 14,
+    color: '#E5E7EB',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  permissionButton: {
+    marginTop: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    backgroundColor: '#6B46C1',
+  },
+  permissionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
   circleFrameBorder: {
     position: 'absolute',

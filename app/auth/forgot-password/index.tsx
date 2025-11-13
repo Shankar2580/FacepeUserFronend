@@ -181,7 +181,7 @@ export default function ForgotPasswordScreen() {
         [
           {
             text: 'OK',
-            onPress: () => router.push('/auth/login')
+            onPress: () => router.replace('/auth/login')
           }
         ],
         'success'
@@ -353,7 +353,7 @@ export default function ForgotPasswordScreen() {
           <View style={styles.backButtonContainer}>
             <TouchableOpacity 
               style={styles.backButton}
-              onPress={() => router.push('/auth/login')}
+              onPress={() => router.replace('/auth/login')}
             >
               <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
               <Text style={styles.backButtonText}>Back to Login</Text>

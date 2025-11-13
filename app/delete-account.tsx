@@ -298,35 +298,39 @@ export default function DeleteAccountScreen() {
 
       {/* Fixed Footer Delete Button - Only show when not pending deletion */}
       {!isPendingDeletion && (
-        <View style={[
-          styles.footer,
-          { paddingBottom: Math.max(insets.bottom, 10) }
-        ]}>
-          <TouchableOpacity
-            style={[
-              styles.deleteButton,
-              (isLoading || !isConfirmValid) && styles.deleteButtonDisabled
-            ]}
-            onPress={handleDeleteAccount}
-            disabled={isLoading || !isConfirmValid}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={(isLoading || !isConfirmValid) ? ['#9CA3AF', '#9CA3AF'] : ['#EF4444', '#DC2626']}
-              style={styles.deleteButtonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+        <View
+          style={[
+            styles.footer,
+            { paddingBottom: Math.max(insets.bottom, 10) }
+          ]}
+        >
+          <View style={styles.footerButtonWrapper}>
+            <TouchableOpacity
+              style={[
+                styles.deleteButton,
+                (isLoading || !isConfirmValid) && styles.deleteButtonDisabled
+              ]}
+              onPress={handleDeleteAccount}
+              disabled={isLoading || !isConfirmValid}
+              activeOpacity={0.8}
             >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="trash" size={20} color="#FFFFFF" />
-                  <Text style={styles.deleteButtonText}>Delete My Account</Text>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={(isLoading || !isConfirmValid) ? ['#9CA3AF', '#9CA3AF'] : ['#EF4444', '#DC2626']}
+                style={styles.deleteButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="trash" size={20} color="#FFFFFF" />
+                    <Text style={styles.deleteButtonText}>Delete My Account</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -408,6 +412,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 8,
+  },
+  footerButtonWrapper: {
+    flex: 1,
   },
   iconContainer: {
     alignItems: 'center',
@@ -524,6 +531,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   deleteButton: {
+    width: '100%',
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,
@@ -540,6 +548,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
   },
   deleteButtonGradient: {
+    flex: 1,
+    width: '100%',
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

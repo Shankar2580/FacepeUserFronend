@@ -544,7 +544,12 @@ export default function ProfileScreen() {
           </View>
         </Animated.View>
         {/* Legal Links Footer (inside scrollview) */}
-        <View style={styles.legalLinksFooter}>
+        <View
+          style={[
+            styles.legalLinksFooter,
+            Platform.OS === 'ios' && { marginTop: 16 },
+          ]}
+        >
           <View style={styles.legalLinksContainer}>
             <TouchableOpacity onPress={() => setShowTerms(true)}>
               <Text style={styles.legalLinkText}>Terms & Conditions</Text>
@@ -556,7 +561,7 @@ export default function ProfileScreen() {
           </View>
         </View>
         {/* Small bottom spacer for comfortable tapping; larger on iOS */}
-        <View style={{ height: Platform.OS === 'ios' ? 24 : 8 }} />
+        <View style={{ height: Platform.OS === 'ios' ? 12 : 8 }} />
       </ScrollView>
       
       {/* Alert Component */}
@@ -681,6 +686,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1F2937',
     marginBottom: 4,
+    textAlign: 'center',
   },
   userEmail: {
     fontSize: 16,
@@ -835,11 +841,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 12,
+    paddingBottom: 8,
   },
   legalLinksFooter: {
-    marginTop: 25,
-    
+    marginTop: 20,
   },
   legalFixedFooter: {
     position: 'absolute',
@@ -924,13 +929,18 @@ const styles = StyleSheet.create({
   
   // New styles for improved UI
   userNameContainer: {
-    flexDirection: 'row',
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     marginTop: 16,
+    alignSelf: 'stretch',
+    paddingHorizontal: 48,
   },
   editNameButton: {
+    position: 'absolute',
+    right: 16,
+    top: '50%',
+    transform: [{ translateY: -12 }],
     padding: 6,
     borderRadius: 6,
     backgroundColor: 'rgba(107, 70, 193, 0.1)',

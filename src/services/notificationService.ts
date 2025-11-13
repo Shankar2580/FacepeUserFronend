@@ -115,7 +115,7 @@ class NotificationService {
       case 'payment_request':
         if (!data.isAutoPayMerchant) {
           // Navigate to payment request details or approval screen
-          router.push('/(tabs)/' as any); // Main screen where payment requests are shown
+          router.navigate('/(tabs)/' as any); // Main screen where payment requests are shown
         }
         break;
         
@@ -127,7 +127,7 @@ class NotificationService {
         if (data.paymentId) {
           router.push(`/transaction-detail?id=${data.paymentId}`);
         } else {
-          router.push('/(tabs)/history');
+          router.navigate('/(tabs)/history');
         }
         break;
         

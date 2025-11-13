@@ -101,7 +101,7 @@ export default function WelcomeScreen() {
         >
           <TouchableOpacity
             style={styles.signInButton}
-            onPress={() => router.push('/auth/login')}
+            onPress={() => router.replace('/auth/login')}
             activeOpacity={0.8}
           >
             <LinearGradient
@@ -116,7 +116,7 @@ export default function WelcomeScreen() {
 
           <TouchableOpacity
             style={styles.signUpButton}
-            onPress={() => router.push('/auth/register')}
+            onPress={() => router.replace('/auth/register')}
             activeOpacity={0.8}
           >
             <LinearGradient

@@ -227,7 +227,7 @@ export default function HomeScreen() {
           </View>
           <TouchableOpacity 
             style={styles.avatarContainer}
-            onPress={() => router.push('/(tabs)/profile')}
+            onPress={() => router.navigate('/(tabs)/profile')}
           >
             <Text style={styles.avatarText}>
               {user?.first_name?.[0]}{user?.last_name?.[0]}
@@ -250,34 +250,34 @@ export default function HomeScreen() {
         >
           {/* Payment Requests - Top Priority */}
           {paymentRequests.length > 0 && (
-            <View style={styles.paymentRequestsTop}>
+            <View style={styles.transactionSection}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitleTop}>⚡ Payment Requests</Text>
-                <TouchableOpacity onPress={() => router.push('/(tabs)/history')}>
+                <Text style={styles.sectionTitle}>Payment Requests</Text>
+                <TouchableOpacity onPress={() => router.navigate('/(tabs)/history')}>
                   <Text style={styles.viewAllText}>View All</Text>
                 </TouchableOpacity>
               </View>
               
               <View style={styles.transactionList}>
                 {paymentRequests.slice(0, 2).map((request) => (
-                  <View key={request.id} style={styles.urgentTransactionItem}>
+                  <View key={request.id} style={styles.transactionItem}>
                     <View style={styles.transactionTopRow}>
                       <View style={styles.transactionLeft}>
-                        <View style={styles.urgentTransactionIcon}>
+                        <View style={styles.transactionIcon}>
                           <Text style={styles.transactionEmoji}>
                             {getMerchantIcon(getDisplayName(request))}
                           </Text>
                         </View>
                         <View style={styles.transactionInfo}>
-                          <Text style={styles.urgentTransactionMerchant}>
+                          <Text style={styles.transactionMerchant}>
                             {getDisplayName(request)}
                           </Text>
-                          <Text style={styles.urgentTransactionDate}>
+                          <Text style={styles.transactionDate}>
                             {formatDate(request.created_at)} • {getTimeRemaining(request.expires_at)}
                           </Text>
                         </View>
                       </View>
-                      <Text style={styles.urgentRequestAmount}>
+                      <Text style={styles.requestAmount}>
                         {formatAmount(request.amount)}
                       </Text>
                     </View>
@@ -346,7 +346,7 @@ export default function HomeScreen() {
             <PaymentCard
               card={defaultCard}
               showDefaultBadge={true}
-              onPress={() => router.push('/(tabs)/cards')}
+              onPress={() => router.navigate('/(tabs)/cards')}
             />
           ) : (
             <TouchableOpacity 
@@ -362,12 +362,12 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Payment Requests */}
-        <View style={styles.transactionSection}>
+        {/* Payment Requests (commented by request) */}
+        {/* <View style={styles.transactionSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Payment Requests</Text>
             {paymentRequests.length > 0 && (
-              <TouchableOpacity onPress={() => router.push('/(tabs)/history')}>
+              <TouchableOpacity onPress={() => router.navigate('/(tabs)/history')}>
                 <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
             )}
@@ -423,7 +423,7 @@ export default function HomeScreen() {
               </Text>
             </View>
           )}
-        </View>
+        </View> */}
       </ScrollView>
       
       {/* Alert Component */}

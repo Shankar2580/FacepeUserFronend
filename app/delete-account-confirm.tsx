@@ -172,37 +172,45 @@ export default function DeleteAccountConfirmScreen() {
           { paddingBottom: Math.max(insets.bottom, 16) }, // Ensure safe area padding
         ]}
       >
-        <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()} disabled={isLoading}>
-          <Text style={styles.cancelButtonText} numberOfLines={1}>Go Back</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.deleteButton,
-            (isLoading || !isConfirmValid) && styles.deleteButtonDisabled,
-          ]}
-          onPress={handleDeleteAccount}
-          disabled={isLoading || !isConfirmValid}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={
-              isLoading || !isConfirmValid ? ['#9CA3AF', '#9CA3AF'] : ['#6B46C1', '#8B5CF6']
-            }
-            style={styles.deleteButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
+        <View style={styles.footerButtonWrapper}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => router.back()}
+            disabled={isLoading}
           >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="trash" size={18} color="#FFFFFF" />
-                <Text style={styles.deleteButtonText} numberOfLines={1}>Delete</Text>
-              </>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
+            <Text style={styles.cancelButtonText} numberOfLines={1}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.footerButtonWrapper}>
+          <TouchableOpacity
+            style={[
+              styles.deleteButton,
+              (isLoading || !isConfirmValid) && styles.deleteButtonDisabled,
+            ]}
+            onPress={handleDeleteAccount}
+            disabled={isLoading || !isConfirmValid}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={
+                isLoading || !isConfirmValid ? ['#9CA3AF', '#9CA3AF'] : ['#6B46C1', '#8B5CF6']
+              }
+              style={styles.deleteButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="trash" size={18} color="#FFFFFF" />
+                  <Text style={styles.deleteButtonText} numberOfLines={1}>Delete</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <AlertComponent />
@@ -381,11 +389,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    alignItems: 'stretch',
+  },
+  footerButtonWrapper: {
+    flex: 1,
+    marginHorizontal: 6,
   },
   cancelButton: {
-    flex: 1,
+    width: '100%',
     paddingVertical: 16,
     paddingHorizontal: 12,
     borderRadius: 12,
@@ -401,7 +412,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   deleteButton: {
-    flex: 1,
+    width: '100%',
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#EF4444',
@@ -412,11 +423,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    alignItems: 'stretch',
   },
   deleteButtonDisabled: {
     shadowOpacity: 0.1,
   },
   deleteButtonGradient: {
+    flex: 1,
+    width: '100%',
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

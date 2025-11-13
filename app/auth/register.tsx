@@ -367,7 +367,7 @@ export default function RegisterScreen() {
             [
               {
                 text: 'OK',
-                onPress: () => router.push('/auth/login')
+                onPress: () => router.replace('/auth/login')
               }
             ],
             'success'
@@ -499,7 +499,7 @@ export default function RegisterScreen() {
                 <View style={styles.tabContainer}>
                   <TouchableOpacity 
                     style={styles.tab}
-                    onPress={() => router.push('/auth/login')}
+                    onPress={() => router.replace('/auth/login')}
                   >
                     <Text style={styles.tabText}>Login</Text>
                   </TouchableOpacity>
@@ -525,7 +525,7 @@ export default function RegisterScreen() {
                 <View style={styles.tabContainer}>
                   <TouchableOpacity 
                     style={styles.tab}
-                    onPress={() => router.push('/auth/login')}
+                    onPress={() => router.replace('/auth/login')}
                   >
                     <Text style={styles.tabText}>Login</Text>
                   </TouchableOpacity>
@@ -834,7 +834,7 @@ export default function RegisterScreen() {
                 Already have an account?{' '}
                 <Text 
                   style={styles.footerLink}
-                  onPress={() => router.push('/auth/login')}
+                  onPress={() => router.replace('/auth/login')}
                 >
                   Sign In
                 </Text>
