@@ -278,7 +278,7 @@ export default function ProfileScreen() {
       ],
     },
     {
-      title: 'App Settings',
+      title: 'App Details',
       items: [
         {
           icon: 'cloud-download-outline',
@@ -297,6 +297,14 @@ export default function ProfileScreen() {
           title: 'App Version',
           subtitle: `v1.0.1 ${currentUpdateInfo?.updateId ? `(${currentUpdateInfo.updateId.slice(0, 8)})` : ''}`,
           onPress: undefined,
+        },
+        {
+          icon: 'people-circle-outline',
+          title: 'About Us',
+          subtitle: 'Learn more about FacePe',
+          action: 'navigate',
+          chevron: true,
+          onPress: () => router.push('/about' as any),
         },
       ],
     },
@@ -547,7 +555,7 @@ export default function ProfileScreen() {
         <View
           style={[
             styles.legalLinksFooter,
-            Platform.OS === 'ios' && { marginTop: 16 },
+            Platform.OS === 'ios' && { marginTop: 4 },
           ]}
         >
           <View style={styles.legalLinksContainer}>
@@ -561,7 +569,7 @@ export default function ProfileScreen() {
           </View>
         </View>
         {/* Small bottom spacer for comfortable tapping; larger on iOS */}
-        <View style={{ height: Platform.OS === 'ios' ? 12 : 8 }} />
+        <View style={{ height: Platform.OS === 'ios' ? 0 : 8 }} />
       </ScrollView>
       
       {/* Alert Component */}

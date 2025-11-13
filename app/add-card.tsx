@@ -88,6 +88,10 @@ function AddCardContent() {
   const { confirmSetupIntent } = useStripe();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const keyboardVerticalOffset = Platform.select({
+    ios: Math.max(insets.top, 16) + 64,
+    default: 0,
+  });
   const { showAlert, AlertComponent } = useAlert();
 
   // Screen security hook - prevents screenshots when entering card details
@@ -309,13 +313,13 @@ function AddCardContent() {
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardAvoidingView}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+        keyboardVerticalOffset={keyboardVerticalOffset ?? 0}
       >
         {/* Main Content Area */}
         <ScrollView 
           style={styles.scrollView}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
           bounces={false}
           automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}

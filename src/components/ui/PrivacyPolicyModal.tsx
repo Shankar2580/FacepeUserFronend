@@ -9,6 +9,7 @@ import {
   Linking,
   Dimensions,
   Platform,
+  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,12 +44,9 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
       transparent={true}
       onRequestClose={onDecline}
     >
-      <TouchableOpacity 
-        style={styles.modalOverlay} 
-        activeOpacity={1}
-        onPress={onDecline}
-      >
-        <View style={styles.container} onStartShouldSetResponder={() => true}>
+      <View style={styles.modalOverlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onDecline} accessibilityRole="button" accessibilityLabel="Dismiss privacy policy modal" />
+        <View style={styles.container}>
         
         <View style={styles.header}>
           <Text style={styles.title}>Privacy Policy</Text>
@@ -59,6 +57,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
           style={styles.content} 
           showsVerticalScrollIndicator={true}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>1. Introduction</Text>
@@ -161,7 +160,14 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
 
         </ScrollView>
 
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <View style={[
+          styles.footer,
+          {
+            paddingBottom: Platform.OS === 'ios'
+              ? Math.max(insets.bottom, 10)
+              : Math.max(insets.bottom, 16),
+          },
+        ]}>
           <TouchableOpacity style={[styles.singleButton, isTablet && styles.singleButtonTablet]} onPress={onAccept}>
             <LinearGradient
               colors={['#3B82F6', '#2563EB']}
@@ -172,7 +178,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
           </TouchableOpacity>
         </View>
         </View>
-      </TouchableOpacity>
+      </View>
     </Modal>
   );
 };
