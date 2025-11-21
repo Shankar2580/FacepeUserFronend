@@ -275,6 +275,14 @@ export default function ProfileScreen() {
           onPress: () => router.push('/pin-reset' as any),
           chevron: true,
         },
+        {
+          icon: 'help-circle-outline',
+          title: 'Forgot PIN',
+          subtitle: 'Reset PIN without current PIN',
+          action: 'navigate',
+          onPress: () => router.push('/pin-forgot' as any),
+          chevron: true,
+        },
       ],
     },
     {

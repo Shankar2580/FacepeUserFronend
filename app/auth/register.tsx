@@ -128,7 +128,10 @@ export default function RegisterScreen() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [loadingType, setLoadingType] = useState<'verification' | 'verify' | 'register' | 'auto-login'>('verification');
+  const [emailVerificationCode, setEmailVerificationCode] = useState('');
+  const [emailCodeSent, setEmailCodeSent] = useState(false);
+  const [emailCountdown, setEmailCountdown] = useState(0);
+  const [loadingType, setLoadingType] = useState<'verification' | 'verify' | 'register' | 'auto-login' | 'email-verification'>('verification');
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [registrationData, setRegistrationData] = useState<any>(null);
@@ -280,6 +283,54 @@ export default function RegisterScreen() {
     return emailRegex.test(email);
   };
 
+  // Start email countdown timer
+  const startEmailCountdown = () => {
+    setEmailCountdown(60);
+    const timer = setInterval(() => {
+      setEmailCountdown((prev: number) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleSendEmailCode = async () => {
+    if (!email) {
+      showAlert('Error', 'Please enter your email address', undefined, 'error');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      showAlert('Error', 'Please enter a valid email address', undefined, 'error');
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingType('email-verification');
+    try {
+      await apiService.sendEmailVerification(email);
+      setIsLoading(false);
+      setEmailCodeSent(true);
+      startEmailCountdown();
+      showAlert('Success', 'Verification code sent to your email', undefined, 'success');
+    } catch (error: any) {
+      setIsLoading(false);
+      if (isScreenFocused.current) {
+        setTimeout(() => {
+          showAlert('Error', error.response?.data?.message || 'Failed to send email verification code', undefined, 'error');
+        }, 100);
+      }
+    }
+  };
+
+  const handleResendEmailCode = async () => {
+    if (emailCountdown > 0) return;
+    await handleSendEmailCode();
+  };
+
   const handleRegister = async () => {
     if (!email || !firstName || !lastName || !password || !confirmPassword || !pin || !confirmPin) {
       showAlert('Error', 'Please fill in all fields', undefined, 'error');
@@ -288,6 +339,16 @@ export default function RegisterScreen() {
 
     if (!validateEmail(email)) {
       showAlert('Error', 'Please enter a valid email address', undefined, 'error');
+      return;
+    }
+
+    if (!emailCodeSent) {
+      showAlert('Error', 'Please send email verification code first', undefined, 'error');
+      return;
+    }
+
+    if (!emailVerificationCode || emailVerificationCode.length < 4) {
+      showAlert('Error', 'Please enter the email verification code', undefined, 'error');
       return;
     }
 
@@ -340,7 +401,8 @@ export default function RegisterScreen() {
         last_name: lastName,
         password: password,
         pin: pin,
-        verification_code: verificationCode
+        verification_code: verificationCode,
+        email_verification_code: emailVerificationCode
       });
       
       // Account created successfully, now auto-login
@@ -353,8 +415,21 @@ export default function RegisterScreen() {
         });
         
         setIsLoading(false);
-        // Success - user will be redirected by auth system
-        // console.log removed for production
+        
+        // Show success message and navigate to face registration
+        setTimeout(() => {
+          showAlert(
+            'Welcome to FacePe!', 
+            'Your account has been created successfully. Let\'s set up face recognition for secure payments.',
+            [
+              {
+                text: 'Continue',
+                onPress: () => router.replace('/face-registration')
+              }
+            ],
+            'success'
+          );
+        }, 100);
         
       } catch (loginError: any) {
         setIsLoading(false); // Hide processing animation before showing alert
@@ -367,7 +442,7 @@ export default function RegisterScreen() {
             [
               {
                 text: 'OK',
-                onPress: () => router.replace('/auth/login')
+                onPress: () => router.push('/auth/login')
               }
             ],
             'success'
@@ -639,6 +714,34 @@ export default function RegisterScreen() {
                       autoCorrect={false}
                     />
                   </View>
+
+                  <TouchableOpacity
+                    style={[styles.secondaryButton, (!email || emailCountdown > 0) && styles.buttonDisabled]}
+                    onPress={handleSendEmailCode}
+                    disabled={!email || emailCountdown > 0}
+                  >
+                    <Text style={styles.secondaryButtonText}>
+                      {emailCodeSent 
+                        ? (emailCountdown > 0 ? `Resend in ${emailCountdown}s` : 'Resend Email Code')
+                        : 'Send Email Code'
+                      }
+                    </Text>
+                  </TouchableOpacity>
+
+                  {emailCodeSent && (
+                    <View style={styles.inputContainer}>
+                      <Ionicons name="shield-checkmark-outline" size={20} color="#999" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Email Verification Code"
+                        placeholderTextColor="#999"
+                        value={emailVerificationCode}
+                        onChangeText={setEmailVerificationCode}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                      />
+                    </View>
+                  )}
 
                   <View style={styles.inputContainer}>
                     <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />

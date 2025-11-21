@@ -152,17 +152,15 @@ const PinInput = ({
   );
 };
 
-export default function PinResetScreen() {
-  const [step, setStep] = useState<'send_code' | 'verification' | 'current_pin' | 'new_pin'>('send_code');
+export default function PinForgotScreen() {
+  const [step, setStep] = useState<'send_code' | 'verification' | 'new_pin'>('send_code');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [emailVerificationCode, setEmailVerificationCode] = useState('');
-  const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmNewPin, setConfirmNewPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [currentPinError, setCurrentPinError] = useState(false);
   const [newPinError, setNewPinError] = useState(false);
   
   const router = useRouter();
@@ -231,31 +229,16 @@ export default function PinResetScreen() {
 
   const handleVerifyCode = async () => {
     if (!verificationCode || verificationCode.length !== 6) {
-      showAlert('Error', 'Please enter a valid 6-digit verification code', undefined, 'warning');
+      showAlert('Error', 'Please enter a valid 6-digit phone verification code', undefined, 'warning');
       return;
     }
 
-    setIsLoading(true);
-    try {
-      await apiService.verifyCode({
-        phone_number: phoneNumber,
-        code: verificationCode
-      });
-      setStep('current_pin');
-    } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Invalid verification code', undefined, 'warning');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCurrentPinSubmit = () => {
-    if (!currentPin || currentPin.length !== 4) {
-      setCurrentPinError(true);
-      showAlert('Error', 'Please enter your current 4-digit PIN', undefined, 'warning');
+    if (!emailVerificationCode || emailVerificationCode.length !== 6) {
+      showAlert('Error', 'Please enter a valid 6-digit email verification code', undefined, 'warning');
       return;
     }
-    setCurrentPinError(false);
+
+    // Move to new PIN step after codes entered
     setStep('new_pin');
   };
 
@@ -270,11 +253,6 @@ export default function PinResetScreen() {
       showAlert('Error', 'PINs do not match', undefined, 'warning');
       return;
     }
-    if (newPin === currentPin) {
-      setNewPinError(true);
-      showAlert('Error', 'New PIN must be different from current PIN', undefined, 'warning');
-      return;
-    }
     if (!validatePinSecurity(newPin)) {
       setNewPinError(true);
       showAlert('Error', 'Please choose a more secure PIN. Avoid common sequences like 1234, 0000, etc.', undefined, 'warning');
@@ -284,11 +262,10 @@ export default function PinResetScreen() {
     setNewPinError(false);
     setIsLoading(true);
     try {
-      await apiService.resetPin({
+      await apiService.forgotPin({
         phone_number: phoneNumber,
         verification_code: verificationCode,
         email_verification_code: emailVerificationCode,
-        current_pin: currentPin,
         new_pin: newPin
       });
 
@@ -325,11 +302,10 @@ export default function PinResetScreen() {
 
   const getStepTitle = () => {
     switch (step) {
-      case 'send_code': return 'Reset PIN';
-      case 'verification': return 'Verify Your Phone';
-      case 'current_pin': return 'Enter Current PIN';
+      case 'send_code': return 'Forgot PIN';
+      case 'verification': return 'Verify Your Identity';
       case 'new_pin': return 'Set New PIN';
-      default: return 'Reset PIN';
+      default: return 'Forgot PIN';
     }
   };
 
@@ -337,7 +313,6 @@ export default function PinResetScreen() {
     switch (step) {
       case 'send_code': return 'We\'ll send verification codes to your phone and email';
       case 'verification': return 'Enter the codes sent to your phone and email';
-      case 'current_pin': return 'Enter your current 4-digit PIN for security';
       case 'new_pin': return 'Choose a new secure 4-digit PIN';
       default: return '';
     }
@@ -364,157 +339,111 @@ export default function PinResetScreen() {
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.content}>
-            {/* Header */}
-            <View style={styles.header}>
-              
-              <Text style={styles.title}>{getStepTitle()}</Text>
-              <Text style={styles.subtitle}>{getStepSubtitle()}</Text>
-              
-              {/* Progress Indicator */}
-              <View style={styles.progressContainer}>
+          <View style={styles.header}>
+            {/* Progress Indicator */}
+            <View style={styles.progressContainer}>
+              <View style={styles.progressTrack}>
                 <View style={[styles.progressDot, styles.progressDotActive]} />
                 <View style={[styles.progressLine, step !== 'send_code' ? styles.progressLineActive : null]} />
                 <View style={[styles.progressDot, step !== 'send_code' ? styles.progressDotActive : null]} />
-                <View style={[styles.progressLine, step === 'current_pin' || step === 'new_pin' ? styles.progressLineActive : null]} />
-                <View style={[styles.progressDot, step === 'current_pin' || step === 'new_pin' ? styles.progressDotActive : null]} />
                 <View style={[styles.progressLine, step === 'new_pin' ? styles.progressLineActive : null]} />
                 <View style={[styles.progressDot, step === 'new_pin' ? styles.progressDotActive : null]} />
               </View>
             </View>
 
-            {/* Form */}
-            <View style={styles.form}>
-              {step === 'send_code' && (
-                <>
+            <Text style={styles.title}>{getStepTitle()}</Text>
+            <Text style={styles.subtitle}>{getStepSubtitle()}</Text>
+          </View>
+
+          <View style={styles.content}>
+            {step === 'send_code' && (
+              <>
+                <View style={styles.infoCard}>
+                  <View style={styles.infoIconContainer}>
+                    <Ionicons name="information-circle" size={24} color="#6B46C1" />
+                  </View>
+                  <Text style={styles.infoText}>
+                    Don't worry! We'll verify your identity using codes sent to your registered phone and email.
+                  </Text>
+                </View>
+
+                <View style={styles.inputCard}>
                   <View style={styles.inputContainer}>
-                    <Ionicons name="phone-portrait-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <Ionicons name="call" size={20} color="#6B46C1" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       placeholder="Phone Number"
-                      placeholderTextColor="#999"
+                      placeholderTextColor="#9CA3AF"
                       value={phoneNumber}
-                      onChangeText={setPhoneNumber}
+                      editable={false}
                       keyboardType="phone-pad"
-                      autoCapitalize="none"
-                      editable={false} // Pre-filled from user data
                     />
                   </View>
 
-                  <View style={styles.infoBox}>
-                    <Ionicons name="information-circle" size={20} color="#6B46C1" />
-                    <Text style={styles.infoText}>
-                      We'll send a 6-digit verification code to this number
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.primaryButton, isLoading && styles.disabledButton]}
                     onPress={handleSendVerification}
                     disabled={isLoading}
                   >
                     <LinearGradient
-                      colors={['#6B46C1', '#9333EA']}
-                      style={styles.primaryButtonGradient}
+                      colors={['#6B46C1', '#8B5CF6']}
+                      style={styles.gradientButton}
                     >
-                      <Text style={styles.primaryButtonText}>
-                        {isLoading ? 'Sending...' : 'Send Verification Code'}
-                      </Text>
-                      {!isLoading && <Ionicons name="send" size={20} color="#FFFFFF" />}
+                      <Text style={styles.buttonText}>Send Verification Codes</Text>
                     </LinearGradient>
                   </TouchableOpacity>
-                </>
-              )}
+                </View>
+              </>
+            )}
 
-              {step === 'verification' && (
-                <>
-                  <View style={styles.inputContainer}>
-                    <Ionicons name="phone-portrait-outline" size={20} color="#999" style={styles.inputIcon} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Phone Number"
-                      placeholderTextColor="#999"
-                      value={phoneNumber}
-                      onChangeText={setPhoneNumber}
-                      keyboardType="phone-pad"
-                      autoCapitalize="none"
-                      editable={false} // Pre-filled from user data
-                    />
-                  </View>
+            {step === 'verification' && (
+              <>
+                <View style={styles.inputCard}>
+                  <Text style={styles.label}>Phone Verification Code</Text>
+                  <OTPInput code={verificationCode} setCode={setVerificationCode} />
 
-                  <Text style={styles.otpLabel}>SMS Code</Text>
-                  <OTPInput
-                    code={verificationCode}
-                    setCode={setVerificationCode}
-                  />
+                  <Text style={[styles.label, { marginTop: 24 }]}>Email Verification Code</Text>
+                  <OTPInput code={emailVerificationCode} setCode={setEmailVerificationCode} />
 
-                  <Text style={styles.otpLabel}>Email Code</Text>
-                  <OTPInput
-                    code={emailVerificationCode}
-                    setCode={setEmailVerificationCode}
-                  />
-
-                  <TouchableOpacity 
-                    style={[styles.primaryButton, isLoading && styles.disabledButton]}
-                    onPress={handleVerifyCode}
-                    disabled={isLoading}
-                  >
-                    <LinearGradient
-                      colors={['#6B46C1', '#9333EA']}
-                      style={styles.primaryButtonGradient}
-                    >
-                      <Text style={styles.primaryButtonText}>
-                        {isLoading ? 'Verifying...' : 'Verify Codes'}
-                      </Text>
-                      {!isLoading && <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />}
-                    </LinearGradient>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={[styles.secondaryButton, countdown > 0 && styles.disabledButton]}
-                    onPress={handleResendCode}
-                    disabled={countdown > 0}
-                  >
-                    <Text style={styles.secondaryButtonText}>
-                      {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Codes'}
+                  {countdown > 0 ? (
+                    <Text style={styles.resendText}>
+                      Resend codes in {countdown}s
                     </Text>
-                  </TouchableOpacity>
-                </>
-              )}
+                  ) : (
+                    <TouchableOpacity onPress={handleResendCode} disabled={isLoading}>
+                      <Text style={styles.resendLink}>Resend Verification Codes</Text>
+                    </TouchableOpacity>
+                  )}
 
-              {step === 'current_pin' && (
-                <>
-                  <PinInput
-                    pin={currentPin}
-                    setPin={setCurrentPin}
-                    placeholder="Current PIN"
-                    error={currentPinError}
-                  />
-
-                  <TouchableOpacity 
-                    style={[styles.primaryButton, isLoading && styles.disabledButton]}
-                    onPress={handleCurrentPinSubmit}
-                    disabled={isLoading}
+                  <TouchableOpacity
+                    style={[
+                      styles.primaryButton,
+                      (isLoading || verificationCode.length !== 6 || emailVerificationCode.length !== 6) && styles.disabledButton
+                    ]}
+                    onPress={handleVerifyCode}
+                    disabled={isLoading || verificationCode.length !== 6 || emailVerificationCode.length !== 6}
                   >
                     <LinearGradient
-                      colors={['#6B46C1', '#9333EA']}
-                      style={styles.primaryButtonGradient}
+                      colors={['#6B46C1', '#8B5CF6']}
+                      style={styles.gradientButton}
                     >
-                      <Text style={styles.primaryButtonText}>Continue</Text>
-                      <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                      <Text style={styles.buttonText}>Verify Codes</Text>
                     </LinearGradient>
                   </TouchableOpacity>
-                </>
-              )}
+                </View>
+              </>
+            )}
 
-              {step === 'new_pin' && (
-                <>
+            {step === 'new_pin' && (
+              <>
+                <View style={styles.inputCard}>
                   <PinInput
                     pin={newPin}
                     setPin={setNewPin}
-                    placeholder="New PIN"
+                    placeholder="Enter New PIN"
                     error={newPinError}
                   />
 
@@ -526,32 +455,36 @@ export default function PinResetScreen() {
                   />
 
                   <View style={styles.securityTip}>
-                    <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+                    <Ionicons name="shield-checkmark" size={20} color="#10B981" />
                     <Text style={styles.securityTipText}>
-                      Choose a secure PIN. Avoid common sequences like 1234, 0000, etc.
+                      Avoid common patterns like 1234, 0000, or repeated digits
                     </Text>
                   </View>
 
-                  <TouchableOpacity 
-                    style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                  <TouchableOpacity
+                    style={[
+                      styles.primaryButton,
+                      (isLoading || newPin.length !== 4 || confirmNewPin.length !== 4) && styles.disabledButton
+                    ]}
                     onPress={handleNewPinSubmit}
-                    disabled={isLoading}
+                    disabled={isLoading || newPin.length !== 4 || confirmNewPin.length !== 4}
                   >
                     <LinearGradient
-                      colors={['#6B46C1', '#9333EA']}
-                      style={styles.primaryButtonGradient}
+                      colors={['#6B46C1', '#8B5CF6']}
+                      style={styles.gradientButton}
                     >
-                      <Text style={styles.primaryButtonText}>
-                        {isLoading ? 'Updating...' : 'Update PIN'}
+                      <Text style={styles.buttonText}>
+                        {isLoading ? 'Resetting PIN...' : 'Reset PIN'}
                       </Text>
                     </LinearGradient>
                   </TouchableOpacity>
-                </>
-              )}
-            </View>
+                </View>
+              </>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
       <AlertComponent />
     </SafeAreaView>
   );
@@ -562,28 +495,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F7FF',
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
   backButton: {
     position: 'absolute',
-    top: 60,
+    top: 50,
     left: 16,
     zIndex: 10,
-    borderRadius: 22,
-    shadowColor: '#6B46C1',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   backButtonGradient: {
     width: 44,
@@ -591,228 +512,217 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(107, 70, 193, 0.1)',
   },
   keyboardAvoidingView: {
     flex: 1,
-    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingBottom: 24,
-    paddingTop: 70, // Added padding to avoid overlap with back button
+    paddingTop: 100,
+    paddingBottom: 40,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 24,
-    textAlign: 'center',
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
   },
   progressContainer: {
+    width: '100%',
+    marginBottom: 32,
+  },
+  progressTrack: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'center',
   },
   progressDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
     backgroundColor: '#E5E7EB',
-    marginHorizontal: 4,
   },
   progressDotActive: {
     backgroundColor: '#6B46C1',
+    transform: [{ scale: 1.2 }],
   },
   progressLine: {
-    flex: 1,
+    width: 60,
     height: 2,
     backgroundColor: '#E5E7EB',
-    marginHorizontal: 8,
   },
   progressLineActive: {
     backgroundColor: '#6B46C1',
   },
-  form: {
-    marginBottom: 40,
-    width: '100%',
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  content: {
+    flex: 1,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    backgroundColor: '#EDE9FE',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  infoIconContainer: {
+    marginRight: 12,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#5B21B6',
+    lineHeight: 20,
+  },
+  inputCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6',
     borderRadius: 12,
-    marginBottom: 16,
     paddingHorizontal: 16,
-    height: 56,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    paddingVertical: 14,
+    marginBottom: 16,
   },
   inputIcon: {
     marginRight: 12,
-    color: '#9CA3AF',
   },
   input: {
     flex: 1,
     fontSize: 16,
     color: '#1F2937',
+    fontWeight: '500',
   },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EEF2FF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    gap: 12,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#6B46C1',
-    lineHeight: 20,
-  },
-  otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  otpLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  otpInput: {
-    width: 48,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  pinContainer: {
-    marginBottom: 24,
-  },
-  pinLabel: {
+  label: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 12,
   },
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  otpInput: {
+    width: 45,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  pinContainer: {
+    marginBottom: 24,
+  },
+  pinLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 12,
+  },
   pinInputsContainer: {
-    width: '100%',
     alignItems: 'center',
-    alignSelf: 'center',
   },
   pinInputContainer: {
     flexDirection: 'row',
-    gap: 16,
     justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 280,
+    gap: 12,
   },
   pinInput: {
     width: 56,
-    height: 56,
+    height: 64,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6',
     textAlign: 'center',
-    fontSize: 18,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#1F2937',
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: 'transparent',
   },
   pinInputFilled: {
+    backgroundColor: '#EDE9FE',
     borderColor: '#6B46C1',
-    backgroundColor: '#F3F4F6',
   },
   pinInputError: {
     borderColor: '#EF4444',
+    backgroundColor: '#FEE2E2',
   },
   securityTip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ECFDF5',
+    backgroundColor: '#D1FAE5',
+    borderRadius: 12,
     padding: 12,
-    borderRadius: 8,
     marginBottom: 24,
   },
   securityTipText: {
-    fontSize: 14,
-    color: '#065F46',
-    marginLeft: 8,
     flex: 1,
+    fontSize: 13,
+    color: '#059669',
+    marginLeft: 8,
+    lineHeight: 18,
+  },
+  resendText: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#6B7280',
+    marginVertical: 16,
+  },
+  resendLink: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#6B46C1',
+    fontWeight: '600',
+    marginVertical: 16,
+    textDecorationLine: 'underline',
   },
   primaryButton: {
-    height: 56, // Set a fixed height for the button
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 16,
     shadowColor: '#6B46C1',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  primaryButtonGradient: {
-    flex: 1, // Make gradient fill the entire button
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  secondaryButton: {
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 16,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B46C1',
+    shadowRadius: 12,
+    elevation: 5,
   },
   disabledButton: {
-    opacity: 0.6,
+    opacity: 0.5,
+    shadowOpacity: 0,
   },
-}); 
+  gradientButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+});

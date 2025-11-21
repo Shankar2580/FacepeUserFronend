@@ -306,6 +306,21 @@ class ApiService {
     return response.data;
   }
 
+  async sendEmailVerification(email: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.SEND_EMAIL_VERIFICATION, {
+      email: email
+    });
+    return response.data;
+  }
+
+  async verifyEmailCode(email: string, code: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.VERIFY_EMAIL_CODE, {
+      email: email,
+      code: code
+    });
+    return response.data;
+  }
+
   // User Profile
   async getProfile(): Promise<User> {
     const response = await this.api.get<User>(API_ENDPOINTS.GET_PROFILE);
@@ -682,6 +697,7 @@ class ApiService {
   async verifyPasswordReset(data: {
     phone_number: string;
     verification_code: string;
+    email_verification_code: string;
     password_reset: {
         new_password: string;
     };
@@ -690,6 +706,7 @@ class ApiService {
     const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.FORGOT_PASSWORD_VERIFY, {
       phone_number: data.phone_number,
       verification_code: data.verification_code,
+      email_verification_code: data.email_verification_code,
       password_reset: {
         new_password: data.password_reset.new_password
       }
@@ -700,6 +717,16 @@ class ApiService {
   async resetPin(data: PinResetRequest): Promise<PinResetResponse> {
     // console.log removed for production
     const response = await this.api.post<PinResetResponse>(API_ENDPOINTS.PIN_RESET, data);
+    return response.data;
+  }
+
+  async forgotPin(data: {
+    phone_number: string;
+    verification_code: string;
+    email_verification_code: string;
+    new_pin: string;
+  }): Promise<PinResetResponse> {
+    const response = await this.api.post<PinResetResponse>(API_ENDPOINTS.PIN_FORGOT, data);
     return response.data;
   }
 

@@ -104,7 +104,7 @@ export interface PaymentRequest {
   amount: number;
   currency: string;
   description?: string;
-  status: 'pending' | 'approved' | 'declined' | 'expired';
+  status: 'pending' | 'completed' | 'failed' | 'expired'; // Backend sends: pending, completed, failed
   expires_at: string;
   created_at: string;
   updated_at: string;
@@ -143,6 +143,7 @@ export interface RegisterRequest {
   password: string;
   pin: string;
   verification_code: string;
+  email_verification_code: string;
 }
 
 export interface LoginRequest {
@@ -166,6 +167,7 @@ export interface FaceRegistrationResponse {
 export interface PinResetRequest {
   phone_number: string;
   verification_code: string;
+  email_verification_code: string;
   current_pin: string;
   new_pin: string;
 }
@@ -178,6 +180,7 @@ export interface PinResetResponse {
 export interface PasswordResetData {
   phone_number: string;
   verification_code: string;
+  email_verification_code: string;
   password_reset: {
     new_password: string;
   };

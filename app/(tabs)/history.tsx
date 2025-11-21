@@ -20,7 +20,7 @@ import { useAlert } from '../../src/components/ui/AlertModal';
 import FilterModal from '../../src/components/ui/FilterModal';
 
 type TimeFilter = 'all' | 'daily' | 'weekly' | 'monthly';
-type StatusFilter = 'all' | 'completed' | 'pending' | 'failed' | 'cancelled';
+type StatusFilter = 'all' | 'completed' | 'pending' | 'failed' | 'cancelled' | 'expired';
 type CardFilter = 'all' | string; // 'all' or payment method ID
 
 interface GroupedTransactions {
@@ -206,6 +206,7 @@ export default function HistoryScreen() {
       case 'pending': return '#F59E0B';
       case 'failed': return '#EF4444';
       case 'cancelled': return '#6B7280';
+      case 'expired': return '#9CA3AF';
       default: return '#6B7280';
     }
   };
@@ -259,6 +260,7 @@ export default function HistoryScreen() {
     { key: 'completed', label: 'Completed', count: 0 },
     { key: 'pending', label: 'Pending', count: 0 },
     { key: 'failed', label: 'Failed', count: 0 },
+    { key: 'expired', label: 'Expired', count: 0 },
   ];
 
   const groupedTransactions = groupTransactionsByDate();

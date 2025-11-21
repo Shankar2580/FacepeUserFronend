@@ -4,11 +4,18 @@ import { notificationService } from '../services/notificationService';
 import { apiService } from '../services/api';
 import { useAuth } from './useAuth';
 
+interface PaymentRequestState {
+  id: string;
+  status: string;
+}
+
 export const useNotifications = () => {
   const { user, isAuthenticated } = useAuth();
   const intervalRef = useRef<any>(null);
   const lastCheckTimeRef = useRef<number>(0);
-  const previousPaymentRequestIds = useRef<string[]>([]);
+  // Store both ID and status to detect changes
+  const previousPaymentRequests = useRef<PaymentRequestState[]>([]);
+  const onRequestsUpdatedRef = useRef<(() => void) | null>(null);
 
   const getDisplayName = (request: any) => {
     // Prioritize business_name if available
@@ -35,7 +42,7 @@ export const useNotifications = () => {
     return 'Unknown Merchant';
   };
 
-  const checkForNewPaymentRequests = async () => {
+  const checkForPaymentRequestUpdates = async () => {
     if (!isAuthenticated || !user) return;
 
     try {
@@ -44,16 +51,52 @@ export const useNotifications = () => {
         apiService.getAutoPay().catch(() => [])
       ]);
 
+      // Track ALL requests (not just pending) to detect cancellations
+      const allCurrentRequests = requests.map(req => ({
+        id: req.id,
+        status: req.status.toLowerCase(),
+        request: req
+      }));
+
       const pendingRequests = requests.filter(request => request.status === 'pending');
-      const currentRequestIds = pendingRequests.map(req => req.id);
       
-      // Find new requests
+      // Find new pending requests
       const newRequests = pendingRequests.filter(
-        req => !previousPaymentRequestIds.current.includes(req.id)
+        req => !previousPaymentRequests.current.some(prev => prev.id === req.id)
       );
 
-      // Update the reference
-      previousPaymentRequestIds.current = currentRequestIds;
+      // Find cancelled/failed requests (were pending, now failed/cancelled)
+      const cancelledRequests = previousPaymentRequests.current.filter(prev => {
+        const current = allCurrentRequests.find(curr => curr.id === prev.id);
+        // Check if status changed from pending to failed/completed
+        return prev.status === 'pending' && 
+               current && 
+               (current.status === 'failed' || current.status === 'completed');
+      });
+
+      // Update the reference with current pending requests only
+      previousPaymentRequests.current = pendingRequests.map(req => ({
+        id: req.id,
+        status: req.status.toLowerCase()
+      }));
+
+      // Notify about cancelled requests
+      for (const cancelledReq of cancelledRequests) {
+        const cancelledRequest = allCurrentRequests.find(r => r.id === cancelledReq.id)?.request;
+        if (cancelledRequest) {
+          await notificationService.notifyPaymentFailed({
+            merchantName: getDisplayName(cancelledRequest),
+            amount: cancelledRequest.amount,
+            paymentId: cancelledRequest.id,
+            reason: 'Payment request cancelled by merchant',
+          });
+        }
+      }
+
+      // If there were cancellations, trigger UI update
+      if (cancelledRequests.length > 0 && onRequestsUpdatedRef.current) {
+        onRequestsUpdatedRef.current();
+      }
 
       // Process new requests
       for (const request of newRequests) {
@@ -100,15 +143,20 @@ export const useNotifications = () => {
     }
   };
 
+  // Register callback for when requests are updated
+  const registerUpdateCallback = (callback: () => void) => {
+    onRequestsUpdatedRef.current = callback;
+  };
+
   const startPeriodicCheck = () => {
-    // Check every 30 seconds when app is active
+    // Check every 10 seconds when app is active (faster to catch cancellations)
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
     
     intervalRef.current = setInterval(() => {
-      checkForNewPaymentRequests();
-    }, 30000); // 30 seconds
+      checkForPaymentRequestUpdates();
+    }, 10000); // 10 seconds for faster updates
   };
 
   const stopPeriodicCheck = () => {
@@ -120,8 +168,8 @@ export const useNotifications = () => {
 
   const handleAppStateChange = (nextAppState: AppStateStatus) => {
     if (nextAppState === 'active') {
-      // App became active - check for new requests and start periodic checking
-      checkForNewPaymentRequests();
+      // App became active - check for updates and start periodic checking
+      checkForPaymentRequestUpdates();
       startPeriodicCheck();
     } else {
       // App went to background - stop periodic checking
@@ -136,7 +184,7 @@ export const useNotifications = () => {
     }
 
     // Initial check
-    checkForNewPaymentRequests();
+    checkForPaymentRequestUpdates();
     
     // Start periodic checking
     startPeriodicCheck();
@@ -151,7 +199,8 @@ export const useNotifications = () => {
   }, [isAuthenticated, user]);
 
   return {
-    checkForNewPaymentRequests,
+    checkForPaymentRequestUpdates,
+    registerUpdateCallback,
     notificationService,
   };
 }; 

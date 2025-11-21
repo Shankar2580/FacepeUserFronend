@@ -20,6 +20,9 @@ export const API_ENDPOINTS = {
   // Verification (routed through /cb/)
   SEND_VERIFICATION: '/cb/verification/send-phone-code',
   VERIFY_CODE: '/cb/verification/verify-phone-code',
+  SEND_EMAIL_VERIFICATION: '/cb/verification/send-email-code',
+  VERIFY_EMAIL_CODE: '/cb/verification/verify-email-code',
+  PIN_FORGOT: '/cb/auth/pin-forgot',
   
   // Users (routed through /cb/)
   GET_PROFILE: '/cb/users/me',

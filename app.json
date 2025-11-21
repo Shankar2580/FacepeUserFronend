@@ -82,9 +82,9 @@
       "ENABLE_PUSH_NOTIFICATIONS": "true",
       "ENABLE_DEBUG_LOGS": "true",
       "eas": {
-        "projectId": "527eaa60-4742-4cca-800a-b61d4e7d0f70"
+        "projectId": "7a3d9246-742a-4934-a69e-f246a2611fba"
       }
     },
-    "owner": "facepeai"
+    "owner": "sankarmahto"
   }
 }

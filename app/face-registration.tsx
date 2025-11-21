@@ -289,7 +289,7 @@ export default function FaceRegistrationScreen() {
               style={styles.cameraBackButton}
               onPress={() => {
                 setIsRegistering(false);
-                router.replace('/(tabs)/profile');
+                router.replace('/(tabs)');
               }}
             >
               <Ionicons name="close" size={24} color="#FFFFFF" />
@@ -379,7 +379,7 @@ export default function FaceRegistrationScreen() {
         visible={showInstructionModal}
         onClose={() => {
           setShowInstructionModal(false);
-          router.replace('/(tabs)/profile');
+          router.replace('/(tabs)');
         }}
         onComplete={handleStartRegistration}
         title="Face Registration"
@@ -391,7 +391,7 @@ export default function FaceRegistrationScreen() {
         onClose={() => {
           setShowSuccessModal(false);
           // console.log removed for production
-          router.replace('/(tabs)/profile');
+          router.replace('/(tabs)');
         }}
         userName={userName}
         isUpdate={false}

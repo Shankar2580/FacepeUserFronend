@@ -39,6 +39,7 @@ export default function ForgotPasswordScreen() {
   const [step, setStep] = useState<'phone' | 'verification' | 'newPassword'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
+  const [emailVerificationCode, setEmailVerificationCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -48,6 +49,7 @@ export default function ForgotPasswordScreen() {
   const [countdown, setCountdown] = useState(0);
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]); // Default to US
   const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [userEmail, setUserEmail] = useState(''); // Store user's email for verification
   
   const router = useRouter();
   const { showAlert, AlertComponent } = useAlert();
@@ -126,16 +128,35 @@ export default function ForgotPasswordScreen() {
     const fullPhoneNumber = getFullPhoneNumber();
     setIsLoading(true);
     try {
-      await apiService.requestPasswordReset(fullPhoneNumber);
+      // Step 1: Validate user exists and get email
+      const resetResponse = await apiService.requestPasswordReset(fullPhoneNumber);
+      const email = resetResponse.data?.email || resetResponse.email;
+      
+      if (!email) {
+        throw new Error('Email not found for this user. Please contact support.');
+      }
+      
+      // Store the user's email for sending verification code
+      setUserEmail(email);
+      
+      // Step 2: Send phone verification code
+      await apiService.sendPhoneVerification(fullPhoneNumber);
+      
+      // Step 3: Send email verification code
+      await apiService.sendEmailVerification(email);
+      
       setIsLoading(false);
       setStep('verification');
       startCountdown();
+      
+      if (isScreenFocused.current) {
+        showAlert('Success', 'Verification codes sent to your phone and email', undefined, 'success');
+      }
     } catch (error: any) {
-      setIsLoading(false); // Hide processing animation before showing error
-      // Only show alert if screen is still focused
+      setIsLoading(false);
       if (isScreenFocused.current) {
         setTimeout(() => {
-          showAlert('Error', error.response?.data?.detail || 'Failed to send verification code', undefined, 'error');
+          showAlert('Error', error.response?.data?.detail || error.message || 'Failed to send verification codes', undefined, 'error');
         }, 100);
       }
     }
@@ -143,12 +164,22 @@ export default function ForgotPasswordScreen() {
 
   const handleVerifyAndReset = async () => {
     if (!verificationCode) {
-      showAlert('Error', 'Please enter the verification code', undefined, 'error');
+      showAlert('Error', 'Please enter the SMS verification code', undefined, 'error');
       return;
     }
 
     if (verificationCode.length < 4) {
-      showAlert('Error', 'Please enter a valid verification code', undefined, 'error');
+      showAlert('Error', 'Please enter a valid SMS verification code', undefined, 'error');
+      return;
+    }
+
+    if (!emailVerificationCode) {
+      showAlert('Error', 'Please enter the email verification code', undefined, 'error');
+      return;
+    }
+
+    if (emailVerificationCode.length < 4) {
+      showAlert('Error', 'Please enter a valid email verification code', undefined, 'error');
       return;
     }
 
@@ -169,6 +200,7 @@ export default function ForgotPasswordScreen() {
       await apiService.verifyPasswordReset({
         phone_number: fullPhoneNumber,
         verification_code: verificationCode,
+        email_verification_code: emailVerificationCode,
         password_reset: {
           new_password: newPassword
         }
@@ -198,7 +230,21 @@ export default function ForgotPasswordScreen() {
     if (countdown > 0 || isResending) return;
     setIsResending(true);
     try {
-      await handleSendVerification();
+      const fullPhoneNumber = getFullPhoneNumber();
+      
+      // Resend both verification codes
+      await apiService.sendPhoneVerification(fullPhoneNumber);
+      await apiService.sendEmailVerification(userEmail);
+      
+      startCountdown();
+      
+      if (isScreenFocused.current) {
+        showAlert('Success', 'Verification codes resent successfully', undefined, 'success');
+      }
+    } catch (error: any) {
+      if (isScreenFocused.current) {
+        showAlert('Error', error.response?.data?.detail || 'Failed to resend codes', undefined, 'error');
+      }
     } finally {
       setIsResending(false);
     }
@@ -214,8 +260,8 @@ export default function ForgotPasswordScreen() {
           <View style={styles.header}>
             <Text style={styles.title}>Reset Password</Text>
             <Text style={styles.subtitle}>
-              {step === 'phone' && 'Enter the phone number linked to your account, and we\'ll send you a code to reset your password'}
-              {step === 'verification' && 'Enter the verification code sent to your mobile number'}
+              {step === 'phone' && 'Enter the phone number linked to your account, and we\'ll send you codes to reset your password'}
+              {step === 'verification' && 'Enter the verification codes sent to your mobile number and email'}
               {step === 'newPassword' && 'Create a new password for your account'}
             </Text>
           </View>
@@ -251,10 +297,10 @@ export default function ForgotPasswordScreen() {
           {step === 'verification' && (
             <View style={styles.form}>
               <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+                <Ionicons name="chatbox-outline" size={20} color="#999" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Verification Code"
+                  placeholder="SMS Code"
                   placeholderTextColor="#999"
                   value={verificationCode}
                   onChangeText={setVerificationCode}
@@ -264,9 +310,23 @@ export default function ForgotPasswordScreen() {
                 />
               </View>
 
+              <View style={styles.inputContainer}>
+                <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email Code"
+                  placeholderTextColor="#999"
+                  value={emailVerificationCode}
+                  onChangeText={setEmailVerificationCode}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  editable={!isLoading}
+                />
+              </View>
+
               {countdown > 0 ? (
                 <Text style={styles.countdownText}>
-                  Resend code in {countdown}s
+                  Resend codes in {countdown}s
                 </Text>
               ) : (
                 <TouchableOpacity 
@@ -275,7 +335,7 @@ export default function ForgotPasswordScreen() {
                   style={[isResending && { opacity: 0.5 }]}
                 >
                   <Text style={styles.resendText}>
-                    {isResending ? 'Sending...' : 'Resend Code'}
+                    {isResending ? 'Sending...' : 'Resend Codes'}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -283,9 +343,9 @@ export default function ForgotPasswordScreen() {
               <TouchableOpacity
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={() => setStep('newPassword')}
-                disabled={isLoading || !verificationCode}
+                disabled={isLoading || !verificationCode || !emailVerificationCode}
               >
-                <Text style={styles.buttonText}>Verify Code</Text>
+                <Text style={styles.buttonText}>Verify Codes</Text>
               </TouchableOpacity>
             </View>
           )}

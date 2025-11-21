@@ -15,14 +15,17 @@ import { useAlert } from '../../src/components/ui/AlertModal';
 import { PaymentCard } from '../../src/components/ui/PaymentCard';
 import { PaymentMethod, PaymentRequest } from '../../src/constants/types';
 import { useAuth } from '../../src/hooks/useAuth';
+import { useNotifications } from '../../src/hooks/useNotifications';
 import { apiService } from '../../src/services/api';
 import { notificationService } from '../../src/services/notificationService';
+import { isExpired, formatTimeRemaining, getExpiryColor } from '../../src/utils/timeUtils';
 // SafeAreaView no longer needed - using View with paddingTop: insets.top
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 export default function HomeScreen() {
   const [defaultCard, setDefaultCard] = useState<PaymentMethod | null>(null);
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
+  const [countdown, setCountdown] = useState<number>(0); // Force re-render for countdown
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [totalEarnings, setTotalEarnings] = useState<number>(0);
@@ -33,6 +36,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const { showAlert, AlertComponent } = useAlert();
+  const { registerUpdateCallback } = useNotifications();
 
   // Load data function
   const loadData = useCallback(async () => {
@@ -57,7 +61,11 @@ export default function HomeScreen() {
       // Try to load payment requests (optional - API might not exist yet)
       try {
         const requests = await apiService.getPaymentRequests();
-        setPaymentRequests(requests.filter(request => request.status === 'pending'));
+        // Filter out expired requests and only show pending ones
+        const activeRequests = requests.filter(request => 
+          request.status === 'pending' && !isExpired(request.expires_at)
+        );
+        setPaymentRequests(activeRequests);
       } catch (requestError) {
         // console.log removed for production
         setPaymentRequests([]);
@@ -84,6 +92,48 @@ export default function HomeScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Register callback for notification hook to refresh data when requests are updated
+  useEffect(() => {
+    registerUpdateCallback(() => {
+      // Silently refresh data when a payment request is cancelled
+      loadData();
+    });
+  }, [registerUpdateCallback, loadData]);
+
+  // Countdown timer - updates every second to refresh time display
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown(prev => prev + 1);
+      // Remove expired requests automatically
+      setPaymentRequests(prevRequests => 
+        prevRequests.filter(request => !isExpired(request.expires_at))
+      );
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Real-time polling for payment request updates (to detect cancellations instantly)
+  useEffect(() => {
+    // Only poll if there are active payment requests
+    if (paymentRequests.length === 0) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const requests = await apiService.getPaymentRequests();
+        // Filter out expired requests and only show pending ones
+        const activeRequests = requests.filter(request => 
+          request.status === 'pending' && !isExpired(request.expires_at)
+        );
+        setPaymentRequests(activeRequests);
+      } catch (error) {
+        // Silently fail - don't interrupt user experience
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [paymentRequests.length]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -163,9 +213,42 @@ export default function HomeScreen() {
       // Remove the approved request immediately from the list
       setPaymentRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
       loadData(); // Refresh other data if necessary
-    } catch (error) {
+    } catch (error: any) {
       // console.error removed for production
-      showAlert('Error', 'Failed to approve payment request', undefined, 'error');
+      // Handle specific error cases
+      if (error?.response?.status === 400) {
+        const detail = error?.response?.data?.detail || '';
+        if (detail.includes('expired')) {
+          showAlert(
+            'Request Expired', 
+            'This payment request has expired. The list will be refreshed automatically.', 
+            undefined, 
+            'warning'
+          );
+        } else if (detail.includes('cancelled') || detail.includes('not pending')) {
+          showAlert(
+            'Request Cancelled', 
+            'This payment request has been cancelled by the merchant.', 
+            undefined, 
+            'warning'
+          );
+        } else {
+          showAlert('Error', detail, undefined, 'error');
+        }
+        // Auto-refresh to remove the request
+        await loadData();
+      } else if (error?.response?.status === 404) {
+        showAlert(
+          'Request Not Found', 
+          'This payment request has been cancelled by the merchant or no longer exists.', 
+          undefined, 
+          'warning'
+        );
+        // Auto-refresh to remove the request
+        await loadData();
+      } else {
+        showAlert('Error', 'Failed to approve payment request', undefined, 'error');
+      }
     }
   };
 
@@ -190,28 +273,16 @@ export default function HomeScreen() {
       showAlert('Success', 'Payment request declined', undefined, 'success');
       // Remove the declined request immediately from the list
       setPaymentRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
-      loadData(); // Refresh other data if necessary
-    } catch (error) {
+      // Auto-refresh to get updated state
+      await loadData();
+    } catch (error: any) {
       // console.error removed for production
       showAlert('Error', 'Failed to decline payment request', undefined, 'error');
+      // Refresh on error to ensure state is correct
+      await loadData();
     }
   };
 
-  const getTimeRemaining = (expiresAt: string) => {
-    const now = new Date();
-    const expires = new Date(expiresAt);
-    const diff = expires.getTime() - now.getTime();
-    
-    if (diff <= 0) return 'Expired';
-    
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}m left`;
-    }
-    return `${minutes}m left`;
-  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -272,8 +343,8 @@ export default function HomeScreen() {
                           <Text style={styles.transactionMerchant}>
                             {getDisplayName(request)}
                           </Text>
-                          <Text style={styles.transactionDate}>
-                            {formatDate(request.created_at)} • {getTimeRemaining(request.expires_at)}
+                          <Text style={[styles.transactionDate, { color: getExpiryColor(request.expires_at) }]}>
+                            {formatDate(request.created_at)} • {formatTimeRemaining(request.expires_at)}
                           </Text>
                         </View>
                       </View>
@@ -388,8 +459,8 @@ export default function HomeScreen() {
                         <Text style={styles.transactionMerchant}>
                           {getDisplayName(request)}
                         </Text>
-                        <Text style={styles.transactionDate}>
-                          {formatDate(request.created_at)} • {getTimeRemaining(request.expires_at)}
+                        <Text style={[styles.transactionDate, { color: getExpiryColor(request.expires_at) }]}>
+                          {formatDate(request.created_at)} • {formatTimeRemaining(request.expires_at)}
                         </Text>
                       </View>
                     </View>

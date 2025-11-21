@@ -17,7 +17,7 @@ Notifications.setNotificationHandler({
 
 export interface PaymentNotificationData {
   [key: string]: unknown;
-  type: 'payment_request' | 'payment_approved' | 'payment_failed' | 'payment_declined' | 'auto_payment_processed';
+  type: 'payment_request' | 'payment_approved' | 'payment_failed' | 'payment_declined' | 'auto_payment_processed' | 'payment_expired' | 'payment_cancelled';
   paymentId: string;
   merchantName: string;
   amount: number;
@@ -123,6 +123,8 @@ class NotificationService {
       case 'payment_failed':
       case 'payment_declined':
       case 'auto_payment_processed':
+      case 'payment_expired':
+      case 'payment_cancelled':
         // Navigate to transaction detail in history
         if (data.paymentId) {
           router.push(`/transaction-detail?id=${data.paymentId}`);
@@ -262,6 +264,56 @@ class NotificationService {
   async getPermissionStatus() {
     const { status } = await Notifications.getPermissionsAsync();
     return status;
+  }
+
+  // Send notification when payment request expires
+  async notifyPaymentExpired(data: {
+    merchantName: string;
+    amount: number;
+    paymentId: string;
+  }) {
+    const notificationData: PaymentNotificationData = {
+      type: 'payment_expired',
+      paymentId: data.paymentId,
+      merchantName: data.merchantName,
+      amount: data.amount,
+    };
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⏰ Payment Request Expired',
+        body: `Payment request from ${data.merchantName} for $${data.amount.toFixed(2)} has expired`,
+        data: notificationData,
+        sound: false,
+        priority: Notifications.AndroidNotificationPriority.DEFAULT,
+      },
+      trigger: null,
+    });
+  }
+
+  // Send notification when payment request is cancelled by merchant
+  async notifyPaymentCancelled(data: {
+    merchantName: string;
+    amount: number;
+    paymentId: string;
+  }) {
+    const notificationData: PaymentNotificationData = {
+      type: 'payment_cancelled',
+      paymentId: data.paymentId,
+      merchantName: data.merchantName,
+      amount: data.amount,
+    };
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '🚫 Payment Request Cancelled',
+        body: `${data.merchantName} cancelled the payment request for $${data.amount.toFixed(2)}`,
+        data: notificationData,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.DEFAULT,
+      },
+      trigger: null,
+    });
   }
 
   // Get push token
