@@ -298,6 +298,13 @@ class ApiService {
     return response.data;
   }
 
+  async sendPhoneVerification(phoneNumber: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.SEND_VERIFICATION, {
+      phone_number: phoneNumber
+    });
+    return response.data;
+  }
+
   async verifyCode(data: VerificationVerifyRequest): Promise<ApiResponse<any>> {
     const response = await this.api.post<ApiResponse<any>>(API_ENDPOINTS.VERIFY_CODE, {
       phone_number: data.phone_number,
