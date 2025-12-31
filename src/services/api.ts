@@ -190,17 +190,23 @@ class ApiService {
       }
       } catch (error: any) {
         lastError = error;
+        
+        // Check for auth errors FIRST before network error check
+        // This ensures 401 errors are properly handled
+        if (error.response?.status === 401) {
+          // Extract message from various possible locations
+          const errorMessage = error.response?.data?.message || 
+                              error.response?.data?.detail || 
+                              'Incorrect credentials. Please check your phone number/email and password.';
+          throw new Error(errorMessage);
+        }
+
         const isNetworkError = error.code === 'NETWORK_ERROR' || error.code === 'ERR_NETWORK' || !error.response;
 
         if (isNetworkError && attempt < 3) {
           // console.log removed for production`);
           await new Promise(resolve => setTimeout(resolve, attempt * 5000)); // Wait 5s, then 10s
           continue;
-        }
-
-        // For auth errors, extract the message and throw a new error with the backend message
-        if (error.response?.status === 401 && error.response?.data?.message) {
-          throw new Error(error.response.data.message);
         }
 
         // console.error removed for production

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   Dimensions,
@@ -16,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../../services/api';
+import { PINInput } from './PINInput';
+import { scale, fontScale } from '../../utils/responsive';
 
 const { width } = Dimensions.get('window');
 
@@ -442,31 +443,27 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
 
           {/* PIN Input */}
           <View style={styles.pinInputContainer}>
-            <TextInput
-              style={[
-                styles.pinInput,
-                isLocked && styles.pinInputDisabled,
-                errorMessage && !isLocked && styles.pinInputError,
-              ]}
-              value={pin}
-              onChangeText={(text) => {
-                const numericText = text.replace(/[^0-9]/g, '');
-                if (numericText.length <= 4) {
-                  setPin(numericText);
-                  // Clear error as user types
-                  if (errorMessage && !isLocked) {
-                    setErrorMessage('');
-                    setShowWarning(false);
-                  }
+            <PINInput
+              pin={pin}
+              setPin={(newPin) => {
+                setPin(newPin);
+                // Clear error as user types
+                if (errorMessage && !isLocked) {
+                  setErrorMessage('');
+                  setShowWarning(false);
                 }
               }}
-              placeholder={isLocked ? 'Account locked' : 'Enter PIN'}
-              placeholderTextColor="#9CA3AF"
-              keyboardType="number-pad"
-              maxLength={4}
-              secureTextEntry
+              variant="boxes"
+              error={!!errorMessage && !isLocked}
+              disabled={isLocked || isVerifying}
               autoFocus={!isLocked}
-              editable={!isLocked && !isVerifying}
+              secure
+              onComplete={(completedPin) => {
+                // Auto-verify when PIN is complete
+                if (completedPin.length === 4 && !isLocked && !isVerifying) {
+                  handleVerifyPin();
+                }
+              }}
             />
           </View>
 
@@ -623,29 +620,7 @@ const styles = StyleSheet.create({
   pinInputContainer: {
     width: '100%',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  pinInput: {
-    width: '100%',
-    height: 60,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    textAlign: 'center',
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    letterSpacing: 16,
-  },
-  pinInputDisabled: {
-    backgroundColor: '#F9FAFB',
-    borderColor: '#D1D5DB',
-    color: '#9CA3AF',
-  },
-  pinInputError: {
-    borderColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
+    marginBottom: scale(16),
   },
   errorContainer: {
     flexDirection: 'row',

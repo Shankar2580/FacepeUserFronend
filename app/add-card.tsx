@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CardField, useStripe, CardFieldInput } from '@stripe/stripe-react-native';
 import { apiService } from '../src/services/api';
 import { PaymentCard } from '../src/components/ui/PaymentCard';
+import { fontScale, scale } from '../src/utils/responsive';
 import { CardSuccessModal } from '../src/components/ui/CardSuccessModal';
 import { ProcessingAnimation } from '../src/components/ui/ProcessingAnimation';
 import { useAlert } from '../src/components/ui/AlertModal';
@@ -246,15 +247,9 @@ function AddCardContent() {
       
       setShowProcessingAnimation(false);
       showAlert(
-        'Error',
-        `Failed to add payment method: ${errorMessage}`,
+        'Unable to Add Card',
+        'We couldn\'t add your payment method. Please check your card details and try again.',
         [
-          {
-            text: 'Show Debug Info',
-            onPress: () => {
-              showAlert('Debug Information', debugInfo);
-            },
-          },
           {
             text: 'OK',
             style: 'default',
@@ -474,7 +469,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(107, 70, 193, 0.1)',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: '600',
     color: '#1F2937',
   },

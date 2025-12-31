@@ -5,27 +5,27 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Dimensions,
-  KeyboardAvoidingView,
-  Modal,
   Platform,
-  ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../src/components/ui/AlertModal';
+import { AppText as Text } from '../src/components/ui/AppText';
 import { FaceRegistrationInstructionModal } from '../src/components/ui/FaceRegistrationInstructionModal';
 import { FaceSuccessModal } from '../src/components/ui/FaceSuccessModal';
 import { ProcessingAnimation } from '../src/components/ui/ProcessingAnimation';
 import { useAuth } from '../src/hooks/useAuth';
 import { apiService } from '../src/services/api';
+import { getFaceError, isNetworkError } from '../src/utils/errorHandler';
+import { fontScale, hp, scale, wp } from '../src/utils/responsive';
 
-const { width, height } = Dimensions.get('window');
+// Circle size: 65% of screen width for consistent look on all devices
+// This leaves ~17.5% padding on each side within the blue box
+const CIRCLE_SIZE = wp(65);
+// Blue box padding around the circle (percentage-based)
+const BLUE_PADDING = wp(8);
 
 export default function FaceRegistrationScreen() {
   const [isLoading, setIsLoading] = useState(false);
@@ -123,15 +123,8 @@ export default function FaceRegistrationScreen() {
     setShowProcessingAnimation(true);
     setIsLoading(true);
     try {
-      // console.log removed for production
-      // console.log removed for production
-      // console.log removed for production);
-      // console.log removed for production
-      
       // Call the external Face Registration API (port 8443)
       const faceApiResponse = await apiService.registerFace(userId, userName.trim(), imageUri);
-      
-      // console.log removed for production
       
       // Check for embedding_id in the nested data structure
       const embeddingId = faceApiResponse.data?.embedding_id || faceApiResponse.embedding_id;
@@ -139,38 +132,27 @@ export default function FaceRegistrationScreen() {
         throw new Error('Face registration failed - no embedding ID returned');
       }
       
-      // console.log removed for production
-      
       // Update the main backend database with face registration status
-      // console.log removed for production
       await apiService.updateUserFaceStatus(true);
       
-      // The backend has already updated the user's face status in the database
       // Refresh the user context to get the updated data from the backend
-      // console.log removed for production
       await refreshUser();
       
       // Verify the update worked
       const updatedUser = await apiService.getStoredUser();
-      // console.log removed for production
       
       // Hide processing animation and show success modal
       setShowProcessingAnimation(false);
       setShowSuccessModal(true);
       
     } catch (error: any) {
-      // console.error removed for production
+      // Use centralized error handler for clean, user-friendly messages
+      let errorMessage: string;
       
-      let errorMessage = 'Failed to register face';
-      
-      if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
-        errorMessage = 'Network Error: Cannot connect to face registration server. Please check your network connection and try again.';
-      } else if (error.response?.status === 422) {
-        errorMessage = 'Invalid data format. Please try again.';
-      } else if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      } else if (error.message) {
-        errorMessage = error.message;
+      if (isNetworkError(error)) {
+        errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+      } else {
+        errorMessage = getFaceError(error);
       }
       
       setShowProcessingAnimation(false);
@@ -182,13 +164,6 @@ export default function FaceRegistrationScreen() {
             setIsRegistering(true);
           }
         },
-        // {
-        //   text: 'Cancel',
-        //   style: 'cancel',
-        //   onPress: () => {
-        //     router.replace('/(tabs)/profile');
-        //   }
-        // }
       ], 'warning');
     } finally {
       setIsLoading(false);
@@ -203,13 +178,13 @@ export default function FaceRegistrationScreen() {
   if (!permission.granted) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: '#1F2937', fontSize: 18, textAlign: 'center', marginBottom: 20 }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: scale(24) }}>
+          <Text style={{ color: '#1F2937', fontSize: fontScale(18), textAlign: 'center', marginBottom: scale(20) }}>
             Camera permission is required for face registration.
           </Text>
           <TouchableOpacity onPress={requestPermission}>
-            <LinearGradient colors={['#6B46C1', '#6B46C1']} style={{ paddingVertical: 16, paddingHorizontal: 40, borderRadius: 30 }}>
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' }}>Grant Permission</Text>
+            <LinearGradient colors={['#6B46C1', '#6B46C1']} style={{ paddingVertical: scale(16), paddingHorizontal: scale(40), borderRadius: 30 }}>
+              <Text style={{ color: '#FFFFFF', fontSize: fontScale(16), fontWeight: 'bold' }}>Grant Permission</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -268,7 +243,6 @@ export default function FaceRegistrationScreen() {
 
       return square.uri;
     } catch (error) {
-      // console.error removed for production
       throw error;
     }
   };
@@ -277,7 +251,7 @@ export default function FaceRegistrationScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Removed initial explanation screen - instruction modal shows first */}
       {isRegistering ? (
-        <View style={[styles.fullScreenContainer, { paddingBottom: insets.bottom + 20 }]}>
+        <View style={[styles.fullScreenContainer, { paddingBottom: insets.bottom + scale(20) }]}>
           {/* Header with gradient background */}
           <LinearGradient
             colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
@@ -292,7 +266,7 @@ export default function FaceRegistrationScreen() {
                 router.replace('/(tabs)');
               }}
             >
-              <Ionicons name="close" size={24} color="#FFFFFF" />
+              <Ionicons name="close" size={scale(24, 20, 28)} color="#FFFFFF" />
             </TouchableOpacity>
             <View style={styles.cameraHeaderContent}>
               <Text style={styles.cameraHeaderTitle}>Face Registration</Text>
@@ -302,39 +276,28 @@ export default function FaceRegistrationScreen() {
 
           {/* Camera Preview with White Padding */}
           <View style={styles.cameraContainer}>
-            {/* Blue Box Container */}
+            {/* Blue Box Container - Uses flex centering for equal spacing */}
             <View style={styles.blueBoxContainer}>
-              {/* Top Blue Section */}
-              <View style={styles.topBlueBar} />
-              
-              {/* Middle Row with Oval */}
-              <View style={styles.middleRow}>
-                {/* Left Blue Bar */}
-                <View style={styles.sideBlueBar} />
+              {/* Circle Container with Camera - Centered in blue box */}
+              <View style={styles.circleWrapper}>
+                {/* Camera View - Circular */}
+                <CameraView
+                  ref={cameraRef}
+                  style={[styles.cameraViewCircle, { 
+                    width: CIRCLE_SIZE, 
+                    height: CIRCLE_SIZE,
+                    borderRadius: CIRCLE_SIZE / 2,
+                  }]}
+                  facing="front"
+                />
                 
-                {/* Oval Container with Camera */}
-                <View style={styles.ovalCameraContainer}>
-                  {/* Camera View - Only in Oval */}
-                  <CameraView
-                    ref={cameraRef}
-                    style={styles.cameraViewOval}
-                    facing="front"
-                  />
-                  
-                  {/* Circle Frame Border */}
-                  <View style={styles.circleFrameBorder} />
-                  
-                  {/* Face Alignment Guides */}
-                  {/* <View style={styles.guideLineHorizontal} />
-                  <View style={styles.guideLineVertical} /> */}
-                </View>
-                
-                {/* Right Blue Bar */}
-                <View style={styles.sideBlueBar} />
+                {/* Circle Frame Border */}
+                <View style={[styles.circleFrameBorder, { 
+                  width: CIRCLE_SIZE, 
+                  height: CIRCLE_SIZE, 
+                  borderRadius: CIRCLE_SIZE / 2,
+                }]} />
               </View>
-              
-              {/* Bottom Blue Section */}
-              <View style={styles.bottomBlueBar} />
             </View>
           </View>
 
@@ -352,7 +315,6 @@ export default function FaceRegistrationScreen() {
                     setIsRegistering(false);
                   }
                 } catch (error) {
-                  // console.error removed for production
                   showAlert('Error', 'Failed to capture image', undefined, 'warning');
                 } finally {
                   setIsLoading(false);
@@ -390,7 +352,6 @@ export default function FaceRegistrationScreen() {
         visible={showSuccessModal}
         onClose={() => {
           setShowSuccessModal(false);
-          // console.log removed for production
           router.replace('/(tabs)');
         }}
         userName={userName}
@@ -422,11 +383,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   pinModalContent: {
-    width: width * 0.9,
+    width: wp(90),
     maxWidth: 400,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: scale(24),
+    padding: scale(24),
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
@@ -436,17 +397,17 @@ const styles = StyleSheet.create({
   },
   pinModalHeader: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   pinModalTitle: {
-    fontSize: 22,
+    fontSize: fontScale(22),
     fontWeight: '700',
     color: '#1F2937',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: scale(16),
+    marginBottom: scale(8),
   },
   pinModalSubtitle: {
-    fontSize: 16,
+    fontSize: fontScale(16),
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 22,
@@ -454,17 +415,17 @@ const styles = StyleSheet.create({
   pinInputContainer: {
     width: '100%',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   pinInput: {
     width: '80%',
-    height: 60,
+    height: scale(60),
     backgroundColor: '#F3F4F6',
-    borderRadius: 16,
+    borderRadius: scale(16),
     borderWidth: 2,
     borderColor: '#E5E7EB',
     textAlign: 'center',
-    fontSize: 24,
+    fontSize: fontScale(24),
     fontWeight: 'bold',
     color: '#1F2937',
     letterSpacing: 16,
@@ -472,25 +433,25 @@ const styles = StyleSheet.create({
   pinModalButtons: {
     flexDirection: 'row',
     width: '100%',
-    gap: 12,
+    gap: scale(12),
   },
   pinCancelButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingVertical: scale(14),
+    borderRadius: scale(16),
     backgroundColor: '#F3F4F6',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     alignItems: 'center',
   },
   pinCancelButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16),
     fontWeight: '600',
     color: '#374151',
   },
   pinConfirmButton: {
     flex: 2,
-    borderRadius: 16,
+    borderRadius: scale(16),
     overflow: 'hidden',
     shadowColor: '#6B46C1',
     shadowOffset: { width: 0, height: 4 },
@@ -502,12 +463,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    gap: 8,
+    paddingVertical: scale(16),
+    paddingHorizontal: scale(20),
+    gap: scale(8),
   },
   pinConfirmButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
@@ -517,14 +478,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 20,
+    paddingBottom: scale(20),
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    paddingBottom: 32,
+    paddingHorizontal: scale(24),
+    paddingVertical: scale(24),
+    paddingBottom: scale(32),
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
     shadowColor: '#000',
@@ -537,9 +498,9 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -553,139 +514,139 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 5,
-    marginRight: 16,
+    marginRight: scale(16),
   },
   headerContent: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: fontScale(16),
     color: '#FFFFFF',
-    marginTop: 4,
+    marginTop: scale(4),
     opacity: 0.9,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingHorizontal: scale(24),
+    paddingTop: scale(24),
   },
   iconContainer: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   iconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: scale(120),
+    height: scale(120),
+    borderRadius: scale(60),
     backgroundColor: '#EDE9FE',
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    fontSize: 28,
+    fontSize: fontScale(28),
     fontWeight: 'bold',
     color: '#1F2937',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: fontScale(16),
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   descriptionContainer: {
     backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 32,
+    borderRadius: scale(16),
+    padding: scale(20),
+    marginBottom: scale(32),
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   descriptionTitle: {
-    fontSize: 16,
+    fontSize: fontScale(16),
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   description: {
-    fontSize: 15,
+    fontSize: fontScale(15),
     color: '#6B7280',
     lineHeight: 22,
   },
   inputContainer: {
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   inputLabel: {
-    fontSize: 16,
+    fontSize: fontScale(16),
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
   inputSubtext: {
-    fontSize: 14,
+    fontSize: fontScale(14),
     color: '#6B7280',
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
   readOnlyInput: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(14),
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginTop: 12,
+    marginTop: scale(12),
   },
   readOnlyText: {
-    fontSize: 16,
+    fontSize: fontScale(16),
     color: '#374151',
     fontWeight: '500',
   },
   benefitsContainer: {
-    marginBottom: 40,
+    marginBottom: scale(40),
   },
   benefitsTitle: {
-    fontSize: 18,
+    fontSize: fontScale(18),
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 20,
+    marginBottom: scale(20),
   },
   benefit: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
   benefitTextContainer: {
-    marginLeft: 12,
+    marginLeft: scale(12),
     flex: 1,
   },
   benefitTitle: {
-    fontSize: 16,
+    fontSize: fontScale(16),
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
   benefitText: {
-    fontSize: 14,
+    fontSize: fontScale(14),
     color: '#6B7280',
     lineHeight: 20,
   },
   bottomActions: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
+    paddingHorizontal: scale(24),
+    paddingTop: scale(20),
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
   primaryButton: {
-    borderRadius: 16,
-    marginBottom: 16,
+    borderRadius: scale(16),
+    marginBottom: scale(16),
     shadowColor: '#6B46C1',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
@@ -693,18 +654,18 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   primaryButtonGradient: {
-    paddingVertical: 20,
-    paddingHorizontal: 24,
+    paddingVertical: scale(20),
+    paddingHorizontal: scale(24),
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: scale(16),
     flexDirection: 'row',
     justifyContent: 'center',
   },
   buttonIcon: {
-    marginRight: 12,
+    marginRight: scale(12),
   },
   primaryButtonText: {
-    fontSize: 18,
+    fontSize: fontScale(18),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
@@ -718,13 +679,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    paddingBottom: 16,
-    minHeight: 80,
+    paddingHorizontal: scale(24),
+    paddingVertical: scale(16),
+    paddingBottom: scale(16),
+    minHeight: scale(80),
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
-    marginBottom: 24,
+    marginBottom: scale(24),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -735,94 +696,97 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   cameraBackButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 44, // Minimum touch target
+    minHeight: 44,
   },
   cameraHeaderContent: {
     flex: 1,
   },
   cameraHeaderTitle: {
-    fontSize: 20,
+    fontSize: fontScale(20),
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
   },
   cameraHeaderRight: {
-    width: 44,
+    width: scale(44),
   },
   cameraContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 30,
-    paddingVertical: 50,
+    paddingHorizontal: wp(5),
+    paddingVertical: hp(3),
     justifyContent: 'center',
     alignItems: 'center',
   },
   blueBoxContainer: {
-    width: '100%',
-    flex: 1,
-    maxHeight: 600,
-    borderRadius: 24,
+    width: wp(85), // 85% of screen width
+    aspectRatio: 0.75, // Height is 1.33x width (taller than wide)
+    maxHeight: hp(55), // Cap at 55% of screen height
+    borderRadius: scale(24),
     overflow: 'hidden',
     backgroundColor: '#3B82F6',
+    justifyContent: 'center', // Center circle vertically
+    alignItems: 'center', // Center circle horizontally
   },
-  // cameraView: {
-  //   flex: 1,
-  //   width: '100%',
-  //   height: '100%',
-  // },
-  cameraViewOval: {
+  circleWrapper: {
+    width: CIRCLE_SIZE,
+    height: CIRCLE_SIZE,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraViewCircle: {
     position: 'absolute',
-    width: 280,
-    height: 280,
     overflow: 'hidden',
-    borderRadius: 140,
   },
   buttonContainer: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingHorizontal: scale(24),
+    paddingVertical: scale(20),
   },
   takePhotoButton: {
-    borderRadius: 16,
+    borderRadius: scale(16),
     shadowColor: '#6B46C1',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 12,
+    minHeight: 48, // Minimum touch target
   },
   takePhotoButtonGradient: {
-    paddingVertical: 20,
-    paddingHorizontal: 24,
+    paddingVertical: scale(20),
+    paddingHorizontal: scale(24),
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: scale(16),
   },
   takePhotoButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: fontScale(18),
     fontWeight: 'bold',
   },
   
   // Legacy styles (kept for compatibility)
   placeholder: {
-    width: 40,
+    width: scale(40),
   },
   cameraActions: {
     position: 'absolute',
-    bottom: 60,
+    bottom: scale(60),
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: scale(20),
     zIndex: 10,
   },
   captureButton: {
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: scale(16),
     shadowColor: '#6B46C1',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -830,99 +794,32 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   captureButtonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 40,
+    paddingVertical: scale(16),
+    paddingHorizontal: scale(40),
     alignItems: 'center',
     borderRadius: 12,
   },
   captureButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   retryButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(20),
     alignItems: 'center',
   },
   retryButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16),
     color: '#FFFFFF',
     fontWeight: '500',
     opacity: 0.8,
   },
   
-  // Face Detection Overlay Styles (Unused - commented out)
-  // faceDetectionOverlay: {
-  //   position: 'absolute',
-  //   top: 0,
-  //   left: 0,
-  //   right: 0,
-  //   bottom: 0,
-  //   justifyContent: 'space-between',
-  //   alignItems: 'center',
-  // },
-  topBlueBar: {
-    height: 70,
-    backgroundColor: '#3B82F6',
-    width: '100%',
-  },
-  middleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sideBlueBar: {
-    width: 40,
-    height: 400,
-    backgroundColor: '#3B82F6',
-  },
-  ovalCameraContainer: {
-    width: 280,
-    height: 400,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
   circleFrameBorder: {
     position: 'absolute',
-    width: 280,
-    height: 280,
     borderWidth: 4,
     borderColor: '#FFFFFF',
     backgroundColor: 'transparent',
-    borderRadius: 140,
   },
-  bottomBlueBar: {
-    height: 70,
-    backgroundColor: '#3B82F6',
-    width: '100%',
-  },
-  // Commented unused styles
-  // instructionsContainer: {
-  //   backgroundColor: 'rgba(0, 0, 0, 0.8)',
-  //   paddingHorizontal: 24,
-  //   paddingVertical: 14,
-  //   borderRadius: 20,
-  //   marginHorizontal: 20,
-  // },
-  // guideLineHorizontal: {
-  //   position: 'absolute',
-  //   width: 200,
-  //   height: 1,
-  //   backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  // },
-  // guideLineVertical: {
-  //   position: 'absolute',
-  //   width: 1,
-  //   height: 260,
-  //   backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  // },
-  // instructionText: {
-  //   color: '#FFFFFF',
-  //   fontSize: 17,
-  //   fontWeight: '600',
-  //   textAlign: 'center',
-  // },
-  
-}); 
+});

@@ -11,6 +11,7 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { fontScale, scale } from '../src/utils/responsive';
 
 export default function AccountManagementScreen() {
   const router = useRouter();
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
@@ -214,15 +215,15 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   warningTitle: {
-    fontSize: 18,
+    fontSize: fontScale(18, 16, 20),
     fontWeight: 'bold',
     color: '#1F2937',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   warningText: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
   warningList: {
     gap: 12,
@@ -234,7 +235,7 @@ const styles = StyleSheet.create({
   },
   warningItemText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#374151',
   },
   infoCard: {
@@ -253,15 +254,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoTitle: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '600',
     color: '#1E40AF',
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
   infoText: {
-    fontSize: 13,
+    fontSize: fontScale(14, 12, 16),
     color: '#1E3A8A',
-    lineHeight: 18,
+    lineHeight: fontScale(18, 16, 20),
   },
   footer: {
     position: 'absolute',
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#6B7280',
   },
@@ -328,7 +329,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   deleteButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#FFFFFF',
   },

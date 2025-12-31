@@ -4,8 +4,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView, // Renamed for clarity
-  Linking,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -16,101 +16,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAlert } from '../../src/components/ui/AlertModal';
+import { OTPInput } from '../../src/components/ui/OTPInput';
 import { PasswordStrengthIndicator } from '../../src/components/ui/PasswordStrengthIndicator';
 import { PrivacyPolicyModal } from '../../src/components/ui/PrivacyPolicyModal';
 import { ProcessingAnimation } from '../../src/components/ui/ProcessingAnimation';
 import { TermsModal } from '../../src/components/ui/TermsModal';
 import { apiService } from '../../src/services/api';
-
-// Custom OTP Input Component
-const OTPInput = ({
-  code,
-  setCode,
-  onComplete,
-}: {
-  code: string;
-  setCode: (code: string) => void;
-  onComplete: (code: string) => void;
-}) => {
-  const inputs = React.useRef<TextInput[]>([]);
-
-  const handleTextChange = (text: string, index: number) => {
-    // Filter to only digits
-    const digitsOnly = text.replace(/\D/g, '');
-
-    if (digitsOnly.length > 1) {
-      // If pasting multiple digits
-      if (digitsOnly.length >= 6) {
-        setCode(digitsOnly.slice(0, 6));
-        inputs.current[5].focus();
-      }
-      return;
-    }
-
-    const newCode = code.split('');
-    newCode[index] = digitsOnly;
-    setCode(newCode.join(''));
-
-    // Move to next input
-    if (digitsOnly && index < 5) {
-      inputs.current[index + 1].focus();
-    }
-  };
-
-  const handleKeyPress = (
-    { nativeEvent: { key } }: { nativeEvent: { key: string } },
-    index: number
-  ) => {
-    if (key === 'Backspace' && !code[index] && index > 0) {
-      inputs.current[index - 1].focus();
-    }
-  };
-
-  return (
-    <View style={styles.otpContainer}>
-      {Array(3)
-        .fill(0)
-        .map((_, index) => (
-          <TextInput
-            key={index}
-            ref={(el) => {
-              if (el) {
-                inputs.current[index] = el;
-              }
-            }}
-            style={styles.otpInput}
-            keyboardType="numeric"
-            maxLength={1}
-            onChangeText={(text) => handleTextChange(text, index)}
-            onKeyPress={(e) => handleKeyPress(e, index)}
-            value={code[index] || ''}
-          />
-        ))}
-      <Text style={styles.otpSeparator}>-</Text>
-      {Array(3)
-        .fill(0)
-        .map((_, index) => (
-          <TextInput
-            key={index + 3}
-            ref={(el) => {
-              if (el) {
-                inputs.current[index + 3] = el;
-              }
-            }}
-            style={styles.otpInput}
-            keyboardType="numeric"
-            maxLength={1}
-            onChangeText={(text) => handleTextChange(text, index + 3)}
-            onKeyPress={(e) => handleKeyPress(e, index + 3)}
-            value={code[index + 3] || ''}
-          />
-        ))}
-    </View>
-  );
-};
+import { getErrorMessage, getVerificationError } from '../../src/utils/errorHandler';
+import { fontScale, scale } from '../../src/utils/responsive';
 
 export default function RegisterScreen() {
-  const [step, setStep] = useState<'mobile' | 'verification' | 'details'>('mobile');
+  const [step, setStep] = useState<'mobile' | 'verification' | 'emailVerification' | 'details'>('mobile');
+  const [showEmailInfoModal, setShowEmailInfoModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState(''); // This will store the formatted number
   const [rawPhoneNumber, setRawPhoneNumber] = useState(''); // This will store raw digits
   const [verificationCode, setVerificationCode] = useState('');
@@ -225,7 +142,7 @@ export default function RegisterScreen() {
       // Only show alert if screen is still focused
       if (isScreenFocused.current) {
         setTimeout(() => {
-          showAlert('Error', error.response?.data?.message || 'Failed to send verification code', undefined, 'error');
+          showAlert('Error', getVerificationError(error), undefined, 'error');
         }, 100);
       }
     }
@@ -257,15 +174,64 @@ export default function RegisterScreen() {
         code: verificationCode
       });
       setIsLoading(false);
+      // Show email info modal and proceed to email verification
       setStep('details');
       showAlert('Success', 'Mobile number verified! Please complete your registration', undefined, 'success');
     } catch (error: any) {
       setIsLoading(false); // Hide processing animation before showing error
       // API error - show the message from backend
       setTimeout(() => {
-        showAlert('Error', error.response?.data?.message || 'Invalid verification code', undefined, 'error');
+        showAlert('Error', getVerificationError(error), undefined, 'error');
       }, 100);
     }
+  };
+
+  // Handle proceed to email verification step with popup
+  const handleProceedToEmailVerification = () => {
+    if (!email) {
+      showAlert('Error', 'Please enter your email address', undefined, 'error');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      showAlert('Error', 'Please enter a valid email address', undefined, 'error');
+      return;
+    }
+
+    // Show email info popup
+    setShowEmailInfoModal(true);
+  };
+
+  // Send email code and move to email verification step
+  const handleSendEmailCodeAndProceed = async () => {
+    setShowEmailInfoModal(false);
+    setIsLoading(true);
+    setLoadingType('email-verification');
+    try {
+      await apiService.sendEmailVerification(email);
+      setIsLoading(false);
+      setEmailCodeSent(true);
+      setStep('emailVerification');
+      startEmailCountdown();
+    } catch (error: any) {
+      setIsLoading(false);
+      if (isScreenFocused.current) {
+        setTimeout(() => {
+          showAlert('Error', getVerificationError(error), undefined, 'error');
+        }, 100);
+      }
+    }
+  };
+
+  // Verify email code and proceed to final details
+  const handleVerifyEmailCode = () => {
+    if (!emailVerificationCode || emailVerificationCode.length < 4) {
+      showAlert('Error', 'Please enter the email verification code', undefined, 'error');
+      return;
+    }
+
+    // Proceed to final registration step
+    setStep('details');
   };
 
   const handleResendCode = async () => {
@@ -320,7 +286,7 @@ export default function RegisterScreen() {
       setIsLoading(false);
       if (isScreenFocused.current) {
         setTimeout(() => {
-          showAlert('Error', error.response?.data?.message || 'Failed to send email verification code', undefined, 'error');
+          showAlert('Error', getVerificationError(error), undefined, 'error');
         }, 100);
       }
     }
@@ -433,7 +399,6 @@ export default function RegisterScreen() {
         
       } catch (loginError: any) {
         setIsLoading(false); // Hide processing animation before showing alert
-        // console.log removed for production
         // If auto-login fails, redirect to login page as fallback
         setTimeout(() => {
           showAlert(
@@ -453,7 +418,7 @@ export default function RegisterScreen() {
     } catch (error: any) {
       setIsLoading(false); // Hide processing animation before showing error
       setTimeout(() => {
-        showAlert('Registration Failed', error.response?.data?.message || 'Please try again', undefined, 'error');
+        showAlert('Registration Failed', getErrorMessage(error, 'Registration failed. Please try again.'), undefined, 'error');
       }, 100);
     }
   };
@@ -490,6 +455,7 @@ export default function RegisterScreen() {
     switch (step) {
       case 'mobile': return 'Register Your Mobile';
       case 'verification': return 'Verify Your Mobile';
+      case 'emailVerification': return 'Verify Your Email';
       case 'details': return ''; // Remove header text for details step
       default: return 'Sign Up';
     }
@@ -499,8 +465,19 @@ export default function RegisterScreen() {
     switch (step) {
       case 'mobile': return 'Enter your mobile number to get started';
       case 'verification': return `Code sent to ${getFullPhoneNumber()}`;
+      case 'emailVerification': return `Code sent to ${email}`;
       case 'details': return ''; // Remove subtitle for details step
       default: return '';
+    }
+  };
+
+  const getProgressStepIndex = () => {
+    switch (step) {
+      case 'mobile': return 0;
+      case 'verification': return 1;
+      case 'emailVerification': return 2;
+      case 'details': return 3;
+      default: return 0;
     }
   };
 
@@ -559,14 +536,14 @@ export default function RegisterScreen() {
         <ScrollView
           contentContainerStyle={{ 
             flexGrow: 1, 
-            paddingHorizontal: 24, 
-            paddingBottom: 24 
+            paddingHorizontal: scale(24), 
+            paddingBottom: scale(24) 
           }}
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.content}>
-            {/* Header - Only show for mobile and verification steps */}
-            {(step === 'mobile' || step === 'verification') && (
+            {/* Header - Show for mobile, verification, and emailVerification steps */}
+            {(step === 'mobile' || step === 'verification' || step === 'emailVerification') && (
               <View style={styles.header}>
                 <Text style={styles.title}>{getStepTitle()}</Text>
                 <Text style={styles.subtitle}>{getStepSubtitle()}</Text>
@@ -583,20 +560,22 @@ export default function RegisterScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Progress Indicator */}
+                {/* Progress Indicator - 4 steps */}
                 <View style={styles.progressContainer}>
-                  <View style={[styles.progressDot, styles.progressDotActive]} />
-                  <View style={[styles.progressLine, step === 'verification' ? styles.progressLineActive : null]} />
-                  <View style={[styles.progressDot, step === 'verification' ? styles.progressDotActive : null]} />
-                  <View style={[styles.progressLine, null]} />
-                  <View style={[styles.progressDot, null]} />
+                  <View style={[styles.progressDot, getProgressStepIndex() >= 0 && styles.progressDotActive]} />
+                  <View style={[styles.progressLine, getProgressStepIndex() >= 1 && styles.progressLineActive]} />
+                  <View style={[styles.progressDot, getProgressStepIndex() >= 1 && styles.progressDotActive]} />
+                  <View style={[styles.progressLine, getProgressStepIndex() >= 2 && styles.progressLineActive]} />
+                  <View style={[styles.progressDot, getProgressStepIndex() >= 2 && styles.progressDotActive]} />
+                  <View style={[styles.progressLine, getProgressStepIndex() >= 3 && styles.progressLineActive]} />
+                  <View style={[styles.progressDot, getProgressStepIndex() >= 3 && styles.progressDotActive]} />
                 </View>
               </View>
             )}
 
             {/* For details step, show minimal header with just tabs and progress */}
             {step === 'details' && (
-              <View style={[styles.header, { marginBottom: 20 }]}>
+              <View style={[styles.header, { marginBottom: scale(20) }]}>
                 <View style={styles.tabContainer}>
                   <TouchableOpacity 
                     style={styles.tab}
@@ -609,8 +588,10 @@ export default function RegisterScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Progress Indicator - All steps active for details */}
+                {/* Progress Indicator - All 4 steps active for details */}
                 <View style={styles.progressContainer}>
+                  <View style={[styles.progressDot, styles.progressDotActive]} />
+                  <View style={[styles.progressLine, styles.progressLineActive]} />
                   <View style={[styles.progressDot, styles.progressDotActive]} />
                   <View style={[styles.progressLine, styles.progressLineActive]} />
                   <View style={[styles.progressDot, styles.progressDotActive]} />
@@ -625,7 +606,7 @@ export default function RegisterScreen() {
               {step === 'mobile' && (
                 <>
                   <View style={styles.inputContainer}>
-                    <Ionicons name="phone-portrait-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <Ionicons name="phone-portrait-outline" size={scale(20, 18, 24)} color="#999" style={styles.inputIcon} />
                     <View style={styles.phoneInputContainer}>
                       <Text style={styles.phonePrefix}>+1</Text>
                       <TextInput
@@ -659,11 +640,13 @@ export default function RegisterScreen() {
 
               {step === 'verification' && (
                 <>
-                  <OTPInput
-                    code={verificationCode}
-                    setCode={setVerificationCode}
-                    onComplete={() => {}}
-                  />
+                  <View style={{ marginBottom: scale(24) }}>
+                    <OTPInput
+                      code={verificationCode}
+                      setCode={setVerificationCode}
+                      variant="grouped"
+                    />
+                  </View>
 
                   <TouchableOpacity 
                     style={[styles.primaryButton, isLoading && styles.disabledButton]}
@@ -699,52 +682,82 @@ export default function RegisterScreen() {
                 </>
               )}
 
-              {step === 'details' && (
+              {/* Email Verification Step - New separate page for email OTP */}
+              {step === 'emailVerification' && (
                 <>
-                  <View style={styles.inputContainer}>
-                    <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Email Address"
-                      placeholderTextColor="#999"
-                      value={email}
-                      onChangeText={setEmail}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
+                  <View style={{ marginBottom: scale(24) }}>
+                    <OTPInput
+                      code={emailVerificationCode}
+                      setCode={setEmailVerificationCode}
+                      variant="grouped"
                     />
                   </View>
 
-                  <TouchableOpacity
-                    style={[styles.secondaryButton, (!email || emailCountdown > 0) && styles.buttonDisabled]}
-                    onPress={handleSendEmailCode}
-                    disabled={!email || emailCountdown > 0}
+                  <TouchableOpacity 
+                    style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                    onPress={handleVerifyEmailCode}
+                    disabled={isLoading || !emailVerificationCode || emailVerificationCode.length < 4}
                   >
-                    <Text style={styles.secondaryButtonText}>
-                      {emailCodeSent 
-                        ? (emailCountdown > 0 ? `Resend in ${emailCountdown}s` : 'Resend Email Code')
-                        : 'Send Email Code'
-                      }
-                    </Text>
+                    <LinearGradient
+                      colors={['#6B46C1', '#9333EA']}
+                      style={styles.primaryButtonGradient}
+                    >
+                      <Text style={styles.primaryButtonText}>Continue</Text>
+                    </LinearGradient>
                   </TouchableOpacity>
 
-                  {emailCodeSent && (
-                    <View style={styles.inputContainer}>
-                      <Ionicons name="shield-checkmark-outline" size={20} color="#999" style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Email Verification Code"
-                        placeholderTextColor="#999"
-                        value={emailVerificationCode}
-                        onChangeText={setEmailVerificationCode}
-                        keyboardType="number-pad"
-                        maxLength={6}
-                      />
+                  <TouchableOpacity 
+                    style={[styles.secondaryButton, (emailCountdown > 0 || isResending) && styles.disabledButton]}
+                    onPress={handleResendEmailCode}
+                    disabled={emailCountdown > 0 || isResending}
+                  >
+                    <Text style={styles.secondaryButtonText}>
+                      {isResending ? 'Sending...' : emailCountdown > 0 ? `Resend in ${emailCountdown}s` : 'Resend Code'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {step === 'details' && (
+                <>
+                  {/* Email entry with popup for verification */}
+                  {!emailCodeSent && (
+                    <>
+                      <View style={styles.inputContainer}>
+                        <Ionicons name="mail-outline" size={scale(20, 18, 24)} color="#999" style={styles.inputIcon} />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Email Address"
+                          placeholderTextColor="#999"
+                          value={email}
+                          onChangeText={setEmail}
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                        />
+                      </View>
+
+                      <TouchableOpacity
+                        style={[styles.secondaryButton, !email && styles.buttonDisabled]}
+                        onPress={handleProceedToEmailVerification}
+                        disabled={!email}
+                      >
+                        <Text style={styles.secondaryButtonText}>Verify Email</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {/* Show verified email badge if email is verified */}
+                  {emailCodeSent && emailVerificationCode && (
+                    <View style={[styles.inputContainer, { backgroundColor: '#F0FDF4', borderColor: '#10B981', borderWidth: 1 }]}>
+                      <Ionicons name="mail-outline" size={scale(20, 18, 24)} color="#10B981" style={styles.inputIcon} />
+                      <Text style={[styles.input, { color: '#1F2937' }]}>{email}</Text>
+                      <Ionicons name="checkmark-circle" size={scale(20, 18, 24)} color="#10B981" />
                     </View>
                   )}
 
                   <View style={styles.inputContainer}>
-                    <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <Ionicons name="person-outline" size={scale(20, 18, 24)} color="#999" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       placeholder="First Name"
@@ -756,7 +769,7 @@ export default function RegisterScreen() {
                   </View>
 
                   <View style={styles.inputContainer}>
-                    <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <Ionicons name="person-outline" size={scale(20, 18, 24)} color="#999" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       placeholder="Last Name"
@@ -768,7 +781,7 @@ export default function RegisterScreen() {
                   </View>
 
                   <View style={styles.inputContainer}>
-                    <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <Ionicons name="lock-closed-outline" size={scale(20, 18, 24)} color="#999" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       placeholder="Password"
@@ -784,7 +797,7 @@ export default function RegisterScreen() {
                     >
                       <Ionicons 
                         name={showPassword ? 'eye-off' : 'eye'} 
-                        size={20} 
+                        size={scale(20, 18, 24)} 
                         color="#999" 
                       />
                     </TouchableOpacity>
@@ -794,7 +807,7 @@ export default function RegisterScreen() {
                   <PasswordStrengthIndicator password={password} />
 
                   <View style={styles.inputContainer}>
-                    <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <Ionicons name="lock-closed-outline" size={scale(20, 18, 24)} color="#999" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       placeholder="Confirm Password"
@@ -810,19 +823,19 @@ export default function RegisterScreen() {
                     >
                       <Ionicons
                         name={showConfirmPassword ? 'eye-off' : 'eye'}
-                        size={20}
+                        size={scale(20, 18, 24)}
                         color="#999"
                       />
                     </TouchableOpacity>
                     {password && confirmPassword && password === confirmPassword && (
                       <View style={styles.checkMark}>
-                        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                        <Ionicons name="checkmark-circle" size={scale(20, 18, 24)} color="#10B981" />
                       </View>
                     )}
                   </View>
 
                   <View style={styles.inputContainer}>
-                    <Ionicons name="keypad-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <Ionicons name="keypad-outline" size={scale(20, 18, 24)} color="#999" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       placeholder="4-Digit PIN"
@@ -837,7 +850,7 @@ export default function RegisterScreen() {
                   </View>
 
                   <View style={styles.inputContainer}>
-                    <Ionicons name="keypad-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <Ionicons name="keypad-outline" size={scale(20, 18, 24)} color="#999" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       placeholder="Confirm PIN"
@@ -851,7 +864,7 @@ export default function RegisterScreen() {
                     />
                     {pin && confirmPin && pin === confirmPin && (
                       <View style={styles.checkMark}>
-                        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                        <Ionicons name="checkmark-circle" size={scale(20, 18, 24)} color="#10B981" />
                       </View>
                     )}
                   </View>
@@ -864,13 +877,13 @@ export default function RegisterScreen() {
                     >
                       <View style={[styles.checkbox, termsAccepted && styles.checkedBox]}>
                         {termsAccepted && (
-                          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                          <Ionicons name="checkmark" size={scale(16, 14, 18)} color="#FFFFFF" />
                         )}
                       </View>
                     </TouchableOpacity>
                     <View style={styles.termsTextContainer}>
                       <Text style={styles.termsText}>
-                        I agree to the{' '}
+                        <Text>I agree to the </Text>
                         <Text 
                           style={styles.linkText}
                           onPress={handleTermsPress}
@@ -889,13 +902,13 @@ export default function RegisterScreen() {
                     >
                       <View style={[styles.checkbox, privacyAccepted && styles.checkedBox]}>
                         {privacyAccepted && (
-                          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                          <Ionicons name="checkmark" size={scale(16, 14, 18)} color="#FFFFFF" />
                         )}
                       </View>
                     </TouchableOpacity>
                     <View style={styles.termsTextContainer}>
                       <Text style={styles.termsText}>
-                        I agree to the{' '}
+                        <Text>I agree to the </Text>
                         <Text 
                           style={styles.linkText}
                           onPress={handlePrivacyPress}
@@ -960,6 +973,49 @@ export default function RegisterScreen() {
         onAccept={handleTermsAccept}
         onDecline={handleTermsDecline}
       />
+
+      {/* Email Info Modal - Shown before email verification */}
+      <Modal
+        visible={showEmailInfoModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowEmailInfoModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalIconContainer}>
+              <LinearGradient
+                colors={['#6B46C1', '#9333EA']}
+                style={styles.modalIconGradient}
+              >
+                <Ionicons name="mail" size={32} color="#FFFFFF" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.modalTitle}>Email Verification</Text>
+            <Text style={styles.modalSubtitle}>
+              We'll send a verification code to your email address:
+            </Text>
+            <Text style={styles.modalEmail}>{email}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleSendEmailCodeAndProceed}
+            >
+              <LinearGradient
+                colors={['#6B46C1', '#9333EA']}
+                style={styles.modalButtonGradient}
+              >
+                <Text style={styles.modalButtonText}>Send Email Code</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              onPress={() => setShowEmailInfoModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
       
       {/* Alert Component */}
       <AlertComponent />
@@ -981,31 +1037,31 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: scale(40),
   },
   title: {
-    fontSize: 28,
+    fontSize: fontScale(28, 24, 32),
     fontWeight: 'bold',
     color: '#1F2937',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     color: '#6B7280',
-    marginBottom: 24,
+    marginBottom: scale(24),
     textAlign: 'center',
   },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#E5E7EB',
     borderRadius: 25,
-    padding: 4,
-    width: 200,
-    marginBottom: 24,
+    padding: scale(4),
+    width: scale(200, 180, 240),
+    marginBottom: scale(24),
   },
   tab: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: scale(8),
     alignItems: 'center',
     borderRadius: 20,
   },
@@ -1013,7 +1069,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#6B46C1',
   },
   tabText: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '600',
     color: '#6B7280',
   },
@@ -1023,14 +1079,14 @@ const styles = StyleSheet.create({
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: scale(20),
   },
   progressDot: {
-    width: 12,
-    height: 12,
+    width: scale(12, 10, 14),
+    height: scale(12, 10, 14),
     borderRadius: 6,
     backgroundColor: '#E5E7EB',
-    marginHorizontal: 4,
+    marginHorizontal: scale(4),
   },
   progressDotActive: {
     backgroundColor: '#6B46C1',
@@ -1039,23 +1095,24 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 2,
     backgroundColor: '#E5E7EB',
-    marginHorizontal: 8,
+    marginHorizontal: scale(8),
   },
   progressLineActive: {
     backgroundColor: '#6B46C1',
   },
   form: {
-    marginBottom: 40,
-    width: '100%', // Make form take full width like login screen
+    marginBottom: scale(40),
+    width: '100%',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    height: 56,
+    marginBottom: scale(16),
+    paddingHorizontal: scale(16),
+    height: scale(56, 48, 64),
+    minHeight: 48, // Minimum touch target
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1066,23 +1123,28 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: scale(12),
   },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     color: '#1F2937',
   },
   eyeButton: {
-    padding: 4,
+    padding: scale(4),
+    minWidth: 44, // Minimum touch target
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   checkMark: {
-    padding: 4,
+    padding: scale(4),
   },
   primaryButton: {
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: scale(16),
+    minHeight: 48, // Minimum touch target
     shadowColor: '#6B46C1',
     shadowOffset: {
       width: 0,
@@ -1093,55 +1155,76 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   primaryButtonGradient: {
-    paddingVertical: 16,
+    paddingVertical: scale(16, 14, 18),
     alignItems: 'center',
   },
   primaryButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   secondaryButton: {
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: scale(16, 14, 18),
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: scale(16),
     backgroundColor: '#F3F4F6',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    minHeight: 48, // Minimum touch target
   },
   secondaryButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#6B46C1',
   },
   backButton: {
     alignSelf: 'center',
-    marginTop: 8,
+    marginTop: scale(8),
+    minHeight: 44, // Minimum touch target
+    justifyContent: 'center',
   },
   backButtonText: {
     color: '#6B46C1',
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '600',
     textAlign: 'center',
   },
+  inputLabel: {
+    fontSize: fontScale(14, 12, 16),
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: scale(8),
+  },
   disabledButton: {
+    opacity: 0.6,
+  },
+  buttonDisabled: {
     opacity: 0.6,
   },
   termsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: scale(16),
+    minHeight: scale(24, 22, 28),
   },
   checkboxContainer: {
-    marginRight: 12,
+    marginRight: scale(12),
+    width: scale(24, 22, 28),
+    height: scale(24, 22, 28),
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
   },
   termsTextContainer: {
     flex: 1,
+    flexShrink: 1,
+    justifyContent: 'center',
+    minHeight: scale(24, 22, 28),
   },
   checkbox: {
-    width: 20,
-    height: 20,
+    width: scale(20, 18, 24),
+    height: scale(20, 18, 24),
     borderRadius: 4,
     borderWidth: 2,
     borderColor: '#D1D5DB',
@@ -1153,9 +1236,10 @@ const styles = StyleSheet.create({
     borderColor: '#6B46C1',
   },
   termsText: {
-    flex: 1,
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
+    lineHeight: fontScale(20, 18, 22),
+    includeFontPadding: false,
   },
   linkText: {
     color: '#6B46C1',
@@ -1165,7 +1249,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
   },
   footerLink: {
@@ -1177,40 +1261,91 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   phonePrefix: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: 'bold',
     color: '#1F2937',
-    marginRight: 8,
+    marginRight: scale(8),
   },
   phoneInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     color: '#1F2937',
   },
-  otpContainer: {
-    flexDirection: 'row',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%',
-    marginBottom: 24,
-    gap: 8,
+    padding: scale(24),
   },
-  otpInput: {
-    width: 48,
-    height: 56,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    textAlign: 'center',
-    fontSize: 20,
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: scale(32),
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 340,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  modalIconContainer: {
+    marginBottom: scale(20),
+  },
+  modalIconGradient: {
+    width: scale(72),
+    height: scale(72),
+    borderRadius: scale(36),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: fontScale(22, 20, 24),
     fontWeight: 'bold',
     color: '#1F2937',
-    backgroundColor: '#FFFFFF',
+    marginBottom: scale(12),
+    textAlign: 'center',
   },
-  otpSeparator: {
-    marginHorizontal: 8,
-    fontSize: 24,
-    fontWeight: '600',
+  modalSubtitle: {
+    fontSize: fontScale(14, 13, 16),
     color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: scale(8),
+    lineHeight: 22,
   },
-}); 
+  modalEmail: {
+    fontSize: fontScale(16, 14, 18),
+    fontWeight: '600',
+    color: '#6B46C1',
+    marginBottom: scale(24),
+    textAlign: 'center',
+  },
+  modalButton: {
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: scale(12),
+  },
+  modalButtonGradient: {
+    paddingVertical: scale(14),
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    fontSize: fontScale(16, 14, 18),
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  modalCancelButton: {
+    paddingVertical: scale(12),
+  },
+  modalCancelText: {
+    fontSize: fontScale(14, 13, 16),
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+});

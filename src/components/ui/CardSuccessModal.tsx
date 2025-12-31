@@ -132,13 +132,13 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             {/* Success Icon with Animation */}
-            <Animated.View 
+            <Animated.View
               style={[
                 styles.successIconContainer,
                 {
                   transform: [
                     { scale: scaleAnim },
-                    { 
+                    {
                       translateY: bounceAnim.interpolate({
                         inputRange: [0, 1],
                         outputRange: [0, -10],
@@ -154,7 +154,7 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
             </Animated.View>
 
             {/* Content with Fade Animation */}
-            <Animated.View 
+            <Animated.View
               style={[
                 styles.contentContainer,
                 { opacity: fadeAnim }
@@ -168,18 +168,21 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
               {/* Card Details */}
               {cardDetails && (
                 <View style={styles.cardDetailsContainer}>
-                  <View style={styles.cardIcon}>
+                  <View style={[
+                    styles.cardIcon,
+                    { backgroundColor: getCardBrandImage(cardDetails.brand) ? getCardBrandColor(cardDetails.brand) : '#F3F4F6' }
+                  ]}>
                     {getCardBrandImage(cardDetails.brand) ? (
-                      <Image 
-                        source={getCardBrandImage(cardDetails.brand)} 
+                      <Image
+                        source={getCardBrandImage(cardDetails.brand)}
                         style={styles.cardBrandImage}
                         resizeMode="contain"
                       />
                     ) : (
-                      <Ionicons 
-                        name={getCardBrandIcon(cardDetails.brand) as any} 
-                        size={24} 
-                        color={getCardBrandColor(cardDetails.brand)} 
+                      <Ionicons
+                        name={getCardBrandIcon(cardDetails.brand) as any}
+                        size={24}
+                        color={getCardBrandColor(cardDetails.brand)}
                       />
                     )}
                   </View>
@@ -218,7 +221,7 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
             </Animated.View>
 
             {/* Action Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.doneButton}
               onPress={onClose}
             >
@@ -234,14 +237,14 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
           </View>
 
           {/* Celebration Elements */}
-          <Animated.View 
+          <Animated.View
             style={[
               styles.celebrationElement,
               styles.celebrationElement1,
               {
                 opacity: fadeAnim,
                 transform: [
-                  { 
+                  {
                     rotate: bounceAnim.interpolate({
                       inputRange: [0, 1],
                       outputRange: ['0deg', '360deg'],
@@ -254,14 +257,14 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
             <Ionicons name="star" size={20} color="#F59E0B" />
           </Animated.View>
 
-          <Animated.View 
+          <Animated.View
             style={[
               styles.celebrationElement,
               styles.celebrationElement2,
               {
                 opacity: fadeAnim,
                 transform: [
-                  { 
+                  {
                     rotate: bounceAnim.interpolate({
                       inputRange: [0, 1],
                       outputRange: ['0deg', '-360deg'],
@@ -274,7 +277,7 @@ export const CardSuccessModal: React.FC<CardSuccessModalProps> = ({
             <Ionicons name="star" size={16} color="#10B981" />
           </Animated.View>
 
-           
+
         </View>
       </View>
     </Modal>
@@ -351,10 +354,12 @@ const styles = StyleSheet.create({
     width: 50,
     height: 32,
     borderRadius: 6,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   cardBrandImage: {
     width: 45,

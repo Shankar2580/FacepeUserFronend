@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   Platform,
 } from 'react-native';
@@ -19,9 +18,8 @@ import { useAuth } from '../../src/hooks/useAuth';
 import { PaymentCard } from '../../src/components/ui/PaymentCard';
 import { EmptyState } from '../../src/components/ui/EmptyState';
 import { useAlert } from '../../src/components/ui/AlertModal';
-import { designSystem, spacing, shadows, borderRadius, typography } from '../../src/constants/DesignSystem';
+import { wp, scale, fontScale } from '../../src/utils/responsive';
 import { Colors } from '../../src/constants/Colors';
-// Removed useColorScheme - using light theme by default
 
 export default function CardsScreen() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -41,7 +39,6 @@ export default function CardsScreen() {
       const cards = await apiService.getPaymentMethods();
       setPaymentMethods(cards);
     } catch (error: any) {
-      // console.error removed for production
       if (error?.response?.status !== 401) {
         showAlert('Oops', 'Unable to load your payment methods right now. Please try again later.', undefined, 'error');
       }
@@ -74,7 +71,7 @@ export default function CardsScreen() {
       await loadCards(); // Refresh the list
       showAlert('Success', 'Default card updated successfully', undefined, 'success');
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Failed to set default card', undefined, 'error');
+      showAlert('Error', 'Unable to set default card. Please try again.', undefined, 'error');
     }
   };
 
@@ -93,7 +90,7 @@ export default function CardsScreen() {
               await loadCards();
               showAlert('Success', 'Card deleted successfully', undefined, 'success');
             } catch (error: any) {
-              showAlert('Error', error.response?.data?.message || 'Failed to delete card', undefined, 'error');
+              showAlert('Error', 'Unable to delete card. Please try again.', undefined, 'error');
             }
           },
         },
@@ -119,7 +116,7 @@ export default function CardsScreen() {
           style={styles.addButton}
           onPress={() => router.push('/add-card')}
         >
-          <Ionicons name="add" size={24} color="#6B46C1" />
+          <Ionicons name="add" size={scale(24, 20, 28)} color="#6B46C1" />
         </TouchableOpacity>
       </LinearGradient>
 
@@ -127,7 +124,7 @@ export default function CardsScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 100 } // Extra padding for tab bar
+          { paddingBottom: insets.bottom + scale(100) } // Extra padding for tab bar
         ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -166,7 +163,7 @@ export default function CardsScreen() {
             onPress={() => router.push('/add-card')}
           >
             <View style={styles.addCardContent}>
-              <Ionicons name="add-circle-outline" size={32} color="#6B46C1" />
+              <Ionicons name="add-circle-outline" size={scale(32, 28, 40)} color="#6B46C1" />
               <Text style={styles.addAnotherText}>Add Another Card</Text>
             </View>
           </TouchableOpacity>
@@ -175,7 +172,7 @@ export default function CardsScreen() {
         {/* Info Section */}
         <View style={styles.infoSection}>
           <View style={styles.infoItem}>
-            <Ionicons name="shield-checkmark" size={24} color="#059669" />
+            <Ionicons name="shield-checkmark" size={scale(24, 20, 28)} color="#059669" />
             <View style={styles.infoText}>
               <Text style={styles.infoTitle}>Secure & Encrypted</Text>
               <Text style={styles.infoSubtitle}>
@@ -185,7 +182,7 @@ export default function CardsScreen() {
           </View>
           
           <View style={styles.infoItem}>
-            <Ionicons name="flash" size={24} color="#F59E0B" />
+            <Ionicons name="flash" size={scale(24, 20, 28)} color="#F59E0B" />
             <View style={styles.infoText}>
               <Text style={styles.infoTitle}>Fast Payments</Text>
               <Text style={styles.infoSubtitle}>
@@ -211,13 +208,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    paddingBottom: 16,
-    minHeight: 80,
+    paddingHorizontal: scale(24),
+    paddingVertical: scale(16),
+    paddingBottom: scale(16),
+    minHeight: scale(80),
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
-    marginBottom: 24,
+    marginBottom: scale(24),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -228,17 +225,19 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   title: {
-    fontSize: 24,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 44, // Minimum touch target
+    minHeight: 44,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -255,56 +254,57 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   cardsContainer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: scale(24),
   },
 
   emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 48,
-    paddingVertical: 80,
+    paddingHorizontal: scale(48),
+    paddingVertical: scale(80),
   },
   emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: scale(120),
+    height: scale(120),
+    borderRadius: scale(60),
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   emptyTitle: {
-    fontSize: 24,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: 'bold',
     color: '#1F2937',
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: scale(24),
+    marginBottom: scale(8),
   },
   emptySubtitle: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   addCardButton: {
     backgroundColor: '#6B46C1',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingHorizontal: scale(24),
+    paddingVertical: scale(12),
     borderRadius: 12,
+    minHeight: 48, // Minimum touch target
   },
   addCardButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
   },
   addAnotherCard: {
-    marginHorizontal: 24,
+    marginHorizontal: scale(24),
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
+    borderRadius: scale(16),
+    padding: scale(24),
+    marginBottom: scale(24),
     borderWidth: 2,
     borderColor: '#E5E7EB',
     borderStyle: 'dashed',
@@ -313,37 +313,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: scale(12),
   },
   addAnotherText: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#6B46C1',
   },
   infoSection: {
-    marginHorizontal: 24,
-    marginBottom: 32,
-    gap: 16,
+    marginHorizontal: scale(24),
+    marginBottom: scale(32),
+    gap: scale(16),
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    padding: 16,
+    padding: scale(16),
     borderRadius: 12,
-    gap: 16,
+    gap: scale(16),
   },
   infoText: {
     flex: 1,
   },
   infoTitle: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#1F2937',
   },
   infoSubtitle: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
-    marginTop: 4,
+    marginTop: scale(4),
   },
-}); 
+});

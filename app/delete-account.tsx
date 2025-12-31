@@ -17,6 +17,7 @@ import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context'
 import { useAlert } from '../src/components/ui/AlertModal';
 import { useAuth } from '../src/hooks/useAuth';
 import { apiService } from '../src/services/api';
+import { fontScale, scale } from '../src/utils/responsive';
 
 export default function DeleteAccountScreen() {
   const { user, logout } = useAuth();
@@ -69,7 +70,7 @@ export default function DeleteAccountScreen() {
             } catch (error: any) {
               showAlert(
                 'Error',
-                error.response?.data?.detail || 'Failed to schedule account deletion',
+                'Unable to schedule account deletion. Please try again.',
                 undefined,
                 'warning'
               );
@@ -112,7 +113,7 @@ export default function DeleteAccountScreen() {
             } catch (error: any) {
               showAlert(
                 'Error',
-                error.response?.data?.detail || 'Failed to cancel account deletion',
+                'Unable to cancel account deletion. Please try again.',
                 undefined,
                 'warning'
               );
@@ -383,7 +384,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },

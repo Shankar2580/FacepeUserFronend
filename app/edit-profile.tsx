@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../src/components/ui/AlertModal';
 import { useAuth } from '../src/hooks/useAuth';
 import { apiService } from '../src/services/api';
+import { fontScale, scale } from '../src/utils/responsive';
 
 export default function EditProfileScreen() {
   const { user, refreshUser } = useAuth();
@@ -68,12 +69,11 @@ export default function EditProfileScreen() {
     } catch (error: any) {
       // Handle 429 error (cooldown period)
       if (error.response?.status === 429) {
-        const errorMessage = error.response?.data?.detail || 'You can only change your name once every 90 days';
-        showAlert('Cooldown Period', errorMessage, undefined, 'warning');
+        showAlert('Cooldown Period', 'You can only change your name once every 90 days.', undefined, 'warning');
       } else {
         showAlert(
           'Error',
-          error.response?.data?.detail || 'Failed to update name',
+          'Unable to update your name. Please try again.',
           undefined,
           'error'
         );
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
@@ -261,15 +261,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoTitle: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '600',
     color: '#6B46C1',
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
   infoText: {
-    fontSize: 13,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
-    lineHeight: 18,
+    lineHeight: fontScale(18, 16, 20),
   },
   formCard: {
     backgroundColor: '#FFFFFF',
@@ -286,10 +286,10 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   label: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   inputContainer: {
     flexDirection: 'row',
@@ -305,14 +305,14 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 48,
-    fontSize: 16,
+    height: scale(48),
+    fontSize: fontScale(16, 14, 18),
     color: '#1F2937',
   },
   helperText: {
-    fontSize: 12,
+    fontSize: fontScale(12, 10, 14),
     color: '#6B7280',
-    marginTop: 8,
+    marginTop: scale(8),
   },
   currentNameCard: {
     backgroundColor: '#FFFFFF',
@@ -329,15 +329,15 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   currentNameLabel: {
-    fontSize: 12,
+    fontSize: fontScale(12, 10, 14),
     fontWeight: '600',
     color: '#6B7280',
-    marginBottom: 4,
+    marginBottom: scale(4),
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   currentNameText: {
-    fontSize: 18,
+    fontSize: fontScale(18, 16, 20),
     fontWeight: '600',
     color: '#1F2937',
   },
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#FFFFFF',
   },

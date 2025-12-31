@@ -1,170 +1,143 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  Platform,
-  ActivityIndicator,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { apiService } from '../../src/services/api';
-import { Transaction, AutoPay, PaymentMethod } from '../../src/constants/types';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../../src/components/ui/AlertModal';
+import { EmptyState } from '../../src/components/ui/EmptyState';
 import FilterModal from '../../src/components/ui/FilterModal';
+import { PaymentMethod, Transaction } from '../../src/constants/types';
+import { apiService } from '../../src/services/api';
+import { getErrorMessage } from '../../src/utils/errorHandler';
+import { fontScale, scale } from '../../src/utils/responsive';
 
 type TimeFilter = 'all' | 'daily' | 'weekly' | 'monthly';
-type StatusFilter = 'all' | 'completed' | 'pending' | 'failed' | 'cancelled' | 'expired';
-type CardFilter = 'all' | string; // 'all' or payment method ID
-
-interface GroupedTransactions {
-  [key: string]: Transaction[];
-}
+type StatusFilter = 'all' | 'completed' | 'pending' | 'failed';
+type CardFilter = 'all' | string;
 
 export default function HistoryScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<StatusFilter>('all');
-  const [selectedTimeFilter, setSelectedTimeFilter] = useState<TimeFilter>('all');
-  const [selectedCardFilter, setSelectedCardFilter] = useState<CardFilter>('all');
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [autoPay, setAutoPay] = useState<AutoPay[]>([]);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [cardFilter, setCardFilter] = useState<CardFilter>('all');
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | undefined>();
   const [hasMore, setHasMore] = useState(false);
-  
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
-  const { showAlert, AlertComponent } = useAlert();
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
 
-  useEffect(() => {
-    loadData();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { showAlert, AlertComponent } = useAlert();
+
+  // Load payment methods for filter
+  const loadPaymentMethods = useCallback(async () => {
+    try {
+      const methods = await apiService.getPaymentMethods();
+      setPaymentMethods(methods);
+    } catch (error) {
+      // Silent fail - payment methods filter will just be empty
+    }
   }, []);
 
-  useEffect(() => {
-    loadTransactions(true);
-  }, [selectedStatusFilter, selectedTimeFilter, selectedCardFilter]);
-
-  const loadData = async () => {
+  // Load transactions
+  const loadTransactions = useCallback(async (page: number = 1, append: boolean = false) => {
     try {
-      const [autoPayData, paymentMethodsData] = await Promise.all([
-        apiService.getAutoPay(),
-        apiService.getPaymentMethods()
-      ]);
-      
-      setAutoPay(autoPayData);
-      setPaymentMethods(paymentMethodsData);
-      await loadTransactions(true);
-    } catch (error) {
-      showAlert('Error', 'Failed to load data', undefined, 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadTransactions = async (reset: boolean = false) => {
-    try {
-      if (reset) {
+      if (!append) {
         setIsLoading(true);
       }
-
+      
       const params: any = {
+        page,
         limit: 20,
       };
-
-      if (selectedStatusFilter !== 'all') {
-        params.status_filter = selectedStatusFilter;
+      
+      if (timeFilter !== 'all') {
+        params.time_filter = timeFilter;
       }
-
-      if (selectedTimeFilter !== 'all') {
-        params.time_filter = selectedTimeFilter;
+      if (statusFilter !== 'all') {
+        params.status_filter = statusFilter;
       }
-
-      if (selectedCardFilter !== 'all') {
-        params.payment_method_id = selectedCardFilter;
+      if (cardFilter !== 'all') {
+        params.payment_method_id = cardFilter;
       }
-
-      if (!reset && nextCursor) {
-        params.cursor = nextCursor;
-      }
-
+      
       const response = await apiService.getTransactions(params);
       
-      if (reset) {
-        setTransactions(response.transactions);
+      if (append) {
+        setTransactions(prev => [...prev, ...response.transactions]);
       } else {
-        setTransactions((prev: Transaction[]) => [...prev, ...response.transactions]);
+        setTransactions(response.transactions);
       }
-
-      setNextCursor(response.next_cursor);
-      setHasMore(response.has_more);
-    } catch (error) {
-      showAlert('Error', 'Failed to load transactions', undefined, 'error');
+      setHasMore(response.transactions.length === 20);
+      setCurrentPage(page);
+    } catch (error: any) {
+      if (error?.response?.status !== 401) {
+        showAlert('Oops', getErrorMessage(error, 'Unable to load transactions. Please try again.'), undefined, 'error');
+      }
     } finally {
       setIsLoading(false);
-      setIsLoadingMore(false);
+      setLoadingMore(false);
     }
-  };
+  }, [timeFilter, statusFilter, cardFilter]);
+
+  // Auto-refresh on focus
+  useFocusEffect(
+    useCallback(() => {
+      loadTransactions(1, false);
+      loadPaymentMethods();
+    }, [loadTransactions, loadPaymentMethods])
+  );
+
+  // Reload when filters change
+  useEffect(() => {
+    loadTransactions(1, false);
+  }, [timeFilter, statusFilter, cardFilter, loadTransactions]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await loadTransactions(1, false);
     setRefreshing(false);
   };
 
   const loadMore = async () => {
-    if (!isLoadingMore && hasMore) {
-      setIsLoadingMore(true);
-      await loadTransactions(false);
-    }
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    await loadTransactions(currentPage + 1, true);
   };
 
-  const handleEnableAutoPay = async (transaction: Transaction) => {
-    const defaultCard = paymentMethods.find(pm => pm.is_default);
-    
-    if (!defaultCard) {
-      showAlert('No Default Card', 'Please set a default payment method first', undefined, 'warning');
-      return;
-    }
-
-    const existingAutoPay = autoPay.find(ap => ap.merchant_id === transaction.merchant_id);
-    
-    showAlert(
-      'Enable AutoPay',
-      `${existingAutoPay ? 'Update' : 'Enable'} automatic payments for ${transaction.merchant_name}?\n\nFuture payments will be automatically processed using your default card.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: existingAutoPay ? 'Update' : 'Enable',
-          onPress: async () => {
-            try {
-              await apiService.addAutoPay({
-                merchant_id: transaction.merchant_id,
-                merchant_name: transaction.merchant_name,
-                payment_method_id: defaultCard.id,
-                max_amount: Math.ceil((transaction.amount / 100) * 1.5) * 100 // Convert to dollars, increase by 50%, convert back to cents
-              });
-              
-              await loadData(); // Refresh data
-              showAlert('Success', `AutoPay ${existingAutoPay ? 'updated' : 'enabled'} successfully`, undefined, 'success');
-            } catch (error: any) {
-              showAlert('Error', error.response?.data?.message || 'Failed to enable AutoPay', undefined, 'error');
-            }
-          },
-        },
-      ]
-    );
+  // Reset all filters
+  const resetFilters = () => {
+    setTimeFilter('all');
+    setStatusFilter('all');
+    setCardFilter('all');
   };
+
+  // Filter options
+  const timeFilterOptions: { key: TimeFilter; label: string }[] = [
+    { key: 'all', label: 'All Time' },
+    { key: 'daily', label: 'Today' },
+    { key: 'weekly', label: 'This Week' },
+    { key: 'monthly', label: 'This Month' },
+  ];
+
+  const statusFilterOptions: { key: StatusFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'completed', label: 'Completed' },
+    { key: 'pending', label: 'Pending' },
+    { key: 'failed', label: 'Failed' },
+  ];
 
   const formatAmount = (amount: number) => {
     return `$${(amount / 100).toFixed(2)}`;
@@ -172,98 +145,132 @@ export default function HistoryScreen() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
-  const getTransactionIcon = (merchantName: string) => {
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return '#059669';
+      case 'pending':
+        return '#F59E0B';
+      case 'failed':
+        return '#DC2626';
+      default:
+        return '#6B7280';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'checkmark-circle';
+      case 'pending':
+        return 'time';
+      case 'failed':
+        return 'close-circle';
+      default:
+        return 'ellipse';
+    }
+  };
+
+  const getMerchantIcon = (merchantName: string) => {
     if (!merchantName || typeof merchantName !== 'string') return '🏪';
     const name = merchantName.toLowerCase();
     if (name.includes('starbucks')) return '☕';
     if (name.includes('amazon')) return '📦';
     if (name.includes('uber')) return '🚗';
     if (name.includes('netflix')) return '🎬';
-    if (name.includes('spotify')) return '🎵';
-    if (name.includes('apple')) return '🍎';
-    if (name.includes('google')) return '🔍';
+    if (name.includes('grocery')) return '🛒';
+    if (name.includes('restaurant')) return '🍽️';
     return '🏪';
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return '#059669';
-      case 'pending': return '#F59E0B';
-      case 'failed': return '#EF4444';
-      case 'cancelled': return '#6B7280';
-      case 'expired': return '#9CA3AF';
-      default: return '#6B7280';
+  const getMerchantName = (transaction: Transaction) => {
+    // Prioritize business_name if available
+    if (transaction.business_name && transaction.business_name.trim()) {
+      return transaction.business_name;
     }
-  };
-
-  const groupTransactionsByDate = (): GroupedTransactions => {
-    const grouped: GroupedTransactions = {};
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    transactions.forEach((transaction: Transaction) => {
-      const transactionDate = new Date(transaction.created_at);
-      transactionDate.setHours(0, 0, 0, 0);
+    
+    // Clean up merchant_name if it contains the merchant ID pattern
+    if (transaction.merchant_name) {
+      // If merchant_name contains "(acct_...)" pattern, extract just the business name part
+      const match = transaction.merchant_name.match(/^(.+?)\s*\(acct_[^)]+\)$/);
+      if (match) {
+        return match[1].trim();
+      }
       
-      let dateKey: string;
-      if (transactionDate.getTime() === today.getTime()) {
-        dateKey = 'Today';
-      } else if (transactionDate.getTime() === yesterday.getTime()) {
-        dateKey = 'Yesterday';
-      } else {
-        dateKey = transactionDate.toLocaleDateString('en-US', { 
-          month: 'long', 
-          day: 'numeric',
-          year: transactionDate.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
-        });
+      // If it's just "Merchant (acct_...)", try to use a fallback
+      if (transaction.merchant_name.startsWith('Merchant (acct_')) {
+        return 'Business'; // Generic fallback
       }
-
-      if (!grouped[dateKey]) {
-        grouped[dateKey] = [];
-      }
-      grouped[dateKey].push(transaction);
-    });
-
-    return grouped;
+      
+      return transaction.merchant_name;
+    }
+    
+    return 'Unknown Merchant';
   };
 
-  const isAutoPayEnabled = (merchantId: string) => {
-    return autoPay?.some((ap: AutoPay) => ap?.merchant_id === merchantId && ap?.is_enabled) || false;
-  };
 
-  const timeFilters: { key: TimeFilter; label: string; icon: string }[] = [
-    { key: 'all', label: 'All Time', icon: 'calendar-outline' },
-    { key: 'daily', label: 'Today', icon: 'today-outline' },
-    { key: 'weekly', label: 'This Week', icon: 'calendar-outline' },
-    { key: 'monthly', label: 'This Month', icon: 'calendar' },
-  ];
+  // Group transactions by date
+  const groupedTransactions = transactions.reduce((groups, transaction) => {
+    const date = formatDate(transaction.created_at);
+    if (!groups[date]) {
+      groups[date] = [];
+    }
+    groups[date].push(transaction);
+    return groups;
+  }, {} as Record<string, Transaction[]>);
 
-  const statusFilters: { key: StatusFilter; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: 0 },
-    { key: 'completed', label: 'Completed', count: 0 },
-    { key: 'pending', label: 'Pending', count: 0 },
-    { key: 'failed', label: 'Failed', count: 0 },
-    { key: 'expired', label: 'Expired', count: 0 },
-  ];
+  // Skeleton loading state
+  if (isLoading && transactions.length === 0) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <LinearGradient
+          colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
+          style={styles.header}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Text style={styles.title}>Transaction History</Text>
+        </LinearGradient>
 
-  const groupedTransactions = groupTransactionsByDate();
+        <View style={styles.filterTriggerContainer}>
+          <View style={styles.filterTriggerButton}>
+            <Ionicons name="filter" size={scale(18)} color="#374151" />
+            <Text style={styles.filterTriggerButtonText}>Filters</Text>
+          </View>
+        </View>
+
+        <View style={styles.loadingContainer}>
+          {[1, 2, 3, 4, 5].map((_, i) => (
+            <View key={i} style={styles.skeletonCard}>
+              <View style={styles.skeletonRow}>
+                <View style={styles.skeletonIcon} />
+                <View style={styles.skeletonContent}>
+                  <View style={styles.skeletonTitle} />
+                  <View style={styles.skeletonSubtitle} />
+                </View>
+                <View style={styles.skeletonAmount} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -283,125 +290,148 @@ export default function HistoryScreen() {
           style={styles.filterTriggerButton} 
           onPress={() => setIsFilterModalVisible(true)}
         >
-          <Ionicons name="filter" size={18} color="#374151" />
+          <Ionicons name="filter" size={scale(18)} color="#374151" />
           <Text style={styles.filterTriggerButtonText}>Filters</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Transactions List */}
-      {isLoading ? (
-        <ScrollView style={styles.scrollView}>
-          {[...Array(8)].map((_, index) => (
-            <View key={index} style={styles.skeletonContainer}>
-              <View style={styles.skeletonLeft}>
-                <View style={styles.skeletonIcon} />
-                <View>
-                  <View style={styles.skeletonLineLg} />
-                  <View style={styles.skeletonLineSm} />
-                </View>
-              </View>
-              <View style={styles.skeletonRight}>
-                <View style={styles.skeletonLineMd} />
-                <View style={styles.skeletonLineSm} />
-              </View>
-            </View>
-          ))}
-        </ScrollView>
-      ) : (
-        <ScrollView 
-          style={styles.scrollView}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          contentContainerStyle={{
-            paddingBottom: tabBarHeight + insets.bottom + 20,
-          }}
-        >
-          {transactions.length > 0 ? (
-            <View style={styles.transactionsContainer}>
-              {Object.entries(groupedTransactions).map(([dateKey, transactionsInGroup]) => (
-                <View key={dateKey} style={styles.dateGroup}>
-                  <Text style={styles.dateHeader}>{dateKey}</Text>
-                  <View style={styles.transactionsList}>
-                    {transactionsInGroup.map((transaction) => (
-                      <TouchableOpacity 
-                        key={transaction.id} 
-                        style={styles.transactionItem}
-                        onPress={() => router.push(`/transaction-detail?transactionId=${transaction.id}`)}
-                        activeOpacity={0.8}
-                      >
-                        <View style={styles.transactionIcon}>
-                          <Text style={styles.transactionEmoji}>
-                            {getTransactionIcon(transaction.merchant_name)}
-                          </Text>
-                        </View>
-                        <View style={styles.transactionDetails}>
-                          <Text style={styles.transactionMerchant}>{transaction.merchant_name}</Text>
-                          <Text style={styles.transactionDate}>{formatTime(transaction.created_at)}</Text>
-                        </View>
-                        <View style={styles.transactionAmountContainer}>
-                          <Text style={styles.transactionAmount}>{formatAmount(transaction.amount)}</Text>
-                          <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(transaction.status)}20` }]}>
-                            <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(transaction.status) }]} />
-                            <Text style={[styles.statusText, { color: getStatusColor(transaction.status) }]}>
-                              {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
-                            </Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              ))}
-
-              {/* Load More Button */}
-              {hasMore && (
-                <View style={styles.loadMoreContainer}>
-                  <TouchableOpacity
-                    style={styles.loadMoreButton}
-                    onPress={loadMore}
-                    disabled={isLoadingMore}
-                  >
-                    {isLoadingMore ? (
-                      <ActivityIndicator size="small" color="#6B46C1" />
-                    ) : (
-                      <>
-                        <Text style={styles.loadMoreText}>Load More</Text>
-                        <Ionicons name="chevron-down" size={16} color="#6B46C1" />
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="receipt-outline" size={64} color="#9CA3AF" />
-              <Text style={styles.emptyTitle}>No Transactions Yet</Text>
-              <Text style={styles.emptyDescription}>
-                Your transaction history will appear here once you make a payment.
+          {(timeFilter !== 'all' || statusFilter !== 'all' || cardFilter !== 'all') && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>
+                {[timeFilter !== 'all', statusFilter !== 'all', cardFilter !== 'all'].filter(Boolean).length}
               </Text>
             </View>
           )}
-        </ScrollView>
-      )}
-      <AlertComponent />
+        </TouchableOpacity>
+        {(timeFilter !== 'all' || statusFilter !== 'all' || cardFilter !== 'all') && (
+          <TouchableOpacity style={styles.clearFiltersButton} onPress={resetFilters}>
+            <Text style={styles.clearFiltersText}>Clear</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + scale(100) },
+        ]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+        onScrollEndDrag={({ nativeEvent }) => {
+          // Load more when near the bottom
+          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+          if (layoutMeasurement.height + contentOffset.y >= contentSize.height - scale(50)) {
+            loadMore();
+          }
+        }}
+      >
+        {transactions.length > 0 ? (
+          <>
+            {Object.entries(groupedTransactions).map(([date, dateTransactions]) => (
+              <View key={date} style={styles.dateGroup}>
+                <Text style={styles.dateHeader}>{date}</Text>
+                <View style={styles.transactionList}>
+                  {dateTransactions.map((transaction, index) => (
+                    <TouchableOpacity
+                      key={transaction.id}
+                      style={[
+                        styles.transactionItem,
+                        index === dateTransactions.length - 1 && styles.lastItem,
+                      ]}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/transaction-detail',
+                          params: { transactionId: transaction.id },
+                        } as any)
+                      }
+                    >
+                      <View style={styles.transactionIcon}>
+                        <Text style={styles.transactionEmoji}>
+                          {getMerchantIcon(getMerchantName(transaction))}
+                        </Text>
+                      </View>
+                      <View style={styles.transactionInfo}>
+                        <Text style={styles.merchantName} numberOfLines={1}>
+                          {getMerchantName(transaction)}
+                        </Text>
+                        <Text style={styles.transactionTime}>
+                          {formatTime(transaction.created_at)}
+                        </Text>
+                      </View>
+                      <View style={styles.transactionAmountContainer}>
+                        <Text style={styles.transactionAmount}>
+                          -{formatAmount(transaction.amount)}
+                        </Text>
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            { backgroundColor: `${getStatusColor(transaction.status)}20` },
+                          ]}
+                        >
+                          <Ionicons
+                            name={getStatusIcon(transaction.status) as any}
+                            size={scale(10, 8, 12)}
+                            color={getStatusColor(transaction.status)}
+                          />
+                          <Text
+                            style={[
+                              styles.statusText,
+                              { color: getStatusColor(transaction.status) },
+                            ]}
+                          >
+                            {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ))}
+
+            {/* Loading more indicator */}
+            {loadingMore && (
+              <View style={styles.loadingMoreContainer}>
+                <ActivityIndicator size="small" color="#6B46C1" />
+                <Text style={styles.loadingMoreText}>Loading more...</Text>
+              </View>
+            )}
+          </>
+        ) : (
+          <EmptyState
+            icon="receipt-outline"
+            title="No Transactions"
+            subtitle="Your transaction history will appear here once you start making payments"
+            variant="transactions"
+            animated={true}
+          />
+        )}
+      </ScrollView>
+
+      {/* Filter Modal */}
       <FilterModal 
         visible={isFilterModalVisible} 
         onClose={() => setIsFilterModalVisible(false)}
       >
         {/* Time Period Filter */}
         <View style={styles.filterSection}>
-          <Text style={styles.filterTitle}>Time Period</Text>
+          <Text style={styles.filterSectionTitle}>Time Period</Text>
           <View style={styles.filterOptionGroup}>
-            {timeFilters.map((f) => (
+            {timeFilterOptions.map((option) => (
               <TouchableOpacity
-                key={f.key}
-                style={[styles.filterChip, selectedTimeFilter === f.key && styles.filterChipActive]}
-                onPress={() => setSelectedTimeFilter(f.key)}
+                key={option.key}
+                style={[
+                  styles.filterChip,
+                  timeFilter === option.key && styles.filterChipActive,
+                ]}
+                onPress={() => setTimeFilter(option.key)}
               >
-                <Text style={[styles.filterChipText, selectedTimeFilter === f.key && styles.filterChipTextActive]}>{f.label}</Text>
+                <Text style={[
+                  styles.filterChipText,
+                  timeFilter === option.key && styles.filterChipTextActive,
+                ]}>
+                  {option.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -409,46 +439,77 @@ export default function HistoryScreen() {
 
         {/* Status Filter */}
         <View style={styles.filterSection}>
-          <Text style={styles.filterTitle}>Status</Text>
+          <Text style={styles.filterSectionTitle}>Status</Text>
           <View style={styles.filterOptionGroup}>
-            {statusFilters.map((f) => (
+            {statusFilterOptions.map((option) => (
               <TouchableOpacity
-                key={f.key}
-                style={[styles.filterChip, selectedStatusFilter === f.key && styles.filterChipActive]}
-                onPress={() => setSelectedStatusFilter(f.key)}
+                key={option.key}
+                style={[
+                  styles.filterChip,
+                  statusFilter === option.key && styles.filterChipActive,
+                ]}
+                onPress={() => setStatusFilter(option.key)}
               >
-                <Text style={[styles.filterChipText, selectedStatusFilter === f.key && styles.filterChipTextActive]}>{f.label}</Text>
+                <Text style={[
+                  styles.filterChipText,
+                  statusFilter === option.key && styles.filterChipTextActive,
+                ]}>
+                  {option.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Card Filter */}
+        {/* Payment Method Filter */}
         <View style={styles.filterSection}>
-          <Text style={styles.filterTitle}>Payment Method</Text>
+          <Text style={styles.filterSectionTitle}>Payment Method</Text>
           <View style={styles.filterOptionGroup}>
             <TouchableOpacity
-              style={[styles.filterChip, selectedCardFilter === 'all' && styles.filterChipActive]}
-              onPress={() => setSelectedCardFilter('all')}
+              style={[
+                styles.filterChip,
+                cardFilter === 'all' && styles.filterChipActive,
+              ]}
+              onPress={() => setCardFilter('all')}
             >
-              <Text style={[styles.filterChipText, selectedCardFilter === 'all' && styles.filterChipTextActive]}>All Cards</Text>
+              <Text style={[
+                styles.filterChipText,
+                cardFilter === 'all' && styles.filterChipTextActive,
+              ]}>
+                All Cards
+              </Text>
             </TouchableOpacity>
             {paymentMethods.map((card) => (
               <TouchableOpacity
                 key={card.id}
-                style={[styles.filterChip, selectedCardFilter === card.id && styles.filterChipActive]}
-                onPress={() => setSelectedCardFilter(card.id)}
+                style={[
+                  styles.filterChip,
+                  cardFilter === card.id && styles.filterChipActive,
+                ]}
+                onPress={() => setCardFilter(card.id)}
               >
-                <Text style={[styles.filterChipText, selectedCardFilter === card.id && styles.filterChipTextActive]}>•••• {card.last_four}</Text>
+                <Text style={[
+                  styles.filterChipText,
+                  cardFilter === card.id && styles.filterChipTextActive,
+                ]}>
+                  {card.card_brand} •••• {card.card_last_four}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        <TouchableOpacity style={styles.applyFiltersButton} onPress={() => setIsFilterModalVisible(false)}>
+        {/* Apply Button */}
+        <TouchableOpacity 
+          style={styles.applyFiltersButton} 
+          onPress={() => setIsFilterModalVisible(false)}
+        >
           <Text style={styles.applyFiltersButtonText}>Apply Filters</Text>
         </TouchableOpacity>
       </FilterModal>
+
+      {/* Alert Component */}
+      <AlertComponent />
     </View>
   );
 }
@@ -462,13 +523,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    paddingBottom: 16,
-    minHeight: 80,
+    paddingHorizontal: scale(24),
+    paddingVertical: scale(16),
+    paddingBottom: scale(16),
+    minHeight: scale(80),
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
-    marginBottom: 24,
+    marginBottom: scale(8),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -479,274 +540,81 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   title: {
-    fontSize: 24,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  filterContainer: {
-    paddingHorizontal: 24,
-    marginBottom: 12,
-  },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  filterButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    gap: 6,
-  },
-  filterButtonActive: {
-    backgroundColor: '#6B46C1',
-    borderColor: '#6B46C1',
-  },
-  filterButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  filterButtonTextActive: {
-    color: '#FFFFFF',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  transactionsContainer: {
-    paddingHorizontal: 24,
-  },
-  dateGroup: {
-    marginBottom: 24,
-  },
-  dateHeader: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#374151',
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  transactionsList: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  transactionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  transactionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  transactionEmoji: {
-    fontSize: 22,
-  },
-  transactionDetails: {
-    flex: 1,
-  },
-  transactionMerchant: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  transactionDate: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  transactionAmountContainer: {
-    alignItems: 'flex-end',
-  },
-  transactionAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 4,
-  },
-  statusIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 48,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyDescription: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  // Skeleton Loader Styles
-  skeletonContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  skeletonLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  skeletonIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E5E7EB',
-  },
-  skeletonLineLg: {
-    width: 120,
-    height: 16,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-    marginBottom: 6,
-  },
-  skeletonLineMd: {
-    width: 80,
-    height: 16,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-    marginBottom: 6,
-  },
-  skeletonLineSm: {
-    width: 60,
-    height: 12,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-  },
-  skeletonRight: {
-    alignItems: 'flex-end',
-  },
-  loadMoreContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  loadMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#6B46C1',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  loadMoreText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B46C1',
-  },
-  
-  // New Filter UI Styles
+  // Filter Trigger Button
   filterTriggerContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: '#F8F7FF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(24),
+    paddingVertical: scale(12),
+    gap: scale(12),
   },
   filterTriggerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    gap: scale(8),
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(10),
+    borderRadius: scale(12),
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    alignSelf: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   filterTriggerButtonText: {
-    fontSize: 14,
+    fontSize: fontScale(14),
     fontWeight: '600',
     color: '#374151',
   },
-
+  filterBadge: {
+    backgroundColor: '#6B46C1',
+    borderRadius: scale(10),
+    minWidth: scale(20),
+    height: scale(20),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: scale(4),
+  },
+  filterBadgeText: {
+    fontSize: fontScale(12),
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  clearFiltersButton: {
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(8),
+  },
+  clearFiltersText: {
+    fontSize: fontScale(14),
+    fontWeight: '600',
+    color: '#6B46C1',
+  },
   // Filter Modal Styles
   filterSection: {
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
-  filterTitle: {
-    fontSize: 16,
+  filterSectionTitle: {
+    fontSize: fontScale(16),
     fontWeight: 'bold',
     color: '#374151',
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
   filterOptionGroup: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: scale(12),
   },
   filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(10),
+    borderRadius: scale(20),
     backgroundColor: '#F3F4F6',
     borderWidth: 1,
     borderColor: 'transparent',
@@ -756,7 +624,7 @@ const styles = StyleSheet.create({
     borderColor: '#6B46C1',
   },
   filterChipText: {
-    fontSize: 14,
+    fontSize: fontScale(14),
     fontWeight: '600',
     color: '#4B5563',
   },
@@ -765,14 +633,189 @@ const styles = StyleSheet.create({
   },
   applyFiltersButton: {
     backgroundColor: '#6B46C1',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: scale(16),
+    borderRadius: scale(12),
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: scale(24),
+    marginBottom: scale(8),
+    minHeight: scale(52),
+    justifyContent: 'center',
   },
   applyFiltersButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: fontScale(16),
     fontWeight: 'bold',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: scale(24),
+  },
+  dateGroup: {
+    marginBottom: scale(24),
+  },
+  dateHeader: {
+    fontSize: fontScale(14, 12, 16),
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: scale(12),
+    paddingLeft: scale(4),
+  },
+  transactionList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  transactionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: scale(16),
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    minHeight: 72, // Minimum touch target
+  },
+  lastItem: {
+    borderBottomWidth: 0,
+  },
+  transactionIcon: {
+    width: scale(44, 40, 52),
+    height: scale(44, 40, 52),
+    borderRadius: scale(22),
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  transactionEmoji: {
+    fontSize: fontScale(20, 18, 24),
+  },
+  transactionInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  merchantName: {
+    fontSize: fontScale(16, 14, 18),
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: scale(2),
+  },
+  transactionTime: {
+    fontSize: fontScale(13, 11, 15),
+    color: '#9CA3AF',
+  },
+  transactionAmountContainer: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  transactionAmount: {
+    fontSize: fontScale(16, 14, 18),
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: scale(4),
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(3),
+    borderRadius: scale(10),
+    gap: scale(4),
+  },
+  statusText: {
+    fontSize: fontScale(10, 8, 12),
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    paddingHorizontal: scale(24),
+    paddingTop: scale(24),
+    gap: scale(16),
+  },
+  skeletonCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: scale(16),
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  skeletonIcon: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: '#F3F4F6',
+  },
+  skeletonContent: {
+    flex: 1,
+    marginLeft: scale(12),
+    gap: scale(8),
+  },
+  skeletonTitle: {
+    width: '60%',
+    height: scale(16),
+    borderRadius: 4,
+    backgroundColor: '#F3F4F6',
+  },
+  skeletonSubtitle: {
+    width: '40%',
+    height: scale(12),
+    borderRadius: 4,
+    backgroundColor: '#F3F4F6',
+  },
+  skeletonAmount: {
+    width: scale(60),
+    height: scale(20),
+    borderRadius: 4,
+    backgroundColor: '#F3F4F6',
+  },
+  loadingMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: scale(20),
+    gap: scale(8),
+  },
+  loadingMoreText: {
+    fontSize: fontScale(14, 12, 16),
+    color: '#6B7280',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: scale(48),
+    paddingVertical: scale(80),
+  },
+  emptyIconContainer: {
+    width: scale(120),
+    height: scale(120),
+    borderRadius: scale(60),
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(24),
+  },
+  emptyTitle: {
+    fontSize: fontScale(24, 20, 28),
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: scale(8),
+  },
+  emptySubtitle: {
+    fontSize: fontScale(16, 14, 18),
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
   },
 });

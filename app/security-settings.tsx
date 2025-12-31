@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../src/contexts/AuthContext';
 import DeviceLockService from '../src/services/DeviceLockService';
+import { fontScale, scale } from '../src/utils/responsive';
 
 export default function SecuritySettingsScreen() {
   const router = useRouter();
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontSize: 20,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
@@ -298,8 +299,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
+    marginTop: scale(16),
+    fontSize: fontScale(16, 14, 18),
     color: '#6B7280',
   },
   statusCard: {
@@ -325,26 +326,26 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statusTitle: {
-    fontSize: 20,
+    fontSize: fontScale(20, 18, 24),
     fontWeight: '700',
     color: '#1F2937',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   statusDescription: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: fontScale(20, 18, 22),
   },
   section: {
     marginBottom: 24,
     paddingHorizontal: 24,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: fontScale(12, 10, 14),
     fontWeight: '600',
     color: '#6B7280',
-    marginBottom: 12,
+    marginBottom: scale(12),
     letterSpacing: 0.5,
   },
   settingCard: {
@@ -380,15 +381,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingTitle: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
   settingDescription: {
-    fontSize: 13,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
-    lineHeight: 18,
+    lineHeight: fontScale(18, 16, 20),
   },
   infoCard: {
     backgroundColor: '#FFFFFF',
@@ -409,13 +410,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoTitle: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
   },
   warningBox: {
@@ -429,9 +430,9 @@ const styles = StyleSheet.create({
   },
   warningText: {
     flex: 1,
-    fontSize: 12,
+    fontSize: fontScale(12, 10, 14),
     color: '#92400E',
-    lineHeight: 16,
+    lineHeight: fontScale(16, 14, 18),
   },
   tipsCard: {
     backgroundColor: '#FFFFFF',
@@ -451,9 +452,9 @@ const styles = StyleSheet.create({
   },
   tipText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#4B5563',
-    lineHeight: 20,
+    lineHeight: fontScale(20, 18, 22),
   },
   alwaysOnBadge: {
     flexDirection: 'row',
@@ -465,7 +466,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   alwaysOnText: {
-    fontSize: 12,
+    fontSize: fontScale(12, 10, 14),
     fontWeight: '600',
     color: '#10B981',
   },

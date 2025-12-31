@@ -1,19 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
+  SafeAreaView,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
+  View,
 } from 'react-native';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useAlert } from '../../src/components/ui/AlertModal';
+import { OTPInput } from '../../src/components/ui/OTPInput';
 import { useAuth } from '../../src/hooks/useAuth';
 import { apiService } from '../../src/services/api';
-import { useAlert } from '../../src/components/ui/AlertModal';
+import { getVerificationError } from '../../src/utils/errorHandler';
+import { fontScale, scale } from '../../src/utils/responsive';
 
 export default function VerificationScreen() {
-  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [countdown, setCountdown] = useState(60);
@@ -56,22 +59,8 @@ export default function VerificationScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleCodeChange = (value: string, index: number) => {
-    if (value.length > 1) return;
-    
-    const newCode = [...code];
-    newCode[index] = value;
-    setCode(newCode);
-    
-    // Auto-focus next input
-    if (value && index < 5) {
-      const nextInput = index + 1;
-      // Focus logic would be implemented with refs in production
-    }
-  };
-
   const handleVerify = async (verificationCode?: string) => {
-    const codeToVerify = verificationCode || code.join('');
+    const codeToVerify = verificationCode || code;
     
     if (codeToVerify.length !== 6) {
       showAlert('Error', 'Please enter the complete verification code', undefined, 'error');
@@ -99,8 +88,8 @@ export default function VerificationScreen() {
       
       router.replace('/(tabs)');
     } catch (error: any) {
-      showAlert('Verification Failed', error.response?.data?.message || 'Please try again', undefined, 'error');
-      setCode(['', '', '', '', '', '']);
+      showAlert('Verification Failed', getVerificationError(error), undefined, 'error');
+      setCode('');
     } finally {
       setIsLoading(false);
     }
@@ -121,7 +110,7 @@ export default function VerificationScreen() {
     } catch (error: any) {
       // Only show alert if screen is still focused
       if (isScreenFocused.current) {
-        showAlert('Error', error.response?.data?.message || 'Failed to resend code', undefined, 'error');
+        showAlert('Error', getVerificationError(error), undefined, 'error');
       }
     } finally {
       setIsResending(false);
@@ -158,72 +147,13 @@ export default function VerificationScreen() {
 
         <View style={styles.codeContainer}>
           <Text style={styles.codeLabel}>Enter verification code</Text>
-          <View style={styles.codeInputsContainer}>
-            <View style={styles.codeInputs}>
-              {code.slice(0, 3).map((digit, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.codeInput,
-                    digit ? styles.codeInputFilled : null
-                  ]}
-                  onPress={() => {
-                    // In production, you'd focus the TextInput here
-                  }}
-                >
-                  <Text style={styles.codeInputText}>{digit}</Text>
-                </TouchableOpacity>
-              ))}
-              <View style={styles.separator}>
-                <Text style={styles.separatorText}>-</Text>
-              </View>
-              {code.slice(3, 6).map((digit, index) => (
-                <TouchableOpacity
-                  key={index + 3}
-                  style={[
-                    styles.codeInput,
-                    digit ? styles.codeInputFilled : null
-                  ]}
-                  onPress={() => {
-                    // In production, you'd focus the TextInput here
-                  }}
-                >
-                  <Text style={styles.codeInputText}>{digit}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-        <View style={styles.numberPad}>
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, 'delete'].map((num, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.numberButton,
-                num === '' ? styles.emptyButton : null
-              ]}
-              onPress={() => {
-                if (num === 'delete') {
-                  const lastFilledIndex = code.findLastIndex(digit => digit !== '');
-                  if (lastFilledIndex >= 0) {
-                    handleCodeChange('', lastFilledIndex);
-                  }
-                } else if (num !== '') {
-                  const firstEmptyIndex = code.findIndex(digit => digit === '');
-                  if (firstEmptyIndex >= 0) {
-                    handleCodeChange(num.toString(), firstEmptyIndex);
-                  }
-                }
-              }}
-              disabled={num === ''}
-            >
-              {num === 'delete' ? (
-                <Ionicons name="backspace" size={24} color="#1F2937" />
-              ) : (
-                <Text style={styles.numberButtonText}>{num}</Text>
-              )}
-            </TouchableOpacity>
-          ))}
+          <OTPInput
+            code={code}
+            setCode={setCode}
+            variant="grouped"
+            onComplete={(completedCode) => handleVerify(completedCode)}
+            autoFocus
+          />
         </View>
 
         <View style={styles.footer}>
@@ -240,7 +170,7 @@ export default function VerificationScreen() {
           <TouchableOpacity
             style={[styles.verifyButton, isLoading && styles.disabledButton]}
             onPress={() => handleVerify()}
-            disabled={isLoading || code.some(digit => digit === '')}
+            disabled={isLoading || code.length !== 6}
           >
             <Text style={styles.verifyButtonText}>
               {isLoading ? 'Verifying...' : 'Verify'}
@@ -315,87 +245,17 @@ const styles = StyleSheet.create({
   },
   codeContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: scale(24),
   },
   codeLabel: {
-    fontSize: 16,
+    fontSize: fontScale(16),
     color: '#1F2937',
-    marginBottom: 20,
+    marginBottom: scale(16),
     fontWeight: '500',
   },
-  codeInputsContainer: {
-    width: '100%',
-    maxWidth: 380,
-    alignItems: 'center',
-  },
-  codeInputs: {
-    flexDirection: 'row',
-    gap: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  separator: {
-    marginHorizontal: 8,
-  },
-  separatorText: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  codeInput: {
-    width: 48,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  codeInputFilled: {
-    borderColor: '#6B46C1',
-    backgroundColor: '#F8F7FF',
-  },
-  codeInputText: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  numberPad: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 20,
-    marginBottom: 40,
-  },
-  numberButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  emptyButton: {
-    backgroundColor: 'transparent',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  numberButtonText: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
   footer: {
-    gap: 16,
+    gap: scale(20),
+    marginTop: scale(8),
   },
   resendButton: {
     alignItems: 'center',

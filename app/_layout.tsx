@@ -1,20 +1,43 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthContext, useAuthProvider } from '../src/hooks/useAuth';
-import { AuthProvider as DeviceLockAuthProvider } from '../src/contexts/AuthContext';
-import DeviceLockWrapper from '../src/components/DeviceLockWrapper';
 import Toast from 'react-native-toast-message';
-import { StripeProvider } from '@stripe/stripe-react-native';
+import DeviceLockWrapper from '../src/components/DeviceLockWrapper';
 import { STRIPE_CONFIG } from '../src/constants/Stripe';
+import { AuthProvider as DeviceLockAuthProvider } from '../src/contexts/AuthContext';
+import { AuthContext, useAuthProvider } from '../src/hooks/useAuth';
 import { notificationService } from '../src/services/notificationService';
 import UpdateService from '../src/services/updateService';
 // ErrorBoundary temporarily disabled due to TypeScript config issues
+
+// ============================================
+// 🔒 GLOBAL: Disable system font scaling for entire app
+// This ensures the app looks the same regardless of 
+// user's phone font size/style settings
+// Using maxFontSizeMultiplier={1} (recommended method)
+// ============================================
+interface TextWithDefaultProps extends React.ComponentType<any> {
+  defaultProps?: { allowFontScaling?: boolean; maxFontSizeMultiplier?: number };
+}
+
+// Disable font scaling for ALL Text components globally
+(Text as unknown as TextWithDefaultProps).defaultProps = {
+  ...(Text as unknown as TextWithDefaultProps).defaultProps,
+  maxFontSizeMultiplier: 1,
+};
+
+// Disable font scaling for ALL TextInput components globally
+(TextInput as unknown as TextWithDefaultProps).defaultProps = {
+  ...(TextInput as unknown as TextWithDefaultProps).defaultProps,
+  maxFontSizeMultiplier: 1,
+};
+// ============================================
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -55,7 +78,7 @@ export default function RootLayout() {
     const initializeUpdates = async () => {
       try {
         // console.log removed for production
-        
+
         // Check if app was recently updated
         const wasUpdated = await UpdateService.checkIfRecentlyUpdated();
         if (wasUpdated) {
@@ -90,18 +113,19 @@ export default function RootLayout() {
     const inAuthGroup = segments[0] === 'auth';
     const inWelcome = segments[0] === 'welcome';
     const inAuthScreen = segments[0] === 'auth-screen'; // Device lock screen
-    const inProtectedRoute = segments[0] === '(tabs)' || 
-                             segments[0] === 'face-registration' ||
-                             segments[0] === 'security-settings' ||
-                             segments[0] === 'add-card' ||
-                             segments[0] === 'change-password' ||
-                             segments[0] === 'transaction-detail' ||
-                             segments[0] === 'edit-profile' ||
-                             segments[0] === 'autopay-settings' ||
-                             segments[0] === 'account-management' ||
-                             segments[0] === 'delete-account' ||
-                             segments[0] === 'pin-reset' ||
-                             segments[0] === 'update-face';
+    const inProtectedRoute = segments[0] === '(tabs)' ||
+      segments[0] === 'face-registration' ||
+      segments[0] === 'security-settings' ||
+      segments[0] === 'add-card' ||
+      segments[0] === 'change-password' ||
+      segments[0] === 'transaction-detail' ||
+      segments[0] === 'edit-profile' ||
+      segments[0] === 'autopay-settings' ||
+      segments[0] === 'account-management' ||
+      segments[0] === 'delete-account' ||
+      segments[0] === 'pin-reset' ||
+      segments[0] === 'pin-forgot' ||
+      segments[0] === 'update-face';
 
     if (authProps.isAuthenticated) {
       // User is authenticated (logged in)
@@ -147,6 +171,8 @@ export default function RootLayout() {
                   <Stack.Screen name="security-settings" />
                   <Stack.Screen name="add-card" />
                   <Stack.Screen name="change-password" />
+                  <Stack.Screen name="pin-forgot" />
+                  <Stack.Screen name="pin-reset" />
                   <Stack.Screen name="transaction-detail" />
                   <Stack.Screen name="+not-found" />
                 </Stack>

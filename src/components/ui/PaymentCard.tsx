@@ -1,18 +1,16 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  Dimensions,
-  Animated,
-  Image,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { gradients } from '../../constants/DesignSystem';
 import { PaymentMethod } from '../../constants/types';
-import { designSystem, spacing, shadows, borderRadius, gradients } from '../../constants/DesignSystem';
+import { fontScale, scale, wp } from '../../utils/responsive';
 
 // Import card brand images
 const cardBrandImages = {
@@ -21,9 +19,6 @@ const cardBrandImages = {
   discover: require('../../../assets/images/discover.png'),
   amex: require('../../../assets/images/AMX.png'),
 };
-
-const { width: screenWidth } = Dimensions.get('window');
-const isTablet = screenWidth > 768;
 
 interface PaymentCardProps {
   // Card data
@@ -169,7 +164,7 @@ export function PaymentCard({
           )}
           {isPreview && cardDetails?.complete && (
             <View style={styles.successIndicator}>
-              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={scale(20, 18, 24)} color="#10B981" />
             </View>
           )}
         </View>
@@ -252,7 +247,7 @@ export function PaymentCard({
               style={styles.controlButton}
               onPress={() => onSetDefault(cardId)}
             >
-              <Ionicons name="star-outline" size={20} color="#6B46C1" />
+              <Ionicons name="star-outline" size={scale(20, 18, 24)} color="#6B46C1" />
               <Text style={styles.controlButtonText}>Set as Default</Text>
             </TouchableOpacity>
           )}
@@ -262,7 +257,7 @@ export function PaymentCard({
               style={[styles.controlButton, styles.deleteButton]}
               onPress={() => onDelete(cardId)}
             >
-              <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              <Ionicons name="trash-outline" size={scale(20, 18, 24)} color="#EF4444" />
               <Text style={[styles.controlButtonText, styles.deleteButtonText]}>
                 Delete
               </Text>
@@ -276,28 +271,29 @@ export function PaymentCard({
 
 const styles = StyleSheet.create({
   cardWrapper: {
-    marginBottom: spacing.xxl,
+    marginBottom: scale(24),
     alignSelf: 'center',
-    width: '100%',
-    maxWidth: 345.6,
+    width: wp(92), // 92% of screen width - responsive!
+    maxWidth: 400, // Max width for tablets
   },
   creditCard: {
-    borderRadius: borderRadius.xxl,
-    padding: spacing.xxl,
-    minHeight: isTablet ? 200 : 180,
-    aspectRatio: 1.586, // Standard credit card ratio
-    ...shadows.card,
+    borderRadius: scale(20),
+    padding: scale(24),
+    aspectRatio: 1.586, // Standard credit card ratio - maintains proportions
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: scale(12) },
+    shadowOpacity: 0.3,
+    shadowRadius: scale(20),
+    elevation: 20,
     overflow: 'hidden',
     position: 'relative',
   },
   compactCard: {
-    minHeight: 160,
-    padding: spacing.xl,
+    padding: scale(20),
   },
   previewCard: {
-    maxWidth: 320,
+    maxWidth: wp(85),
     aspectRatio: 1.586,
-    minHeight: 'auto',
   },
   cardPattern: {
     position: 'absolute',
@@ -312,12 +308,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 20,
+    marginBottom: scale(20),
     zIndex: 2,
   },
   cardBrand: {
     color: '#FFFFFF',
-    fontSize: isTablet ? 16 : 14,
+    fontSize: fontScale(14, 12, 18),
     fontWeight: '700',
     letterSpacing: 0.5,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
@@ -329,37 +325,36 @@ const styles = StyleSheet.create({
   cardActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: scale(12),
   },
   defaultBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
-    backdropFilter: 'blur(10px)',
   },
   defaultText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: fontScale(10, 8, 12),
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   successIndicator: {
     backgroundColor: 'rgba(16, 185, 129, 0.2)',
     borderRadius: 12,
-    padding: 2,
+    padding: scale(2),
   },
   chipContainer: {
     position: 'absolute',
-    top: isTablet ? 70 : 60,
-    left: 24,
+    top: scale(60, 50, 75),
+    left: scale(24),
     zIndex: 3,
   },
   cardChip: {
-    width: isTablet ? 50 : 45,
-    height: isTablet ? 38 : 35,
+    width: scale(45, 40, 55),
+    height: scale(35, 30, 42),
     borderRadius: 8,
     shadowColor: '#000',
     shadowOffset: {
@@ -388,11 +383,11 @@ const styles = StyleSheet.create({
   },
   cardNumber: {
     color: '#FFFFFF',
-    fontSize: isTablet ? 20 : 16,
+    fontSize: fontScale(16, 14, 20),
     fontWeight: '500',
-    letterSpacing: isTablet ? 2.5 : 1.5,
-    marginBottom: 24,
-    marginTop: isTablet ? 45 : 40,
+    letterSpacing: scale(1.5, 1, 2.5),
+    marginBottom: scale(24),
+    marginTop: scale(40, 35, 50),
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 1, height: 1 },
@@ -401,14 +396,14 @@ const styles = StyleSheet.create({
     flexWrap: 'nowrap',
   },
   compactCardNumber: {
-    fontSize: isTablet ? 18 : 16,
-    marginBottom: 20,
-    letterSpacing: isTablet ? 2 : 1.5,
+    fontSize: fontScale(16, 14, 18),
+    marginBottom: scale(20),
+    letterSpacing: scale(1.5, 1, 2),
   },
   previewCardNumber: {
-    fontSize: isTablet ? 18 : 16,
-    marginBottom: 20,
-    letterSpacing: isTablet ? 2 : 1.5,
+    fontSize: fontScale(16, 14, 18),
+    marginBottom: scale(20),
+    letterSpacing: scale(1.5, 1, 2),
   },
   cardFooter: {
     flexDirection: 'row',
@@ -421,9 +416,9 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 9,
+    fontSize: fontScale(9, 8, 11),
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: scale(4),
     letterSpacing: 1,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0.5, height: 0.5 },
@@ -431,7 +426,7 @@ const styles = StyleSheet.create({
   },
   cardValue: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '600',
     letterSpacing: 1,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
@@ -439,24 +434,21 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   cardNetwork: {
-    // backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(6),
     borderRadius: 8,
-    minHeight: 32,
-    minWidth: 50,
+    minHeight: scale(32, 28, 40),
+    minWidth: scale(50, 45, 60),
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardBrandImage: {
-    width: 45,
-    height: 28,
-    maxWidth: 45,
-    maxHeight: 28,
+    width: scale(45, 40, 55),
+    height: scale(28, 24, 34),
   },
   networkText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: fontScale(12, 10, 14),
     fontWeight: '700',
     letterSpacing: 1,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
@@ -475,8 +467,8 @@ const styles = StyleSheet.create({
   },
   cardControls: {
     flexDirection: 'row',
-    marginTop: 12,
-    gap: 12,
+    marginTop: scale(12),
+    gap: scale(12),
   },
   controlButton: {
     flex: 1,
@@ -484,10 +476,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: scale(12, 10, 14),
+    paddingHorizontal: scale(16),
     borderRadius: 12,
-    gap: 8,
+    gap: scale(8),
+    minHeight: 44, // Minimum touch target
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -498,7 +491,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   controlButtonText: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '500',
     color: '#6B46C1',
   },

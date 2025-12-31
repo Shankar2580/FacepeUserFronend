@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiService } from '../src/services/api';
 import { TransactionDetail, PaymentMethod, CreateAutoPayRequest, AutoPay } from '../src/constants/types';
 import { useAlert } from '../src/components/ui/AlertModal';
+import { fontScale, scale } from '../src/utils/responsive';
 
 export default function TransactionDetailScreen() {
   const { transactionId } = useLocalSearchParams<{ transactionId: string }>();
@@ -349,12 +350,12 @@ export default function TransactionDetailScreen() {
           presentationStyle="pageSheet"
           onRequestClose={() => setShowAutoPayModal(false)}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
+          <SafeAreaView style={styles.modalContainer} edges={['top', 'bottom']}>
+            <View style={[styles.modalHeader, { paddingTop: Math.max(insets.top, 16) }]}>
               <TouchableOpacity onPress={() => setShowAutoPayModal(false)}>
                 <Text style={styles.modalCancelButton}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Set Up Auto-Pay</Text>
+              <Text style={[styles.modalTitle, { flex: 1, textAlign: 'center' }]}>Set Up Auto-Pay</Text>
               <TouchableOpacity onPress={handleSetupAutoPay} disabled={settingUpAutoPay}>
                 <Text style={[styles.modalSaveButton, settingUpAutoPay && styles.disabledButton]}>
                   {settingUpAutoPay ? 'Setting Up...' : 'Save'}
@@ -362,7 +363,11 @@ export default function TransactionDetailScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalContent}>
+            <ScrollView 
+              style={styles.modalContent}
+              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 20) }}
+              showsVerticalScrollIndicator={false}
+            >
               <Text style={styles.modalMerchant}>{transaction.merchant_name}</Text>
               
               <View style={styles.inputGroup}>
@@ -425,7 +430,7 @@ export default function TransactionDetailScreen() {
                 ))}
               </View>
             </ScrollView>
-          </View>
+          </SafeAreaView>
         </Modal>
 
         <AlertComponent />
@@ -490,7 +495,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: '600',
     color: '#333',
   },
@@ -645,18 +650,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    minHeight: 56,
   },
   modalCancelButton: {
     fontSize: 16,
     color: '#6B46C1',
+    minWidth: 60,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+    textAlign: 'center',
   },
   modalDescription: {
     fontSize: 14,
@@ -668,6 +677,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B46C1',
     fontWeight: '600',
+    minWidth: 60,
+    textAlign: 'right',
   },
   disabledButton: {
     opacity: 0.5,

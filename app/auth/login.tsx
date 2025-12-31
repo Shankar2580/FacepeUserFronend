@@ -1,36 +1,53 @@
-import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
 import {
-  View,
+  Alert,
+  InteractionManager,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  // Removed SafeAreaView from react-native
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  ScrollView, // Added ScrollView
-  InteractionManager,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../src/hooks/useAuth';
-import { SafeAreaView } from 'react-native-safe-area-context'; // Changed import
-import { StatusBar } from 'expo-status-bar'; // Added StatusBar
-import { designSystem, spacing, shadows, borderRadius, typography } from '../../src/constants/DesignSystem';
-import { Colors } from '../../src/constants/Colors';
-// Removed useColorScheme - using light theme by default
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ProcessingAnimation } from '../../src/components/ui/ProcessingAnimation';
+import { useAuth } from '../../src/hooks/useAuth';
+import { getAuthError } from '../../src/utils/errorHandler';
+import { fontScale, scale } from '../../src/utils/responsive';
 
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState(''); // mobile number or email
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [fieldType, setFieldType] = useState<'email' | 'phone' | null>(null);
+  const [loginAttempts, setLoginAttempts] = useState(0);
   
   const router = useRouter();
   const { login } = useAuth();
+
+
+  const detectFieldType = (input: string) => {
+    if (!input) {
+      setFieldType(null);
+      return;
+    }
+    
+    const trimmed = input.trim();
+    if (validateEmail(trimmed)) {
+      setFieldType('email');
+    } else if (/^[\d\s\-\+]+$/.test(trimmed)) {
+      setFieldType('phone');
+    } else {
+      setFieldType(null);
+    }
+  };
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -40,6 +57,11 @@ export default function LoginScreen() {
   const validatePhoneNumber = (phone: string) => {
     const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
     return phoneRegex.test(phone);
+  };
+
+  const handleIdentifierChange = (text: string) => {
+    setIdentifier(text);
+    detectFieldType(text);
   };
 
   const handleLogin = async () => {
@@ -80,26 +102,52 @@ export default function LoginScreen() {
       };
       
       await login(loginData);
+      
+      // Reset login attempts on success
+      setLoginAttempts(0);
       setIsLoading(false);
       router.replace('/(tabs)');
     } catch (error: any) {
       setIsLoading(false);
-      const errMsg = error.response?.data?.message || error.message || 'Incorrect phone number/email or password';
+      const newAttempts = loginAttempts + 1;
+      setLoginAttempts(newAttempts);
+      
+      // Use centralized error handler for clean, user-friendly messages
+      const errMsg = getAuthError(error);
       router.replace('/auth/login');
+      
       // Use InteractionManager to ensure alert shows AFTER all state updates complete
-      // This prevents navigation from happening before the alert appears
       InteractionManager.runAfterInteractions(() => {
+        const buttons: any[] = [
+          {
+            text: 'OK',
+            onPress: () => {},
+          },
+        ];
+        
+        // After 2 failed attempts, suggest forgot password
+        if (newAttempts >= 2) {
+          buttons.unshift({
+            text: 'Forgot Password?',
+            onPress: () => {
+              // Pre-fill identifier if it's a phone number
+              const cleanedNumber = identifier.replace(/[\s\-]/g, '');
+              if (/^\d+$/.test(cleanedNumber)) {
+                router.push(`/auth/forgot-password?phone=${cleanedNumber}`);
+              } else {
+                router.push('/auth/forgot-password');
+              }
+            },
+            style: 'default',
+          });
+        }
+        
         Alert.alert(
           'Login Failed',
-          errMsg,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Just close the alert
-              },
-            },
-          ],
+          newAttempts >= 2 
+            ? `${errMsg}\n\nTrouble logging in? Try resetting your password.`
+            : errMsg,
+          buttons,
           { cancelable: false }
         );
       });
@@ -125,12 +173,17 @@ export default function LoginScreen() {
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 32} // tweak if needed
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 32}
           style={{ flex: 1 }}
         >
           {/* makes long forms scroll past the keyboard */}
           <ScrollView
-            contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: 24 }}
+            contentContainerStyle={{ 
+              flexGrow: 1, 
+              paddingHorizontal: scale(24), 
+              paddingBottom: scale(16),
+              justifyContent: 'center',
+            }}
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.content}>
@@ -155,21 +208,33 @@ export default function LoginScreen() {
               {/* Form */}
               <View style={styles.form}>
                 <View style={styles.inputContainer}>
-                  <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
+                  <Ionicons name="person-outline" size={scale(20, 18, 24)} color="#999" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="Mobile Number or Email"
                     placeholderTextColor="#999"
                     value={identifier}
-                    onChangeText={setIdentifier}
-                    keyboardType="email-address"
+                    onChangeText={handleIdentifierChange}
+                    keyboardType="default"
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
+                  {fieldType && (
+                    <View style={styles.fieldTypeBadge}>
+                      <Ionicons 
+                        name={fieldType === 'email' ? 'mail' : 'call'} 
+                        size={12} 
+                        color="#6B46C1" 
+                      />
+                      <Text style={styles.fieldTypeBadgeText}>
+                        {fieldType === 'email' ? 'Email' : 'Phone'}
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.inputContainer}>
-                  <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+                  <Ionicons name="lock-closed-outline" size={scale(20, 18, 24)} color="#999" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="Password"
@@ -185,18 +250,28 @@ export default function LoginScreen() {
                   >
                     <Ionicons 
                       name={showPassword ? 'eye-off' : 'eye'} 
-                      size={20} 
+                      size={scale(20, 18, 24)} 
                       color="#999" 
                     />
                   </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity 
-                  style={styles.forgotPasswordButton}
-                  onPress={() => router.replace('/auth/forgot-password')}
-                >
-                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                </TouchableOpacity>
+                <View style={styles.optionsRow}>
+                  <View />
+                  <TouchableOpacity 
+                    style={styles.forgotPasswordButton}
+                    onPress={() => {
+                      const cleanedNumber = identifier.replace(/[\s\-]/g, '');
+                      if (/^\d+$/.test(cleanedNumber)) {
+                        router.push(`/auth/forgot-password?phone=${cleanedNumber}`);
+                      } else {
+                        router.push('/auth/forgot-password');
+                      }
+                    }}
+                  >
+                    <Text style={[styles.forgotPasswordText, loginAttempts >= 2 && styles.forgotPasswordHighlight]}>Forgot Password?</Text>
+                  </TouchableOpacity>
+                </View>
 
                 <TouchableOpacity 
                   style={[styles.loginButton, isLoading && styles.disabledButton]}
@@ -239,42 +314,41 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designSystem.colors.appBackground.light,
+    backgroundColor: '#F8F7FF',
   },
   keyboardView: {
     flex: 1,
   },
   content: {
     flex: 1,
-    paddingHorizontal: spacing.xxl,
     justifyContent: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.huge,
+    marginBottom: scale(48),
   },
   title: {
-    fontSize: typography.fontSize.huge,
-    fontWeight: typography.fontWeight.bold,
-    color: designSystem.colors.neutral[900],
-    marginBottom: spacing.sm,
-    letterSpacing: typography.letterSpacing.tight,
+    fontSize: fontScale(32, 28, 36),
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: scale(8),
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: typography.fontSize.md,
-    color: designSystem.colors.neutral[600],
-    marginBottom: spacing.xxxl,
+    fontSize: fontScale(16, 14, 18),
+    color: '#6B7280',
+    marginBottom: scale(32),
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: designSystem.colors.neutral[200],
-    borderRadius: borderRadius.xxxl,
-    padding: spacing.xs,
-    width: 200,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 25,
+    padding: scale(4),
+    width: scale(200, 180, 240),
   },
   tab: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: scale(8),
     alignItems: 'center',
     borderRadius: 20,
   },
@@ -282,7 +356,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#6B46C1',
   },
   tabText: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '600',
     color: '#6B7280',
   },
@@ -290,16 +364,17 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   form: {
-    marginBottom: 40,
+    marginBottom: scale(40),
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    height: 56,
+    marginBottom: scale(16),
+    paddingHorizontal: scale(16),
+    height: scale(56, 48, 64),
+    minHeight: 48, // Minimum touch target
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -310,28 +385,59 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: scale(12),
   },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     color: '#1F2937',
   },
   eyeButton: {
-    padding: 4,
+    padding: scale(4),
+    minWidth: 44, // Minimum touch target
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  forgotPasswordButton: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
+  fieldTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: 12,
+    gap: scale(4),
   },
-  forgotPasswordText: {
-    fontSize: 14,
+  fieldTypeBadgeText: {
+    fontSize: fontScale(11, 10, 12),
     color: '#6B46C1',
     fontWeight: '600',
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: scale(24),
+  },
+  forgotPasswordButton: {
+    minHeight: 44, // Minimum touch target
+    justifyContent: 'center',
+    paddingVertical: scale(8),
+  },
+  forgotPasswordText: {
+    fontSize: fontScale(14, 12, 16),
+    color: '#6B46C1',
+    fontWeight: '600',
+  },
+  forgotPasswordHighlight: {
+    color: '#9333EA',
+    textDecorationLine: 'underline',
+    fontWeight: '700',
   },
   loginButton: {
     borderRadius: 12,
     overflow: 'hidden',
+    minHeight: 48, // Minimum touch target
     shadowColor: '#6B46C1',
     shadowOffset: {
       width: 0,
@@ -342,11 +448,11 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   loginButtonGradient: {
-    paddingVertical: 16,
+    paddingVertical: scale(16, 14, 18),
     alignItems: 'center',
   },
   loginButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
@@ -356,7 +462,7 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 24,
+    marginVertical: scale(24),
   },
   dividerLine: {
     flex: 1,
@@ -364,22 +470,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
   },
   dividerText: {
-    marginHorizontal: 16,
-    fontSize: 14,
+    marginHorizontal: scale(16),
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
   },
   socialContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 16,
+    gap: scale(16),
   },
   socialButton: {
-    width: 56,
-    height: 56,
+    width: scale(56, 48, 64),
+    height: scale(56, 48, 64),
     borderRadius: 28,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 48, // Minimum touch target
+    minHeight: 48,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -393,11 +501,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
   },
   footerLink: {
     color: '#6B46C1',
     fontWeight: '600',
   },
-}); 
+});

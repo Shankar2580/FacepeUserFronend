@@ -19,8 +19,8 @@ import { useNotifications } from '../../src/hooks/useNotifications';
 import { apiService } from '../../src/services/api';
 import { notificationService } from '../../src/services/notificationService';
 import { isExpired, formatTimeRemaining, getExpiryColor } from '../../src/utils/timeUtils';
-// SafeAreaView no longer needed - using View with paddingTop: insets.top
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { wp, scale, fontScale } from '../../src/utils/responsive';
 
 export default function HomeScreen() {
   const [defaultCard, setDefaultCard] = useState<PaymentMethod | null>(null);
@@ -67,11 +67,9 @@ export default function HomeScreen() {
         );
         setPaymentRequests(activeRequests);
       } catch (requestError) {
-        // console.log removed for production
         setPaymentRequests([]);
       }
     } catch (error: any) {
-      // console.error removed for production
       // If the user is not authenticated (401), silently ignore to avoid panic
       if (error?.response?.status !== 401) {
         showAlert('Oops', 'Something went wrong while loading your data. Please try again later.', undefined, 'error');
@@ -214,7 +212,6 @@ export default function HomeScreen() {
       setPaymentRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
       loadData(); // Refresh other data if necessary
     } catch (error: any) {
-      // console.error removed for production
       // Handle specific error cases
       if (error?.response?.status === 400) {
         const detail = error?.response?.data?.detail || '';
@@ -276,7 +273,6 @@ export default function HomeScreen() {
       // Auto-refresh to get updated state
       await loadData();
     } catch (error: any) {
-      // console.error removed for production
       showAlert('Error', 'Failed to decline payment request', undefined, 'error');
       // Refresh on error to ensure state is correct
       await loadData();
@@ -311,7 +307,7 @@ export default function HomeScreen() {
           contentContainerStyle={[
             styles.scrollContent,
             {
-              paddingBottom: tabBarHeight + insets.bottom + 20,
+              paddingBottom: tabBarHeight + insets.bottom + scale(20),
             },
           ]}
           refreshControl={
@@ -324,9 +320,9 @@ export default function HomeScreen() {
             <View style={styles.transactionSection}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Payment Requests</Text>
-                <TouchableOpacity onPress={() => router.navigate('/(tabs)/history')}>
+                {/* <TouchableOpacity onPress={() => router.navigate('/(tabs)/history')}>
                   <Text style={styles.viewAllText}>View All</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
               </View>
               
               <View style={styles.transactionList}>
@@ -380,7 +376,7 @@ export default function HomeScreen() {
           >
             <View style={styles.facePromptContent}>
               <View style={styles.facePromptIcon}>
-                <Ionicons name="scan" size={24} color="#6B46C1" />
+                <Ionicons name="scan" size={scale(24, 20, 28)} color="#6B46C1" />
               </View>
               <View style={styles.facePromptText}>
                 <Text style={styles.facePromptTitle}>Register Your Face</Text>
@@ -388,7 +384,7 @@ export default function HomeScreen() {
                   Enable face recognition for secure payments
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+              <Ionicons name="chevron-forward" size={scale(20, 18, 24)} color="#6B7280" />
             </View>
           </TouchableOpacity>
         )}
@@ -398,12 +394,12 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Today's Summary</Text>
           <View style={styles.summaryCardsContainer}>
             <TouchableOpacity style={[styles.summaryCard, styles.earningsCard]}>
-              <Ionicons name="trending-down" size={24} color="#FFFFFF" style={styles.summaryIcon} />
+              <Ionicons name="trending-down" size={scale(24, 20, 28)} color="#FFFFFF" style={styles.summaryIcon} />
               <Text style={styles.summaryAmount}>${totalEarnings.toFixed(2)}</Text>
               <Text style={styles.summaryLabel}>Spent Today</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.summaryCard, styles.transactionsCard]}>
-              <Ionicons name="swap-horizontal" size={24} color="#FFFFFF" style={styles.summaryIcon} />
+              <Ionicons name="swap-horizontal" size={scale(24, 20, 28)} color="#FFFFFF" style={styles.summaryIcon} />
               <Text style={styles.summaryAmount}>{completedTransactionsCount}</Text>
               <Text style={styles.summaryLabel}>Transactions</Text>
             </TouchableOpacity>
@@ -424,7 +420,7 @@ export default function HomeScreen() {
               style={styles.addCardPrompt}
               onPress={() => router.push('/add-card')}
             >
-              <Ionicons name="add-circle-outline" size={48} color="#6B46C1" />
+              <Ionicons name="add-circle-outline" size={scale(48, 40, 56)} color="#6B46C1" />
               <Text style={styles.addCardText}>Add Your First Card</Text>
               <Text style={styles.addCardSubtext}>
                 Connect your payment method to get started
@@ -432,69 +428,6 @@ export default function HomeScreen() {
             </TouchableOpacity>
           )}
         </View>
-
-        {/* Payment Requests (commented by request) */}
-        {/* <View style={styles.transactionSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Payment Requests</Text>
-            {paymentRequests.length > 0 && (
-              <TouchableOpacity onPress={() => router.navigate('/(tabs)/history')}>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          
-          {paymentRequests.length > 0 ? (
-            <View style={styles.transactionList}>
-              {paymentRequests.slice(0, 3).map((request) => (
-                <View key={request.id} style={styles.transactionItem}>
-                  <View style={styles.transactionTopRow}>
-                    <View style={styles.transactionLeft}>
-                      <View style={styles.transactionIcon}>
-                        <Text style={styles.transactionEmoji}>
-                          {getMerchantIcon(getDisplayName(request))}
-                        </Text>
-                      </View>
-                      <View style={styles.transactionInfo}>
-                        <Text style={styles.transactionMerchant}>
-                          {getDisplayName(request)}
-                        </Text>
-                        <Text style={[styles.transactionDate, { color: getExpiryColor(request.expires_at) }]}>
-                          {formatDate(request.created_at)} • {formatTimeRemaining(request.expires_at)}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={styles.requestAmount}>
-                      {formatAmount(request.amount)}
-                    </Text>
-                  </View>
-                  <View style={styles.requestActions}>
-                    <TouchableOpacity 
-                      style={[styles.declineButton, styles.requestButton]}
-                      onPress={() => handleDeclinePayment(request.id)}
-                    >
-                      <Text style={styles.declineButtonText}>Decline</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.approveButton, styles.requestButtonPrimary]}
-                      onPress={() => handleApprovePayment(request.id)}
-                    >
-                      <Text style={styles.approveButtonText}>Approve</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="card-outline" size={48} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>No payment requests</Text>
-              <Text style={styles.emptyStateSubtext}>
-                Payment requests from merchants will appear here
-              </Text>
-            </View>
-          )}
-        </View> */}
       </ScrollView>
       
       {/* Alert Component */}
@@ -518,13 +451,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    paddingBottom: 16,
-    minHeight: 80,
+    paddingHorizontal: scale(24),
+    paddingVertical: scale(16),
+    paddingBottom: scale(16),
+    minHeight: scale(80),
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
-    marginBottom: 24,
+    marginBottom: scale(24),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -535,23 +468,25 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   greeting: {
-    fontSize: 24,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     color: '#FFFFFF',
-    marginTop: 4,
+    marginTop: scale(4),
     opacity: 0.9,
   },
   avatarContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: scale(48, 44, 56),
+    height: scale(48, 44, 56),
+    borderRadius: scale(24),
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 44, // Minimum touch target
+    minHeight: 44,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -563,15 +498,15 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: '#6B46C1',
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
   },
   facePrompt: {
-    marginHorizontal: 24,
-    marginBottom: 24,
+    marginHorizontal: scale(24),
+    marginBottom: scale(24),
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: scale(16),
+    padding: scale(16),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -586,87 +521,87 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   facePromptIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: scale(48, 44, 56),
+    height: scale(48, 44, 56),
+    borderRadius: scale(24),
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: scale(16),
   },
   facePromptText: {
     flex: 1,
   },
   facePromptTitle: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#1F2937',
   },
   facePromptSubtitle: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
-    marginTop: 2,
+    marginTop: scale(2),
   },
   cardSection: {
-    marginHorizontal: 24,
-    marginBottom: 32,
+    marginHorizontal: scale(24),
+    marginBottom: scale(32),
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: fontScale(20, 18, 24),
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
 
   addCardPrompt: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 32,
+    borderRadius: scale(16),
+    padding: scale(32),
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#E5E7EB',
     borderStyle: 'dashed',
   },
   addCardText: {
-    fontSize: 18,
+    fontSize: fontScale(18, 16, 20),
     fontWeight: '600',
     color: '#1F2937',
-    marginTop: 16,
+    marginTop: scale(16),
   },
   addCardSubtext: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
-    marginTop: 8,
+    marginTop: scale(8),
     textAlign: 'center',
   },
   transactionSection: {
-    marginHorizontal: 24,
-    marginBottom: 32,
+    marginHorizontal: scale(24),
+    marginBottom: scale(32),
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
   viewAllText: {
     color: '#6B46C1',
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '500',
   },
   transactionList: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: scale(16),
     overflow: 'hidden',
-    padding: 8,
+    padding: scale(8),
   },
   transactionItem: {
     flexDirection: 'column',
     alignItems: 'stretch',
-    padding: 16,
+    padding: scale(16),
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
-    gap: 12,
+    gap: scale(12),
   },
   transactionTopRow: {
     flexDirection: 'row',
@@ -679,107 +614,111 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   transactionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: scale(40, 36, 48),
+    height: scale(40, 36, 48),
+    borderRadius: scale(20),
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: scale(12),
   },
   transactionEmoji: {
-    fontSize: 18,
+    fontSize: fontScale(18, 16, 22),
   },
   transactionInfo: {
     flex: 1,
   },
   transactionMerchant: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#1F2937',
   },
   transactionDate: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
-    marginTop: 2,
+    marginTop: scale(2),
   },
   requestAmount: {
-    fontSize: 18,
+    fontSize: fontScale(18, 16, 20),
     fontWeight: '700',
     color: '#1F2937',
     marginBottom: 0,
   },
   requestActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: scale(12),
     alignItems: 'center',
   },
   requestButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: scale(12),
     borderRadius: 10,
     alignItems: 'center',
+    minHeight: 44, // Minimum touch target
   },
   declineButton: {
     backgroundColor: '#FEE2E2',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(16),
     borderRadius: 10,
   },
   declineButtonText: {
     color: '#DC2626',
     fontWeight: '600',
+    fontSize: fontScale(14, 12, 16),
   },
   approveButton: {
     backgroundColor: '#6B46C1',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(16),
     borderRadius: 10,
   },
   requestButtonPrimary: {
     flex: 1,
     alignItems: 'center',
+    minHeight: 44, // Minimum touch target
   },
   approveButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
+    fontSize: fontScale(14, 12, 16),
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: scale(40),
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    marginHorizontal: 24,
-    marginTop: 20,
+    borderRadius: scale(16),
+    marginHorizontal: scale(24),
+    marginTop: scale(20),
   },
   emptyStateText: {
-    fontSize: 18,
+    fontSize: fontScale(18, 16, 20),
     fontWeight: '600',
     color: '#4B5563',
-    marginTop: 16,
+    marginTop: scale(16),
   },
   emptyStateSubtext: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
-    marginTop: 4,
+    marginTop: scale(4),
     textAlign: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: scale(20),
   },
   summarySection: {
-    marginHorizontal: 24,
-    marginBottom: 24,
+    marginHorizontal: scale(24),
+    marginBottom: scale(24),
   },
   summaryCardsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: scale(12),
   },
   summaryCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
+    paddingVertical: scale(16),
+    paddingHorizontal: scale(12),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -787,7 +726,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 3,
-    minHeight: 100,
+    minHeight: scale(100, 90, 120),
   },
   earningsCard: {
     backgroundColor: '#10B981',
@@ -796,42 +735,42 @@ const styles = StyleSheet.create({
     backgroundColor: '#6B46C1',
   },
   summaryIcon: {
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   summaryAmount: {
-    fontSize: 18,
+    fontSize: fontScale(18, 16, 22),
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: scale(4),
     textAlign: 'center',
   },
   summaryLabel: {
-    fontSize: 12,
+    fontSize: fontScale(12, 10, 14),
     color: '#FFFFFF',
     opacity: 0.9,
     textAlign: 'center',
     fontWeight: '500',
   },
   paymentRequestsTop: {
-    marginHorizontal: 24,
-    marginBottom: 20,
+    marginHorizontal: scale(24),
+    marginBottom: scale(20),
     backgroundColor: '#FEF3F2',
-    borderRadius: 16,
+    borderRadius: scale(16),
     borderWidth: 2,
     borderColor: '#FEE2E2',
-    padding: 16,
+    padding: scale(16),
   },
   sectionTitleTop: {
-    fontSize: 18,
+    fontSize: fontScale(18, 16, 20),
     fontWeight: '700',
     color: '#DC2626',
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
   urgentTransactionItem: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    padding: scale(16),
+    marginBottom: scale(12),
     borderWidth: 1,
     borderColor: '#FEE2E2',
     shadowColor: '#DC2626',
@@ -844,29 +783,29 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   urgentTransactionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: scale(44, 40, 52),
+    height: scale(44, 40, 52),
+    borderRadius: scale(22),
     backgroundColor: '#FEF3F2',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: scale(12),
     borderWidth: 2,
     borderColor: '#FEE2E2',
   },
   urgentTransactionMerchant: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '700',
     color: '#1F2937',
   },
   urgentTransactionDate: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#DC2626',
-    marginTop: 2,
+    marginTop: scale(2),
     fontWeight: '600',
   },
   urgentRequestAmount: {
-    fontSize: 20,
+    fontSize: fontScale(20, 18, 24),
     fontWeight: '800',
     color: '#DC2626',
     marginBottom: 0,

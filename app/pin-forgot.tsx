@@ -1,159 +1,31 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { apiService } from '../src/services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { useAuth } from '../src/hooks/useAuth';
 import { useAlert } from '../src/components/ui/AlertModal';
-
-// Custom OTP Input Component
-const OTPInput = ({
-  code,
-  setCode,
-}: {
-  code: string;
-  setCode: (code: string) => void;
-}) => {
-  const inputs = React.useRef<TextInput[]>([]);
-
-  const handleTextChange = (text: string, index: number) => {
-    if (text.length > 1) {
-      // If pasting, distribute to all fields
-      if (text.length === 6) {
-        const newCode = text.split('');
-        setCode(newCode.join(''));
-        inputs.current[5].focus();
-      }
-      return;
-    }
-
-    const newCode = [...code];
-    newCode[index] = text;
-    setCode(newCode.join(''));
-
-    // Move to next input
-    if (text && index < 5) {
-      inputs.current[index + 1].focus();
-    }
-  };
-
-  const handleKeyPress = (
-    { nativeEvent: { key } }: { nativeEvent: { key: string } },
-    index: number
-  ) => {
-    if (key === 'Backspace' && !code[index] && index > 0) {
-      inputs.current[index - 1].focus();
-    }
-  };
-
-  return (
-    <View style={styles.otpContainer}>
-      {Array(6)
-        .fill(0)
-        .map((_, index) => (
-          <TextInput
-            key={index}
-            ref={(el) => {
-              if (el) {
-                inputs.current[index] = el;
-              }
-            }}
-            style={styles.otpInput}
-            keyboardType="numeric"
-            maxLength={1}
-            onChangeText={(text) => handleTextChange(text, index)}
-            onKeyPress={(e) => handleKeyPress(e, index)}
-            value={code[index] || ''}
-          />
-        ))}
-    </View>
-  );
-};
-
-// PIN Input Component
-const PinInput = ({
-  pin,
-  setPin,
-  placeholder,
-  error,
-}: {
-  pin: string;
-  setPin: (pin: string) => void;
-  placeholder: string;
-  error?: boolean;
-}) => {
-  const inputs = React.useRef<TextInput[]>([]);
-
-  const handleTextChange = (text: string, index: number) => {
-    if (text.length > 1) return;
-
-    const newPin = [...pin];
-    newPin[index] = text;
-    setPin(newPin.join(''));
-
-    // Move to next input
-    if (text && index < 3) {
-      inputs.current[index + 1].focus();
-    }
-  };
-
-  const handleKeyPress = (
-    { nativeEvent: { key } }: { nativeEvent: { key: string } },
-    index: number
-  ) => {
-    if (key === 'Backspace' && !pin[index] && index > 0) {
-      inputs.current[index - 1].focus();
-    }
-  };
-
-  return (
-    <View style={styles.pinContainer}>
-      <Text style={styles.pinLabel}>{placeholder}</Text>
-      <View style={styles.pinInputsContainer}>
-        <View style={styles.pinInputContainer}>
-          {Array(4)
-            .fill(0)
-            .map((_, index) => (
-              <TextInput
-                key={index}
-                ref={(el) => {
-                  if (el) {
-                    inputs.current[index] = el;
-                  }
-                }}
-                style={[
-                  styles.pinInput,
-                  error && styles.pinInputError,
-                  pin[index] && styles.pinInputFilled,
-                ]}
-                keyboardType="numeric"
-                maxLength={1}
-                onChangeText={(text) => handleTextChange(text, index)}
-                onKeyPress={(e) => handleKeyPress(e, index)}
-                value={pin[index] || ''}
-                secureTextEntry={true}
-              />
-            ))}
-        </View>
-      </View>
-    </View>
-  );
-};
+import { AppText as Text, AppTextInput as TextInput } from '../src/components/ui/AppText';
+import { OTPInput } from '../src/components/ui/OTPInput';
+import { PINInput } from '../src/components/ui/PINInput';
+import { useAuth } from '../src/hooks/useAuth';
+import { apiService } from '../src/services/api';
+import { getPinError, getVerificationError } from '../src/utils/errorHandler';
+import { fontScale, scale } from '../src/utils/responsive';
 
 export default function PinForgotScreen() {
-  const [step, setStep] = useState<'send_code' | 'verification' | 'new_pin'>('send_code');
+  const [step, setStep] = useState<'send_code' | 'sms_verification' | 'email_verification' | 'new_pin'>('send_code');
+  const [showEmailInfoModal, setShowEmailInfoModal] = useState(false);
+  const [emailCountdown, setEmailCountdown] = useState(0);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [emailVerificationCode, setEmailVerificationCode] = useState('');
@@ -162,12 +34,11 @@ export default function PinForgotScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [newPinError, setNewPinError] = useState(false);
-  
+
   const router = useRouter();
   const { user } = useAuth();
   const { showAlert, AlertComponent } = useAlert();
 
-  // Start countdown timer
   const startCountdown = () => {
     setCountdown(60);
     const timer = setInterval(() => {
@@ -181,7 +52,19 @@ export default function PinForgotScreen() {
     }, 1000);
   };
 
-  // Validate PIN security (no common sequences)
+  const startEmailCountdown = () => {
+    setEmailCountdown(60);
+    const timer = setInterval(() => {
+      setEmailCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
   const validatePinSecurity = (pin: string): boolean => {
     const commonPins = ['0000', '1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999', '1234', '4321', '1122', '2211'];
     return !commonPins.includes(pin);
@@ -198,49 +81,62 @@ export default function PinForgotScreen() {
       return;
     }
 
-    // Prevent multiple calls
     if (isLoading) return;
 
     setIsLoading(true);
     try {
-      // Send phone verification code
       await apiService.sendVerification({ phone_number: phoneNumber, method: 'sms' });
-      
-      // Send email verification code
-      await apiService.sendEmailVerification(user.email);
-      
       startCountdown();
-      // Move to verification step after sending codes
-      setStep('verification');
-      showAlert('Success', 'Verification codes sent to your phone and email', undefined, 'success');
+      setStep('sms_verification');
+      showAlert('Success', 'Verification code sent to your phone', undefined, 'success');
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Failed to send verification codes', undefined, 'warning');
+      showAlert('Error', getVerificationError(error), undefined, 'warning');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Verify SMS code and show email popup
+  const handleVerifySmsCode = () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      showAlert('Error', 'Please enter a valid 6-digit phone verification code', undefined, 'warning');
+      return;
+    }
+    setShowEmailInfoModal(true);
+  };
+
+  // Send email code and proceed to email verification
+  const handleSendEmailCode = async () => {
+    setShowEmailInfoModal(false);
+    if (!user?.email) return;
+    
+    setIsLoading(true);
+    try {
+      await apiService.sendEmailVerification(user.email);
+      startEmailCountdown();
+      setStep('email_verification');
+    } catch (error: any) {
+      showAlert('Error', getVerificationError(error), undefined, 'warning');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Verify email code and proceed to new PIN
+  const handleVerifyEmailCode = () => {
+    if (!emailVerificationCode || emailVerificationCode.length !== 6) {
+      showAlert('Error', 'Please enter a valid 6-digit email verification code', undefined, 'warning');
+      return;
+    }
+    setStep('new_pin');
+  };
+
   React.useEffect(() => {
-    // Just load the phone number, don't auto-send code
     if (user?.phone_number) {
       setPhoneNumber(user.phone_number);
     }
   }, [user]);
 
-  const handleVerifyCode = async () => {
-    if (!verificationCode || verificationCode.length !== 6) {
-      showAlert('Error', 'Please enter a valid 6-digit phone verification code', undefined, 'warning');
-      return;
-    }
-
-    if (!emailVerificationCode || emailVerificationCode.length !== 6) {
-      showAlert('Error', 'Please enter a valid 6-digit email verification code', undefined, 'warning');
-      return;
-    }
-
-    // Move to new PIN step after codes entered
-    setStep('new_pin');
-  };
 
   const handleNewPinSubmit = async () => {
     if (!newPin || newPin.length !== 4) {
@@ -276,25 +172,37 @@ export default function PinForgotScreen() {
         'success'
       );
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Failed to reset PIN', undefined, 'warning');
+      showAlert('Error', getPinError(error), undefined, 'warning');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleResendCode = async () => {
+  const handleResendSmsCode = async () => {
     if (countdown > 0 || isLoading) return;
-    
+
     setIsLoading(true);
     try {
-      // Resend both verification codes
       await apiService.sendVerification({ phone_number: phoneNumber, method: 'sms' });
-      await apiService.sendEmailVerification(user?.email || '');
-      
       startCountdown();
-      showAlert('Success', 'Verification codes resent successfully', undefined, 'success');
+      showAlert('Success', 'SMS code resent successfully', undefined, 'success');
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Failed to resend codes', undefined, 'warning');
+      showAlert('Error', getVerificationError(error), undefined, 'warning');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendEmailCode = async () => {
+    if (emailCountdown > 0 || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      await apiService.sendEmailVerification(user?.email || '');
+      startEmailCountdown();
+      showAlert('Success', 'Email code resent successfully', undefined, 'success');
+    } catch (error: any) {
+      showAlert('Error', getVerificationError(error), undefined, 'warning');
     } finally {
       setIsLoading(false);
     }
@@ -303,7 +211,8 @@ export default function PinForgotScreen() {
   const getStepTitle = () => {
     switch (step) {
       case 'send_code': return 'Forgot PIN';
-      case 'verification': return 'Verify Your Identity';
+      case 'sms_verification': return 'Verify Mobile';
+      case 'email_verification': return 'Verify Email';
       case 'new_pin': return 'Set New PIN';
       default: return 'Forgot PIN';
     }
@@ -311,10 +220,21 @@ export default function PinForgotScreen() {
 
   const getStepSubtitle = () => {
     switch (step) {
-      case 'send_code': return 'We\'ll send verification codes to your phone and email';
-      case 'verification': return 'Enter the codes sent to your phone and email';
+      case 'send_code': return 'We\'ll send a verification code to your phone';
+      case 'sms_verification': return `Enter the code sent to ${phoneNumber}`;
+      case 'email_verification': return `Enter the code sent to ${user?.email}`;
       case 'new_pin': return 'Choose a new secure 4-digit PIN';
       default: return '';
+    }
+  };
+
+  const getProgressStepIndex = () => {
+    switch (step) {
+      case 'send_code': return 0;
+      case 'sms_verification': return 1;
+      case 'email_verification': return 2;
+      case 'new_pin': return 3;
+      default: return 0;
     }
   };
 
@@ -328,10 +248,10 @@ export default function PinForgotScreen() {
           colors={['#FFFFFF', '#F8F7FF']}
           style={styles.backButtonGradient}
         >
-          <Ionicons name="arrow-back" size={24} color="#6B46C1" />
+          <Ionicons name="arrow-back" size={scale(24, 20, 28)} color="#6B46C1" />
         </LinearGradient>
       </TouchableOpacity>
-      
+
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -343,14 +263,16 @@ export default function PinForgotScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            {/* Progress Indicator */}
+            {/* Progress Indicator - 4 steps */}
             <View style={styles.progressContainer}>
               <View style={styles.progressTrack}>
-                <View style={[styles.progressDot, styles.progressDotActive]} />
-                <View style={[styles.progressLine, step !== 'send_code' ? styles.progressLineActive : null]} />
-                <View style={[styles.progressDot, step !== 'send_code' ? styles.progressDotActive : null]} />
-                <View style={[styles.progressLine, step === 'new_pin' ? styles.progressLineActive : null]} />
-                <View style={[styles.progressDot, step === 'new_pin' ? styles.progressDotActive : null]} />
+                <View style={[styles.progressDot, getProgressStepIndex() >= 0 && styles.progressDotActive]} />
+                <View style={[styles.progressLine, getProgressStepIndex() >= 1 && styles.progressLineActive]} />
+                <View style={[styles.progressDot, getProgressStepIndex() >= 1 && styles.progressDotActive]} />
+                <View style={[styles.progressLine, getProgressStepIndex() >= 2 && styles.progressLineActive]} />
+                <View style={[styles.progressDot, getProgressStepIndex() >= 2 && styles.progressDotActive]} />
+                <View style={[styles.progressLine, getProgressStepIndex() >= 3 && styles.progressLineActive]} />
+                <View style={[styles.progressDot, getProgressStepIndex() >= 3 && styles.progressDotActive]} />
               </View>
             </View>
 
@@ -363,7 +285,7 @@ export default function PinForgotScreen() {
               <>
                 <View style={styles.infoCard}>
                   <View style={styles.infoIconContainer}>
-                    <Ionicons name="information-circle" size={24} color="#6B46C1" />
+                    <Ionicons name="information-circle" size={scale(24, 20, 28)} color="#6B46C1" />
                   </View>
                   <Text style={styles.infoText}>
                     Don't worry! We'll verify your identity using codes sent to your registered phone and email.
@@ -372,7 +294,7 @@ export default function PinForgotScreen() {
 
                 <View style={styles.inputCard}>
                   <View style={styles.inputContainer}>
-                    <Ionicons name="call" size={20} color="#6B46C1" style={styles.inputIcon} />
+                    <Ionicons name="call" size={scale(20, 18, 24)} color="#6B46C1" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       placeholder="Phone Number"
@@ -392,45 +314,92 @@ export default function PinForgotScreen() {
                       colors={['#6B46C1', '#8B5CF6']}
                       style={styles.gradientButton}
                     >
-                      <Text style={styles.buttonText}>Send Verification Codes</Text>
+                      <Text style={styles.buttonText}>Send Verification Code</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
               </>
             )}
 
-            {step === 'verification' && (
+            {/* SMS Verification Step */}
+            {step === 'sms_verification' && (
               <>
                 <View style={styles.inputCard}>
-                  <Text style={styles.label}>Phone Verification Code</Text>
-                  <OTPInput code={verificationCode} setCode={setVerificationCode} />
-
-                  <Text style={[styles.label, { marginTop: 24 }]}>Email Verification Code</Text>
-                  <OTPInput code={emailVerificationCode} setCode={setEmailVerificationCode} />
+                  <Text style={styles.otpSectionLabel}>Phone Verification Code</Text>
+                  <View style={styles.otpWrapper}>
+                    <OTPInput code={verificationCode} setCode={setVerificationCode} variant="grouped" />
+                  </View>
 
                   {countdown > 0 ? (
                     <Text style={styles.resendText}>
-                      Resend codes in {countdown}s
+                      Resend code in {countdown}s
                     </Text>
                   ) : (
-                    <TouchableOpacity onPress={handleResendCode} disabled={isLoading}>
-                      <Text style={styles.resendLink}>Resend Verification Codes</Text>
+                    <TouchableOpacity onPress={handleResendSmsCode} disabled={isLoading}>
+                      <Text style={styles.resendLink}>Resend Code</Text>
                     </TouchableOpacity>
                   )}
 
                   <TouchableOpacity
                     style={[
                       styles.primaryButton,
-                      (isLoading || verificationCode.length !== 6 || emailVerificationCode.length !== 6) && styles.disabledButton
+                      { marginTop: scale(8) },
+                      (isLoading || verificationCode.length !== 6) && styles.disabledButton
                     ]}
-                    onPress={handleVerifyCode}
-                    disabled={isLoading || verificationCode.length !== 6 || emailVerificationCode.length !== 6}
+                    onPress={handleVerifySmsCode}
+                    disabled={isLoading || verificationCode.length !== 6}
                   >
                     <LinearGradient
                       colors={['#6B46C1', '#8B5CF6']}
                       style={styles.gradientButton}
                     >
-                      <Text style={styles.buttonText}>Verify Codes</Text>
+                      <Text style={styles.buttonText}>Continue</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.changeButton}
+                    onPress={() => setStep('send_code')}
+                  >
+                    <Text style={styles.changeButtonText}>Change Phone Number</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            {/* Email Verification Step */}
+            {step === 'email_verification' && (
+              <>
+                <View style={styles.inputCard}>
+                  <Text style={styles.otpSectionLabel}>Email Verification Code</Text>
+                  <View style={styles.otpWrapper}>
+                    <OTPInput code={emailVerificationCode} setCode={setEmailVerificationCode} variant="grouped" />
+                  </View>
+
+                  {emailCountdown > 0 ? (
+                    <Text style={styles.resendText}>
+                      Resend code in {emailCountdown}s
+                    </Text>
+                  ) : (
+                    <TouchableOpacity onPress={handleResendEmailCode} disabled={isLoading}>
+                      <Text style={styles.resendLink}>Resend Code</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    style={[
+                      styles.primaryButton,
+                      { marginTop: scale(8) },
+                      (isLoading || emailVerificationCode.length !== 6) && styles.disabledButton
+                    ]}
+                    onPress={handleVerifyEmailCode}
+                    disabled={isLoading || emailVerificationCode.length !== 6}
+                  >
+                    <LinearGradient
+                      colors={['#6B46C1', '#8B5CF6']}
+                      style={styles.gradientButton}
+                    >
+                      <Text style={styles.buttonText}>Continue</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -440,22 +409,26 @@ export default function PinForgotScreen() {
             {step === 'new_pin' && (
               <>
                 <View style={styles.inputCard}>
-                  <PinInput
+                  <PINInput
                     pin={newPin}
                     setPin={setNewPin}
-                    placeholder="Enter New PIN"
+                    label="Enter New PIN"
                     error={newPinError}
+                    variant="boxes"
+                    secure
                   />
 
-                  <PinInput
+                  <PINInput
                     pin={confirmNewPin}
                     setPin={setConfirmNewPin}
-                    placeholder="Confirm New PIN"
+                    label="Confirm New PIN"
                     error={newPinError}
+                    variant="boxes"
+                    secure
                   />
 
-                  <View style={styles.securityTip}>
-                    <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+                  <View style={[styles.securityTip, { marginTop: scale(24) }]}>
+                    <Ionicons name="shield-checkmark" size={scale(20, 18, 24)} color="#10B981" />
                     <Text style={styles.securityTipText}>
                       Avoid common patterns like 1234, 0000, or repeated digits
                     </Text>
@@ -485,6 +458,51 @@ export default function PinForgotScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Email Info Modal */}
+      <Modal
+        visible={showEmailInfoModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowEmailInfoModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalIconContainer}>
+              <LinearGradient
+                colors={['#6B46C1', '#8B5CF6']}
+                style={styles.modalIconGradient}
+              >
+                <Ionicons name="mail" size={32} color="#FFFFFF" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.modalTitle}>Email Verification</Text>
+            <Text style={styles.modalSubtitle}>
+              We'll send a verification code to your email address:
+            </Text>
+            <Text style={styles.modalEmail}>
+              {user?.email ? user.email.replace(/(.{2})(.*)(@.*)/, '$1***$3') : ''}
+            </Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleSendEmailCode}
+            >
+              <LinearGradient
+                colors={['#6B46C1', '#8B5CF6']}
+                style={styles.modalButtonGradient}
+              >
+                <Text style={styles.modalButtonText}>Send Email Code</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              onPress={() => setShowEmailInfoModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <AlertComponent />
     </SafeAreaView>
   );
@@ -497,8 +515,8 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 50,
-    left: 16,
+    top: scale(50),
+    left: scale(16),
     zIndex: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -507,28 +525,30 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   backButtonGradient: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 44,
+    minHeight: 44,
   },
   keyboardAvoidingView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 100,
-    paddingBottom: 40,
+    paddingHorizontal: scale(24),
+    paddingTop: scale(100),
+    paddingBottom: scale(40),
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   progressContainer: {
     width: '100%',
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   progressTrack: {
     flexDirection: 'row',
@@ -536,8 +556,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   progressDot: {
-    width: 12,
-    height: 12,
+    width: scale(12, 10, 14),
+    height: scale(12, 10, 14),
     borderRadius: 6,
     backgroundColor: '#E5E7EB',
   },
@@ -546,7 +566,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.2 }],
   },
   progressLine: {
-    width: 60,
+    width: scale(60),
     height: 2,
     backgroundColor: '#E5E7EB',
   },
@@ -554,14 +574,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#6B46C1',
   },
   title: {
-    fontSize: 28,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: 'bold',
     color: '#1F2937',
-    marginBottom: 8,
+    marginBottom: scale(8),
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
@@ -572,24 +592,24 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: 'row',
     backgroundColor: '#EDE9FE',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
+    borderRadius: scale(16),
+    padding: scale(16),
+    marginBottom: scale(24),
     alignItems: 'center',
   },
   infoIconContainer: {
-    marginRight: 12,
+    marginRight: scale(12),
   },
   infoText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#5B21B6',
     lineHeight: 20,
   },
   inputCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: scale(20),
+    padding: scale(24),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -601,109 +621,70 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F3F4F6',
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 16,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(14),
+    marginBottom: scale(16),
+    minHeight: 48,
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: scale(12),
   },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     color: '#1F2937',
     fontWeight: '500',
   },
   label: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
-  otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  otpInput: {
-    width: 45,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
-    textAlign: 'center',
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  pinContainer: {
-    marginBottom: 24,
-  },
-  pinLabel: {
-    fontSize: 14,
+  otpSectionLabel: {
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 12,
+    color: '#374151',
+    marginBottom: scale(12),
   },
-  pinInputsContainer: {
+  otpWrapper: {
+    width: '100%',
     alignItems: 'center',
-  },
-  pinInputContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  pinInput: {
-    width: 56,
-    height: 64,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
-    textAlign: 'center',
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  pinInputFilled: {
-    backgroundColor: '#EDE9FE',
-    borderColor: '#6B46C1',
-  },
-  pinInputError: {
-    borderColor: '#EF4444',
-    backgroundColor: '#FEE2E2',
+    paddingHorizontal: scale(2),
   },
   securityTip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#D1FAE5',
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 24,
+    padding: scale(12),
+    marginBottom: scale(24),
   },
   securityTipText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: fontScale(13, 11, 15),
     color: '#059669',
-    marginLeft: 8,
+    marginLeft: scale(8),
     lineHeight: 18,
   },
   resendText: {
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
-    marginVertical: 16,
+    marginVertical: scale(16),
   },
   resendLink: {
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B46C1',
     fontWeight: '600',
-    marginVertical: 16,
+    marginVertical: scale(16),
     textDecorationLine: 'underline',
   },
   primaryButton: {
-    borderRadius: 16,
+    borderRadius: scale(16),
     overflow: 'hidden',
+    minHeight: 48,
     shadowColor: '#6B46C1',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -715,14 +696,98 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
   },
   gradientButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingVertical: scale(16),
+    paddingHorizontal: scale(32),
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  changeButton: {
+    alignItems: 'center',
+    marginTop: scale(16),
+    paddingVertical: scale(8),
+  },
+  changeButtonText: {
+    fontSize: fontScale(14, 12, 16),
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: scale(24),
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: scale(32),
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 340,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  modalIconContainer: {
+    marginBottom: scale(20),
+  },
+  modalIconGradient: {
+    width: scale(72),
+    height: scale(72),
+    borderRadius: scale(36),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: fontScale(22, 20, 24),
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: scale(12),
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: fontScale(14, 13, 16),
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: scale(8),
+    lineHeight: 22,
+  },
+  modalEmail: {
+    fontSize: fontScale(16, 14, 18),
+    fontWeight: '600',
+    color: '#6B46C1',
+    marginBottom: scale(24),
+    textAlign: 'center',
+  },
+  modalButton: {
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: scale(12),
+  },
+  modalButtonGradient: {
+    paddingVertical: scale(14),
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    fontSize: fontScale(16, 14, 18),
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  modalCancelButton: {
+    paddingVertical: scale(12),
+  },
+  modalCancelText: {
+    fontSize: fontScale(14, 13, 16),
+    color: '#6B7280',
+    fontWeight: '500',
   },
 });

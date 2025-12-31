@@ -1,36 +1,34 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  Platform,
-  Modal,
-  Dimensions,
-  Image,
-  TextInput,
-  KeyboardAvoidingView,
-  ScrollView,
-  Linking,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { apiService } from '../src/services/api';
-import { useAuth } from '../src/hooks/useAuth';
-import { FaceRegistrationInstructionModal } from '../src/components/ui/FaceRegistrationInstructionModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { FaceSuccessModal } from '../src/components/ui/FaceSuccessModal';
-import { ProcessingAnimation } from '../src/components/ui/ProcessingAnimation';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    Linking,
+    Platform,
+    StyleSheet,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../src/components/ui/AlertModal';
+import { AppText as Text } from '../src/components/ui/AppText';
+import { FaceRegistrationInstructionModal } from '../src/components/ui/FaceRegistrationInstructionModal';
+import { FaceSuccessModal } from '../src/components/ui/FaceSuccessModal';
 import { PinVerificationModal } from '../src/components/ui/PinVerificationModal';
+import { ProcessingAnimation } from '../src/components/ui/ProcessingAnimation';
+import { useAuth } from '../src/hooks/useAuth';
+import { apiService } from '../src/services/api';
+import { getFaceError, isNetworkError } from '../src/utils/errorHandler';
+import { fontScale, hp, scale, wp } from '../src/utils/responsive';
 
-const { width, height } = Dimensions.get('window');
+// Circle size: 65% of screen width for consistent look on all devices
+// This leaves ~17.5% padding on each side within the blue box
+const CIRCLE_SIZE = wp(65);
+// Blue box padding around the circle (percentage-based)
+const BLUE_PADDING = wp(8);
 
 export default function UpdateFaceScreen() {
   const [isLoading, setIsLoading] = useState(false);
@@ -60,30 +58,21 @@ export default function UpdateFaceScreen() {
     let faceDetectionInterval: ReturnType<typeof setInterval>;
     
     if (isUpdating) {
-      // Start simulated face detection after 2 seconds
       faceDetectionTimer = setTimeout(() => {
         setIsDetecting(true);
-        
-        // Simulate continuous face detection every 1.5 seconds
         faceDetectionInterval = setInterval(() => {
-          // Randomly simulate face presence/absence (70% chance of face detected)
           const faceDetected = Math.random() > 0.3;
           setHasFace(faceDetected);
         }, 200);
       }, 2000);
     } else {
-      // Reset states when not updating
       setIsDetecting(false);
       setHasFace(false);
     }
 
     return () => {
-      if (faceDetectionTimer) {
-        clearTimeout(faceDetectionTimer);
-      }
-      if (faceDetectionInterval) {
-        clearInterval(faceDetectionInterval);
-      }
+      if (faceDetectionTimer) clearTimeout(faceDetectionTimer);
+      if (faceDetectionInterval) clearInterval(faceDetectionInterval);
     };
   }, [isUpdating]);
 
@@ -94,7 +83,6 @@ export default function UpdateFaceScreen() {
   };
 
   useEffect(() => {
-    // Load user data from secure store
     loadUserData();
   }, []);
 
@@ -114,27 +102,18 @@ export default function UpdateFaceScreen() {
         setUserName(`${user.first_name} ${user.last_name}`);
       }
     } catch (error) {
-      // console.error removed for production
+      // Handle silently
     }
   };
 
   const handleStartUpdate = async () => {
-    // This is now called from instruction modal's "Start Face Registration" button
-    // CRITICAL FIX FOR iOS: Must close fullScreen modal before showing transparent modal
-    // iOS prevents transparent modals from appearing over fullScreen modals
-    // Android allows modal stacking, which is why this works on Android
     setShowInstructionModal(false);
-    
-    // Wait briefly for modal transition before showing PIN modal
-    // Reduced to 100ms for faster response while maintaining iOS compatibility
     setTimeout(() => {
       setShowPinModal(true);
     }, 100);
   };
 
   const handlePinCancel = () => {
-    // When user cancels PIN modal, restore the instruction modal
-    // This prevents white screen and maintains previous UX
     setShowPinModal(false);
     setTimeout(() => {
       setShowInstructionModal(true);
@@ -142,7 +121,6 @@ export default function UpdateFaceScreen() {
   };
 
   const handlePinSuccess = () => {
-    // After PIN is verified, close modals and go to camera
     setShowPinModal(false);
     setShowInstructionModal(false);
     setIsUpdating(true);
@@ -159,8 +137,6 @@ export default function UpdateFaceScreen() {
       return;
     }
 
-    // Verify PIN was confirmed (for user security)
-    // Backend uses JWT token for authentication, not PIN
     const storedPin = await AsyncStorage.getItem('verified_pin');
     
     if (!storedPin || storedPin.length !== 4) {
@@ -171,69 +147,28 @@ export default function UpdateFaceScreen() {
     setShowProcessingAnimation(true);
     setIsLoading(true);
     try {
-      // Call the external Face Update API
-      // Backend requires both JWT token AND PIN for security
       const faceApiResponse = await apiService.updateFace(userId, userName.trim(), imageUri, storedPin);
-      
-      // Check for embedding_id in the nested data structure
       const embeddingId = faceApiResponse.data?.embedding_id || faceApiResponse.embedding_id;
       
       if (!embeddingId) {
         throw new Error('Face update failed - no embedding ID returned');
       }
       
-      // Update the main backend database with face registration status
       await apiService.updateUserFaceStatus(true);
-      
-      // The backend has already updated the user's face status in the database
-      // Refresh the user context to get the updated data from the backend
       await refreshUser();
-      
-      // Verify the update worked
       await apiService.getStoredUser();
       
-      // Hide processing animation and show success modal
       setShowProcessingAnimation(false);
       setShowSuccessModal(true);
       
     } catch (error: any) {
-      let errorMessage = 'Failed to update face';
+      // Use centralized error handler for clean, user-friendly messages
+      let errorMessage: string;
       
-      // Extract error message properly
-      const getErrorMessage = (err: any): string => {
-        // If error.message is an object, try to stringify it
-        if (err.message && typeof err.message === 'object') {
-          return JSON.stringify(err.message);
-        }
-        // If error.message is a string, return it
-        if (err.message && typeof err.message === 'string') {
-          return err.message;
-        }
-        // Fallback
-        return 'Unknown error';
-      };
-      
-      const rawErrorMessage = getErrorMessage(error);
-      
-      if (error.code === 'NETWORK_ERROR' || (rawErrorMessage && rawErrorMessage.includes('Network Error'))) {
-        errorMessage = 'Network Error: Cannot connect to face update server. Please check your network connection and try again.';
-      } else if (error.response?.status === 401) {
-        errorMessage = `Authentication Failed: ${error.response?.data?.detail || error.response?.data?.message || 'Please try again'}`;
-      } else if (error.response?.status === 422) {
-        errorMessage = `Invalid data: ${error.response?.data?.detail || error.response?.data?.message || 'Please try again.'}`;
-      } else if (error.response?.status === 423) {
-        errorMessage = 'Your account is temporarily locked. Please try again later.';
-      } else if (error.response?.status) {
-        // Has response status but not handled above
-        errorMessage = `Server error (${error.response.status}): ${error.response?.data?.detail || error.response?.data?.message || error.response?.data?.error || rawErrorMessage}`;
-      } else if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
+      if (isNetworkError(error)) {
+        errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
       } else {
-        errorMessage = rawErrorMessage || 'An unexpected error occurred. Please try again.';
+        errorMessage = getFaceError(error);
       }
       
       setShowProcessingAnimation(false);
@@ -245,13 +180,6 @@ export default function UpdateFaceScreen() {
             setIsUpdating(true);
           }
         },
-        // {
-        //   text: 'Cancel',
-        //   style: 'cancel',
-        //   onPress: () => {
-        //     router.replace('/(tabs)/profile');
-        //   }
-        // }
       ], 'warning');
     } finally {
       setIsLoading(false);
@@ -263,7 +191,6 @@ export default function UpdateFaceScreen() {
     if (!cameraRef.current) return null;
 
     try {
-      // 1. Capture the full-resolution photo
       const photo = await cameraRef.current.takePictureAsync({
         skipProcessing: Platform.OS === 'ios',
         quality: 0.8,
@@ -276,7 +203,6 @@ export default function UpdateFaceScreen() {
         throw new Error('Unable to determine captured image dimensions.');
       }
 
-      // 2. Compute a centered square crop and clamp to image bounds
       const targetSize = Math.min(photoWidth, photoHeight);
       const cropWidth = Math.floor(targetSize);
       const cropHeight = Math.floor(targetSize);
@@ -295,7 +221,6 @@ export default function UpdateFaceScreen() {
         throw new Error('Calculated crop dimensions are invalid for the captured image.');
       }
 
-      // 3. Crop to square and resize to optimal size for face recognition
       const square = await ImageManipulator.manipulateAsync(
         photo.uri,
         [
@@ -310,7 +235,6 @@ export default function UpdateFaceScreen() {
 
       return square.uri;
     } catch (error) {
-      // console.error removed for production
       throw error;
     }
   };
@@ -318,7 +242,7 @@ export default function UpdateFaceScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {isUpdating ? (
-        <View style={[styles.fullScreenContainer, { paddingBottom: insets.bottom + 20 }]}>
+        <View style={[styles.fullScreenContainer, { paddingBottom: insets.bottom + scale(20) }]}>
           {/* Header with gradient background */}
           <LinearGradient
             colors={['#6B46C1', '#8B5CF6', '#06B6D4']}
@@ -333,7 +257,7 @@ export default function UpdateFaceScreen() {
                 router.replace('/(tabs)/profile');
               }}
             >
-              <Ionicons name="close" size={24} color="#6B46C1" />
+              <Ionicons name="close" size={scale(24, 20, 28)} color="#FFFFFF" />
             </TouchableOpacity>
             <View style={styles.cameraHeaderContent}>
               <Text style={styles.cameraHeaderTitle}>Update Face</Text>
@@ -343,61 +267,62 @@ export default function UpdateFaceScreen() {
 
           {/* Camera Preview with White Padding */}
           <View style={styles.cameraContainer}>
-            {/* Blue Box Container */}
+            {/* Blue Box Container - Uses flex centering for equal spacing */}
             <View style={styles.blueBoxContainer}>
-              {/* Top Blue Section */}
-              <View style={styles.topBlueBar} />
-              
-              {/* Middle Row with Circle */}
-              <View style={styles.middleRow}>
-                {/* Left Blue Bar */}
-                <View style={styles.sideBlueBar} />
-                
-                {/* Circle Container with Camera */}
-                <View style={styles.ovalCameraContainer}>
-                  {!permission ? (
-                    <View style={[styles.cameraViewOval, styles.permissionPromptContainer]}>
-                      <Text style={styles.permissionTitle}>Checking camera access…</Text>
-                    </View>
-                  ) : isCameraReady ? (
-                    <CameraView
-                      ref={cameraRef}
-                      style={styles.cameraViewOval}
-                      facing="front"
-                    />
-                  ) : (
-                    <View style={[styles.cameraViewOval, styles.permissionPromptContainer]}>
-                      <Text style={styles.permissionTitle}>Camera Access Needed</Text>
-                      <Text style={styles.permissionDescription}>
-                        Allow FacePe to use your camera so we can update your face data securely.
+              {/* Circle Container with Camera - Centered in blue box */}
+              <View style={styles.circleWrapper}>
+                {!permission ? (
+                  <View style={[styles.cameraViewCircle, styles.permissionPromptContainer, {
+                    width: CIRCLE_SIZE,
+                    height: CIRCLE_SIZE,
+                    borderRadius: CIRCLE_SIZE / 2,
+                  }]}>
+                    <Text style={styles.permissionTitle}>Checking camera access…</Text>
+                  </View>
+                ) : isCameraReady ? (
+                  <CameraView
+                    ref={cameraRef}
+                    style={[styles.cameraViewCircle, { 
+                      width: CIRCLE_SIZE, 
+                      height: CIRCLE_SIZE,
+                      borderRadius: CIRCLE_SIZE / 2,
+                    }]}
+                    facing="front"
+                  />
+                ) : (
+                  <View style={[styles.cameraViewCircle, styles.permissionPromptContainer, {
+                    width: CIRCLE_SIZE,
+                    height: CIRCLE_SIZE,
+                    borderRadius: CIRCLE_SIZE / 2,
+                  }]}>
+                    <Text style={styles.permissionTitle}>Camera Access Needed</Text>
+                    <Text style={styles.permissionDescription}>
+                      Allow FacePe to use your camera so we can update your face data securely.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.permissionButton}
+                      onPress={() => {
+                        if (canRequestCameraPermission) {
+                          requestPermission();
+                        } else {
+                          Linking.openSettings();
+                        }
+                      }}
+                    >
+                      <Text style={styles.permissionButtonText}>
+                        {canRequestCameraPermission ? 'Grant Permission' : 'Open Settings'}
                       </Text>
-                      <TouchableOpacity
-                        style={styles.permissionButton}
-                        onPress={() => {
-                          if (canRequestCameraPermission) {
-                            requestPermission();
-                          } else {
-                            Linking.openSettings();
-                          }
-                        }}
-                      >
-                        <Text style={styles.permissionButtonText}>
-                          {canRequestCameraPermission ? 'Grant Permission' : 'Open Settings'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  
-                  {/* Circle Frame Border */}
-                  <View style={styles.circleFrameBorder} pointerEvents="none" />
-                </View>
+                    </TouchableOpacity>
+                  </View>
+                )}
                 
-                {/* Right Blue Bar */}
-                <View style={styles.sideBlueBar} />
+                {/* Circle Frame Border */}
+                <View style={[styles.circleFrameBorder, { 
+                  width: CIRCLE_SIZE, 
+                  height: CIRCLE_SIZE, 
+                  borderRadius: CIRCLE_SIZE / 2,
+                }]} pointerEvents="none" />
               </View>
-              
-              {/* Bottom Blue Section */}
-              <View style={styles.bottomBlueBar} />
             </View>
           </View>
 
@@ -435,12 +360,10 @@ export default function UpdateFaceScreen() {
                 try {
                   const squareImageUri = await takeSquarePicture();
                   if (squareImageUri) {
-                    // Directly update face with captured image
                     await handleFaceUpdate(squareImageUri);
                     setIsUpdating(false);
                   }
                 } catch (error) {
-                  // console.error removed for production
                   showAlert('Error', 'Failed to capture image', undefined, 'warning');
                 } finally {
                   setIsLoading(false);
@@ -462,7 +385,7 @@ export default function UpdateFaceScreen() {
         </View>
       ) : null}
 
-      {/* Face Update Instruction Modal - Now shows as first screen with PIN requirement */}
+      {/* Face Update Instruction Modal */}
       <FaceRegistrationInstructionModal
         visible={showInstructionModal}
         onClose={() => {
@@ -478,7 +401,6 @@ export default function UpdateFaceScreen() {
         visible={showSuccessModal}
         onClose={() => {
           setShowSuccessModal(false);
-          // console.log removed for production
           router.replace('/(tabs)/profile');
         }}
         userName={userName}
@@ -516,203 +438,17 @@ const styles = StyleSheet.create({
   fullScreenContainer: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    paddingBottom: 16,
-    minHeight: 80,
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 4,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(107, 70, 193, 0.2)',
-    shadowColor: '#6B46C1',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  headerRight: {
-    width: 44,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 24,
-    paddingTop: 40,
-  },
-  iconContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  iconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 24,
-  },
-  descriptionContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  descriptionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  description: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
-  },
-  inputContainer: {
-    marginBottom: 32,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  inputSubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 12,
-  },
-  readOnlyInput: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  readOnlyText: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  featuresList: {
-    marginBottom: 32,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  featureText: {
-    fontSize: 16,
-    color: '#1F2937',
-    marginLeft: 12,
-    fontWeight: '500',
-  },
-  bottomActions: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-  },
-  primaryButton: {
-    borderRadius: 16,
-    shadowColor: '#6B46C1',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  primaryButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 24,
-    borderRadius: 16,
-  },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  
-  // Camera styles
   cameraHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    paddingBottom: 16,
-    minHeight: 80,
+    paddingHorizontal: scale(24),
+    paddingVertical: scale(16),
+    paddingBottom: scale(16),
+    minHeight: scale(80),
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
-    marginBottom: 24,
+    marginBottom: scale(24),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -723,240 +459,119 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   cameraBackButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    minWidth: 44,
+    minHeight: 44,
   },
   cameraHeaderContent: {
     flex: 1,
   },
   cameraHeaderTitle: {
-    fontSize: 20,
+    fontSize: fontScale(20, 18, 24),
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
   },
   cameraHeaderRight: {
-    width: 44,
+    width: scale(44),
   },
   cameraContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 30,
-    paddingVertical: 50,
+    paddingHorizontal: wp(5),
+    paddingVertical: hp(3),
     justifyContent: 'center',
     alignItems: 'center',
   },
   blueBoxContainer: {
-    width: '100%',
-    flex: 1,
-    maxHeight: 600,
-    borderRadius: 24,
+    width: wp(85), // 85% of screen width
+    aspectRatio: 0.75, // Height is 1.33x width (taller than wide)
+    maxHeight: hp(55), // Cap at 55% of screen height
+    borderRadius: scale(24),
     overflow: 'hidden',
     backgroundColor: '#3B82F6',
+    justifyContent: 'center', // Center circle vertically
+    alignItems: 'center', // Center circle horizontally
   },
-  topBlueBar: {
-    height: 70,
-    backgroundColor: '#3B82F6',
-    width: '100%',
-  },
-  middleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sideBlueBar: {
-    width: 40,
-    height: 400,
-    backgroundColor: '#3B82F6',
-  },
-  ovalCameraContainer: {
-    width: 280,
-    height: 400,
+  circleWrapper: {
+    width: CIRCLE_SIZE,
+    height: CIRCLE_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
   },
-  cameraViewOval: {
+  cameraViewCircle: {
     position: 'absolute',
-    width: 280,
-    height: 280,
     overflow: 'hidden',
-    borderRadius: 140,
   },
   permissionPromptContainer: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
     backgroundColor: 'rgba(17, 24, 39, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    gap: 12,
+    paddingHorizontal: scale(24),
+    gap: scale(12),
   },
   permissionTitle: {
-    fontSize: 18,
+    fontSize: fontScale(18, 16, 20),
     fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
   },
   permissionDescription: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#E5E7EB',
     textAlign: 'center',
     lineHeight: 20,
   },
   permissionButton: {
-    marginTop: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
+    marginTop: scale(4),
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(24),
     borderRadius: 24,
     backgroundColor: '#6B46C1',
+    minHeight: 44,
+    justifyContent: 'center',
   },
   permissionButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '600',
     textAlign: 'center',
     textTransform: 'uppercase',
   },
   circleFrameBorder: {
     position: 'absolute',
-    width: 280,
-    height: 280,
     borderWidth: 4,
     borderColor: '#FFFFFF',
     backgroundColor: 'transparent',
-    borderRadius: 140,
-  },
-  bottomBlueBar: {
-    height: 70,
-    backgroundColor: '#3B82F6',
-    width: '100%',
   },
   buttonContainer: {
-    paddingHorizontal: 24,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: scale(24),
+    paddingVertical: scale(20),
   },
   takePhotoButton: {
-    borderRadius: 16,
+    borderRadius: scale(16),
     shadowColor: '#6B46C1',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 12,
+    minHeight: 48,
   },
   takePhotoButtonGradient: {
-    paddingVertical: 20,
-    paddingHorizontal: 24,
+    paddingVertical: scale(20),
+    paddingHorizontal: scale(24),
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: scale(16),
   },
   takePhotoButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: fontScale(18, 16, 20),
     fontWeight: 'bold',
   },
-  
-  // Face Detection Overlay Styles
-  faceDetectionOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  faceStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginTop: 20,
-  },
-  faceStatusIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  faceStatusText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  faceFrame: {
-    width: 200,
-    height: 200,
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  faceFrameCorner: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderColor: '#FFFFFF',
-    borderWidth: 3,
-  },
-  topLeft: {
-    top: 0,
-    left: 0,
-    borderBottomWidth: 0,
-    borderRightWidth: 0,
-    borderTopLeftRadius: 8,
-  },
-  topRight: {
-    top: 0,
-    right: 0,
-    borderBottomWidth: 0,
-    borderLeftWidth: 0,
-    borderTopRightRadius: 8,
-  },
-  bottomLeft: {
-    bottom: 0,
-    left: 0,
-    borderTopWidth: 0,
-    borderRightWidth: 0,
-    borderBottomLeftRadius: 8,
-  },
-  bottomRight: {
-    bottom: 0,
-    right: 0,
-    borderTopWidth: 0,
-    borderLeftWidth: 0,
-    borderBottomRightRadius: 8,
-  },
-
-  instructionsOverlay: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 16,
-    marginBottom: 20,
-  },
-  instructionText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-}); 
+});

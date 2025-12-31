@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { fontScale, scale } from '../src/utils/responsive';
 
 export default function AboutScreen() {
   const insets = useSafeAreaInsets();
@@ -124,7 +125,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.3,
@@ -149,10 +150,10 @@ const styles = StyleSheet.create({
     width: 40,
   },
   headerSubtitle: {
-    marginTop: 6,
-    fontSize: 14,
+    marginTop: scale(6),
+    fontSize: fontScale(14, 12, 16),
     color: 'rgba(255,255,255,0.85)',
-    lineHeight: 20,
+    lineHeight: fontScale(20, 18, 22),
   },
   scrollView: {
     flex: 1,
@@ -173,15 +174,15 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: fontScale(20, 18, 24),
     fontWeight: '700',
     color: '#1F2937',
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
   sectionText: {
-    fontSize: 15,
+    fontSize: fontScale(15, 13, 17),
     color: '#4B5563',
-    lineHeight: 22,
+    lineHeight: fontScale(22, 20, 24),
   },
   bulletList: {
     gap: 10,
@@ -192,7 +193,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   bulletText: {
-    fontSize: 15,
+    fontSize: fontScale(15, 13, 17),
     color: '#374151',
   },
   valueCard: {
@@ -204,10 +205,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   valueTitle: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '700',
     color: '#4C1D95',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
 });
 

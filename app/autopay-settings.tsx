@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../src/components/ui/AlertModal';
 import { AutoPay, PaymentMethod } from '../src/constants/types';
 import { apiService } from '../src/services/api';
+import { fontScale, scale } from '../src/utils/responsive';
 
 export default function AutoPaySettingsScreen() {
   const router = useRouter();
@@ -294,7 +295,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: '600',
     color: '#1F2937',
   },
@@ -304,8 +305,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
+    marginTop: scale(16),
+    fontSize: fontScale(16, 14, 18),
     color: '#6B7280',
   },
   content: {
@@ -328,15 +329,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   infoTitle: {
-    fontSize: 18,
+    fontSize: fontScale(18, 16, 20),
     fontWeight: '600',
     color: '#1F2937',
-    marginLeft: 8,
+    marginLeft: scale(8),
   },
   infoDescription: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
-    lineHeight: 20,
+    lineHeight: fontScale(20, 18, 22),
   },
   autoPayList: {
     backgroundColor: '#FFFFFF',
@@ -371,24 +372,24 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   merchantEmoji: {
-    fontSize: 20,
+    fontSize: fontScale(20, 18, 24),
   },
   autoPayInfo: {
     flex: 1,
   },
   merchantName: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
   paymentMethod: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
   maxAmount: {
-    fontSize: 12,
+    fontSize: fontScale(12, 10, 14),
     color: '#10B981',
     fontWeight: '500',
   },
@@ -416,17 +417,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: fontScale(20, 18, 24),
     fontWeight: '600',
     color: '#1F2937',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: scale(16),
+    marginBottom: scale(8),
   },
   emptyDescription: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: fontScale(20, 18, 22),
   },
   modalOverlay: {
     flex: 1,
@@ -442,17 +443,17 @@ const styles = StyleSheet.create({
     maxWidth: 400,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: fontScale(18, 16, 20),
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 16,
+    marginBottom: scale(16),
     textAlign: 'center',
   },
   modalLabel: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '500',
     color: '#374151',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   amountInputContainer: {
     flexDirection: 'row',
@@ -464,22 +465,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   currencySymbol: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#374151',
-    marginRight: 8,
+    marginRight: scale(8),
   },
   amountInput: {
     flex: 1,
-    paddingVertical: 12,
-    fontSize: 16,
+    paddingVertical: scale(12),
+    fontSize: fontScale(16, 14, 18),
     color: '#1F2937',
   },
   modalHint: {
-    fontSize: 12,
+    fontSize: fontScale(12, 10, 14),
     color: '#6B7280',
-    marginTop: 8,
-    marginBottom: 24,
+    marginTop: scale(8),
+    marginBottom: scale(24),
   },
   modalButtons: {
     flexDirection: 'row',
@@ -494,19 +495,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '500',
     color: '#374151',
   },
   saveButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: scale(12),
+    borderRadius: scale(8),
     backgroundColor: '#6B46C1',
     alignItems: 'center',
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '500',
     color: '#FFFFFF',
   },

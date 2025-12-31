@@ -1,156 +1,25 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { apiService } from '../src/services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { useAuth } from '../src/hooks/useAuth';
 import { useAlert } from '../src/components/ui/AlertModal';
-
-// Custom OTP Input Component
-const OTPInput = ({
-  code,
-  setCode,
-}: {
-  code: string;
-  setCode: (code: string) => void;
-}) => {
-  const inputs = React.useRef<TextInput[]>([]);
-
-  const handleTextChange = (text: string, index: number) => {
-    if (text.length > 1) {
-      // If pasting, distribute to all fields
-      if (text.length === 6) {
-        const newCode = text.split('');
-        setCode(newCode.join(''));
-        inputs.current[5].focus();
-      }
-      return;
-    }
-
-    const newCode = [...code];
-    newCode[index] = text;
-    setCode(newCode.join(''));
-
-    // Move to next input
-    if (text && index < 5) {
-      inputs.current[index + 1].focus();
-    }
-  };
-
-  const handleKeyPress = (
-    { nativeEvent: { key } }: { nativeEvent: { key: string } },
-    index: number
-  ) => {
-    if (key === 'Backspace' && !code[index] && index > 0) {
-      inputs.current[index - 1].focus();
-    }
-  };
-
-  return (
-    <View style={styles.otpContainer}>
-      {Array(6)
-        .fill(0)
-        .map((_, index) => (
-          <TextInput
-            key={index}
-            ref={(el) => {
-              if (el) {
-                inputs.current[index] = el;
-              }
-            }}
-            style={styles.otpInput}
-            keyboardType="numeric"
-            maxLength={1}
-            onChangeText={(text) => handleTextChange(text, index)}
-            onKeyPress={(e) => handleKeyPress(e, index)}
-            value={code[index] || ''}
-          />
-        ))}
-    </View>
-  );
-};
-
-// PIN Input Component
-const PinInput = ({
-  pin,
-  setPin,
-  placeholder,
-  error,
-}: {
-  pin: string;
-  setPin: (pin: string) => void;
-  placeholder: string;
-  error?: boolean;
-}) => {
-  const inputs = React.useRef<TextInput[]>([]);
-
-  const handleTextChange = (text: string, index: number) => {
-    if (text.length > 1) return;
-
-    const newPin = [...pin];
-    newPin[index] = text;
-    setPin(newPin.join(''));
-
-    // Move to next input
-    if (text && index < 3) {
-      inputs.current[index + 1].focus();
-    }
-  };
-
-  const handleKeyPress = (
-    { nativeEvent: { key } }: { nativeEvent: { key: string } },
-    index: number
-  ) => {
-    if (key === 'Backspace' && !pin[index] && index > 0) {
-      inputs.current[index - 1].focus();
-    }
-  };
-
-  return (
-    <View style={styles.pinContainer}>
-      <Text style={styles.pinLabel}>{placeholder}</Text>
-      <View style={styles.pinInputsContainer}>
-        <View style={styles.pinInputContainer}>
-          {Array(4)
-            .fill(0)
-            .map((_, index) => (
-              <TextInput
-                key={index}
-                ref={(el) => {
-                  if (el) {
-                    inputs.current[index] = el;
-                  }
-                }}
-                style={[
-                  styles.pinInput,
-                  error && styles.pinInputError,
-                  pin[index] && styles.pinInputFilled,
-                ]}
-                keyboardType="numeric"
-                maxLength={1}
-                onChangeText={(text) => handleTextChange(text, index)}
-                onKeyPress={(e) => handleKeyPress(e, index)}
-                value={pin[index] || ''}
-                secureTextEntry={true}
-              />
-            ))}
-        </View>
-      </View>
-    </View>
-  );
-};
+import { AppText as Text, AppTextInput as TextInput } from '../src/components/ui/AppText';
+import { OTPInput } from '../src/components/ui/OTPInput';
+import { PINInput } from '../src/components/ui/PINInput';
+import { useAuth } from '../src/hooks/useAuth';
+import { apiService } from '../src/services/api';
+import { getPinError, getVerificationError } from '../src/utils/errorHandler';
+import { fontScale, scale } from '../src/utils/responsive';
 
 export default function PinResetScreen() {
   const [step, setStep] = useState<'send_code' | 'verification' | 'current_pin' | 'new_pin'>('send_code');
@@ -164,12 +33,11 @@ export default function PinResetScreen() {
   const [countdown, setCountdown] = useState(0);
   const [currentPinError, setCurrentPinError] = useState(false);
   const [newPinError, setNewPinError] = useState(false);
-  
+
   const router = useRouter();
   const { user } = useAuth();
   const { showAlert, AlertComponent } = useAlert();
 
-  // Start countdown timer
   const startCountdown = () => {
     setCountdown(60);
     const timer = setInterval(() => {
@@ -183,7 +51,6 @@ export default function PinResetScreen() {
     }, 1000);
   };
 
-  // Validate PIN security (no common sequences)
   const validatePinSecurity = (pin: string): boolean => {
     const commonPins = ['0000', '1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999', '1234', '4321', '1122', '2211'];
     return !commonPins.includes(pin);
@@ -200,30 +67,23 @@ export default function PinResetScreen() {
       return;
     }
 
-    // Prevent multiple calls
     if (isLoading) return;
 
     setIsLoading(true);
     try {
-      // Send phone verification code
       await apiService.sendVerification({ phone_number: phoneNumber, method: 'sms' });
-      
-      // Send email verification code
       await apiService.sendEmailVerification(user.email);
-      
       startCountdown();
-      // Move to verification step after sending codes
       setStep('verification');
       showAlert('Success', 'Verification codes sent to your phone and email', undefined, 'success');
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Failed to send verification codes', undefined, 'warning');
+      showAlert('Error', getVerificationError(error), undefined, 'warning');
     } finally {
       setIsLoading(false);
     }
   };
 
   React.useEffect(() => {
-    // Just load the phone number, don't auto-send code
     if (user?.phone_number) {
       setPhoneNumber(user.phone_number);
     }
@@ -243,7 +103,7 @@ export default function PinResetScreen() {
       });
       setStep('current_pin');
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Invalid verification code', undefined, 'warning');
+      showAlert('Error', getVerificationError(error), undefined, 'warning');
     } finally {
       setIsLoading(false);
     }
@@ -299,7 +159,7 @@ export default function PinResetScreen() {
         'success'
       );
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Failed to reset PIN', undefined, 'warning');
+      showAlert('Error', getPinError(error), undefined, 'warning');
     } finally {
       setIsLoading(false);
     }
@@ -307,17 +167,15 @@ export default function PinResetScreen() {
 
   const handleResendCode = async () => {
     if (countdown > 0 || isLoading) return;
-    
+
     setIsLoading(true);
     try {
-      // Resend both verification codes
       await apiService.sendVerification({ phone_number: phoneNumber, method: 'sms' });
       await apiService.sendEmailVerification(user?.email || '');
-      
       startCountdown();
       showAlert('Success', 'Verification codes resent successfully', undefined, 'success');
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Failed to resend codes', undefined, 'warning');
+      showAlert('Error', getVerificationError(error), undefined, 'warning');
     } finally {
       setIsLoading(false);
     }
@@ -353,10 +211,10 @@ export default function PinResetScreen() {
           colors={['#FFFFFF', '#F8F7FF']}
           style={styles.backButtonGradient}
         >
-          <Ionicons name="arrow-back" size={24} color="#6B46C1" />
+          <Ionicons name="arrow-back" size={scale(24, 20, 28)} color="#6B46C1" />
         </LinearGradient>
       </TouchableOpacity>
-      
+
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -369,10 +227,9 @@ export default function PinResetScreen() {
           <View style={styles.content}>
             {/* Header */}
             <View style={styles.header}>
-              
               <Text style={styles.title}>{getStepTitle()}</Text>
               <Text style={styles.subtitle}>{getStepSubtitle()}</Text>
-              
+
               {/* Progress Indicator */}
               <View style={styles.progressContainer}>
                 <View style={[styles.progressDot, styles.progressDotActive]} />
@@ -390,7 +247,7 @@ export default function PinResetScreen() {
               {step === 'send_code' && (
                 <>
                   <View style={styles.inputContainer}>
-                    <Ionicons name="phone-portrait-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <Ionicons name="phone-portrait-outline" size={scale(20, 18, 24)} color="#999" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       placeholder="Phone Number"
@@ -399,18 +256,18 @@ export default function PinResetScreen() {
                       onChangeText={setPhoneNumber}
                       keyboardType="phone-pad"
                       autoCapitalize="none"
-                      editable={false} // Pre-filled from user data
+                      editable={false}
                     />
                   </View>
 
                   <View style={styles.infoBox}>
-                    <Ionicons name="information-circle" size={20} color="#6B46C1" />
+                    <Ionicons name="information-circle" size={scale(20, 18, 24)} color="#6B46C1" />
                     <Text style={styles.infoText}>
                       We'll send a 6-digit verification code to this number
                     </Text>
                   </View>
 
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.primaryButton, isLoading && styles.disabledButton]}
                     onPress={handleSendVerification}
                     disabled={isLoading}
@@ -422,7 +279,7 @@ export default function PinResetScreen() {
                       <Text style={styles.primaryButtonText}>
                         {isLoading ? 'Sending...' : 'Send Verification Code'}
                       </Text>
-                      {!isLoading && <Ionicons name="send" size={20} color="#FFFFFF" />}
+                      {!isLoading && <Ionicons name="send" size={scale(20, 18, 24)} color="#FFFFFF" />}
                     </LinearGradient>
                   </TouchableOpacity>
                 </>
@@ -431,7 +288,7 @@ export default function PinResetScreen() {
               {step === 'verification' && (
                 <>
                   <View style={styles.inputContainer}>
-                    <Ionicons name="phone-portrait-outline" size={20} color="#999" style={styles.inputIcon} />
+                    <Ionicons name="phone-portrait-outline" size={scale(20, 18, 24)} color="#999" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       placeholder="Phone Number"
@@ -440,24 +297,30 @@ export default function PinResetScreen() {
                       onChangeText={setPhoneNumber}
                       keyboardType="phone-pad"
                       autoCapitalize="none"
-                      editable={false} // Pre-filled from user data
+                      editable={false}
                     />
                   </View>
 
                   <Text style={styles.otpLabel}>SMS Code</Text>
-                  <OTPInput
-                    code={verificationCode}
-                    setCode={setVerificationCode}
-                  />
+                  <View style={styles.otpWrapper}>
+                    <OTPInput
+                      code={verificationCode}
+                      setCode={setVerificationCode}
+                      variant="grouped"
+                    />
+                  </View>
 
-                  <Text style={styles.otpLabel}>Email Code</Text>
-                  <OTPInput
-                    code={emailVerificationCode}
-                    setCode={setEmailVerificationCode}
-                  />
+                  <Text style={[styles.otpLabel, { marginTop: scale(20) }]}>Email Code</Text>
+                  <View style={styles.otpWrapper}>
+                    <OTPInput
+                      code={emailVerificationCode}
+                      setCode={setEmailVerificationCode}
+                      variant="grouped"
+                    />
+                  </View>
 
-                  <TouchableOpacity 
-                    style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                  <TouchableOpacity
+                    style={[styles.primaryButton, { marginTop: scale(24) }, isLoading && styles.disabledButton]}
                     onPress={handleVerifyCode}
                     disabled={isLoading}
                   >
@@ -468,11 +331,11 @@ export default function PinResetScreen() {
                       <Text style={styles.primaryButtonText}>
                         {isLoading ? 'Verifying...' : 'Verify Codes'}
                       </Text>
-                      {!isLoading && <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />}
+                      {!isLoading && <Ionicons name="checkmark-circle" size={scale(20, 18, 24)} color="#FFFFFF" />}
                     </LinearGradient>
                   </TouchableOpacity>
 
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.secondaryButton, countdown > 0 && styles.disabledButton]}
                     onPress={handleResendCode}
                     disabled={countdown > 0}
@@ -486,15 +349,17 @@ export default function PinResetScreen() {
 
               {step === 'current_pin' && (
                 <>
-                  <PinInput
+                  <PINInput
                     pin={currentPin}
                     setPin={setCurrentPin}
-                    placeholder="Current PIN"
+                    label="Current PIN"
                     error={currentPinError}
+                    variant="boxes"
+                    secure
                   />
 
-                  <TouchableOpacity 
-                    style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                  <TouchableOpacity
+                    style={[styles.primaryButton, { marginTop: scale(24) }, isLoading && styles.disabledButton]}
                     onPress={handleCurrentPinSubmit}
                     disabled={isLoading}
                   >
@@ -503,7 +368,7 @@ export default function PinResetScreen() {
                       style={styles.primaryButtonGradient}
                     >
                       <Text style={styles.primaryButtonText}>Continue</Text>
-                      <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                      <Ionicons name="arrow-forward" size={scale(20, 18, 24)} color="#FFFFFF" />
                     </LinearGradient>
                   </TouchableOpacity>
                 </>
@@ -511,28 +376,32 @@ export default function PinResetScreen() {
 
               {step === 'new_pin' && (
                 <>
-                  <PinInput
+                  <PINInput
                     pin={newPin}
                     setPin={setNewPin}
-                    placeholder="New PIN"
+                    label="New PIN"
                     error={newPinError}
+                    variant="boxes"
+                    secure
                   />
 
-                  <PinInput
+                  <PINInput
                     pin={confirmNewPin}
                     setPin={setConfirmNewPin}
-                    placeholder="Confirm New PIN"
+                    label="Confirm New PIN"
                     error={newPinError}
+                    variant="boxes"
+                    secure
                   />
 
-                  <View style={styles.securityTip}>
-                    <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+                  <View style={[styles.securityTip, { marginTop: scale(24) }]}>
+                    <Ionicons name="shield-checkmark" size={scale(16, 14, 18)} color="#10B981" />
                     <Text style={styles.securityTipText}>
                       Choose a secure PIN. Avoid common sequences like 1234, 0000, etc.
                     </Text>
                   </View>
 
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.primaryButton, isLoading && styles.disabledButton]}
                     onPress={handleNewPinSubmit}
                     disabled={isLoading}
@@ -568,31 +437,30 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: scale(40),
   },
   backButton: {
     position: 'absolute',
-    top: 60,
-    left: 16,
+    top: scale(60),
+    left: scale(16),
     zIndex: 10,
-    borderRadius: 22,
+    borderRadius: scale(22),
     shadowColor: '#6B46C1',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 5,
   },
   backButtonGradient: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(107, 70, 193, 0.1)',
+    minWidth: 44,
+    minHeight: 44,
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -600,33 +468,33 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    paddingTop: 70, // Added padding to avoid overlap with back button
+    paddingHorizontal: scale(24),
+    paddingBottom: scale(24),
+    paddingTop: scale(70),
   },
   title: {
-    fontSize: 28,
+    fontSize: fontScale(24, 20, 28),
     fontWeight: 'bold',
     color: '#1F2937',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     color: '#6B7280',
-    marginBottom: 24,
+    marginBottom: scale(24),
     textAlign: 'center',
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: scale(20),
   },
   progressDot: {
-    width: 12,
-    height: 12,
+    width: scale(12, 10, 14),
+    height: scale(12, 10, 14),
     borderRadius: 6,
     backgroundColor: '#E5E7EB',
-    marginHorizontal: 4,
+    marginHorizontal: scale(4),
   },
   progressDotActive: {
     backgroundColor: '#6B46C1',
@@ -635,13 +503,13 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 2,
     backgroundColor: '#E5E7EB',
-    marginHorizontal: 8,
+    marginHorizontal: scale(8),
   },
   progressLineActive: {
     backgroundColor: '#6B46C1',
   },
   form: {
-    marginBottom: 40,
+    marginBottom: scale(40),
     width: '100%',
   },
   inputContainer: {
@@ -649,25 +517,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    height: 56,
+    marginBottom: scale(16),
+    paddingHorizontal: scale(16),
+    height: scale(56, 48, 64),
+    minHeight: 48,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: scale(12),
     color: '#9CA3AF',
   },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     color: '#1F2937',
   },
   infoBox: {
@@ -675,144 +541,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#EEF2FF',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    gap: 12,
+    padding: scale(16),
+    marginBottom: scale(24),
+    gap: scale(12),
   },
   infoText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#6B46C1',
     lineHeight: 20,
   },
-  otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
   otpLabel: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 8,
-    marginTop: 8,
+    color: '#374151',
+    marginBottom: scale(12),
+    marginTop: scale(8),
   },
-  otpInput: {
-    width: 48,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  pinContainer: {
-    marginBottom: 24,
-  },
-  pinLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  pinInputsContainer: {
+  otpWrapper: {
     width: '100%',
     alignItems: 'center',
-    alignSelf: 'center',
-  },
-  pinInputContainer: {
-    flexDirection: 'row',
-    gap: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 280,
-  },
-  pinInput: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-  },
-  pinInputFilled: {
-    borderColor: '#6B46C1',
-    backgroundColor: '#F3F4F6',
-  },
-  pinInputError: {
-    borderColor: '#EF4444',
+    paddingHorizontal: scale(2),
   },
   securityTip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ECFDF5',
-    padding: 12,
+    padding: scale(12),
     borderRadius: 8,
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   securityTipText: {
-    fontSize: 14,
+    fontSize: fontScale(14, 12, 16),
     color: '#065F46',
-    marginLeft: 8,
+    marginLeft: scale(8),
     flex: 1,
   },
   primaryButton: {
-    height: 56, // Set a fixed height for the button
+    height: scale(56, 48, 64),
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: scale(16),
+    minHeight: 48,
     shadowColor: '#6B46C1',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
   primaryButtonGradient: {
-    flex: 1, // Make gradient fill the entire button
+    flex: 1,
     width: '100%',
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: scale(8),
   },
   primaryButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   secondaryButton: {
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: scale(16),
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: scale(16),
     backgroundColor: '#F3F4F6',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    minHeight: 48,
   },
   secondaryButtonText: {
-    fontSize: 16,
+    fontSize: fontScale(16, 14, 18),
     fontWeight: '600',
     color: '#6B46C1',
   },
   disabledButton: {
     opacity: 0.6,
   },
-}); 
+});
